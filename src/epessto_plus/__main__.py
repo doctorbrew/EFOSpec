@@ -16,6 +16,12 @@ def main(argv=None):
     rapid.add_argument('--reference-root', default='trunk/src/ntt')
     rapid.add_argument('--target', action='append', help='OBJECT value to select; repeatable')
     rapid.add_argument('--include-standards', action='store_true')
+    rapid.add_argument('--plot-python', help='Python with house-style dependencies (default: EPESSTO_PLOT_PYTHON or current Python)')
+    rapid.add_argument('--skip-report', action='store_true', help='Reduce without generating plots/HTML')
+    report = commands.add_parser('report', help='Generate an offline Fieldnotes page and diagnostic plots')
+    report.add_argument('path', help='Completed rapid run directory')
+    report.add_argument('--plot-python', help='Python with SciencePlots, pypalettes, Matplotlib and LaTeX')
+    report.add_argument('--existing-plots', action='store_true', help='Rebuild HTML using existing figures only')
     qa = commands.add_parser('qa', help='Plot rapid products against legacy spectra and standards')
     qa.add_argument('path', help='Completed rapid run directory')
     qa.add_argument('--legacy', required=True, help='Directory with baseline legacy spectra')
@@ -31,6 +37,12 @@ def main(argv=None):
         command.add_argument("--arc", action="append", default=[], help="Explicit raw arc; repeatable")
     args = parser.parse_args(argv)
     try:
+        if args.command == 'report':
+            from .report import build_report
+            result = build_report(args.path, plot_python=args.plot_python,
+                                  render_plots=not args.existing_plots)
+            print(json.dumps(result, indent=2))
+            return 0 if result['status'] == 'complete' else 1
         if args.command == 'qa':
             from .qa import make_report
             result = make_report(args.path, args.legacy, args.standards, args.reference_root)
@@ -40,10 +52,12 @@ def main(argv=None):
         if args.command == 'reduce-rapid':
             from .rapid import reduce_night
             result = reduce_night(args.path, args.output, args.reference_root,
-                                  targets=args.target, include_standards=args.include_standards)
+                                  targets=args.target, include_standards=args.include_standards,
+                                  plot_python=args.plot_python, skip_report=args.skip_report)
             print(json.dumps({'output_dir':result['output_dir'], 'reduced':len(result['results']),
-                              'errors':result['errors'], 'skipped':result['skipped']},indent=2))
-            return 1 if result['errors'] else 0
+                              'errors':result['errors'], 'skipped':result['skipped'],
+                              'report':result.get('report')},indent=2))
+            return 1 if result['errors'] or result.get('report', {}).get('status') == 'incomplete' else 0
         result = inventory(args.paths + getattr(args, "arc", []))
         if args.command != "inventory":
             from .planning import build_plan

@@ -212,7 +212,8 @@ def extract_frame(frame, reference_root, output, hint, hint_info, waveair, arc_q
     return qa
 
 
-def reduce_night(input_dir, output_dir, reference_root, *, targets=None, include_standards=False):
+def reduce_night(input_dir, output_dir, reference_root, *, targets=None, include_standards=False,
+                 plot_python=None, skip_report=False):
     """Single-writer run with durable per-exposure results and explicit failures."""
     output = Path(output_dir).resolve()
     reference_root = Path(reference_root).resolve()
@@ -274,4 +275,12 @@ def reduce_night(input_dir, output_dir, reference_root, *, targets=None, include
             run['errors'].append({'path':f['path'],'object':f['metadata']['OBJECT'],'error':str(exc)})
         finally:
             (output/'run.json').write_text(json.dumps(run,indent=2,allow_nan=False)+'\n')
+    if not skip_report:
+        from .report import build_report
+        try:
+            run['report'] = build_report(output, plot_python=plot_python)
+        except Exception as exc:
+            traceback.print_exc(file=sys.stderr)
+            run['report'] = {'status': 'incomplete', 'generation_error': str(exc)}
+        (output/'run.json').write_text(json.dumps(run, indent=2, allow_nan=False)+'\n')
     return run

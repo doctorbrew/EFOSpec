@@ -366,9 +366,11 @@ def main():
             suffix = "_" + Path(result["product"]).stem
         records.append(render_spectrum(result, run, no_legacy=args.no_legacy,
                                        legacy_root=args.legacy, suffix=suffix))
+    from epessto_plus.report import write_report
     all_records = [json.loads(path.read_text())
                    for path in sorted((run/'style-preview').glob('FitSpectrum_*.json'))]
     (run/'style-preview/all-plots.json').write_text(json.dumps(all_records, indent=2)+'\n')
+    write_report(run)
     print(json.dumps(records, indent=2))
 
 
