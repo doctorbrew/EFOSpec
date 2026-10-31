@@ -11,6 +11,7 @@ dependencies = ["astropy>=6,<8"]
 
 [project.optional-dependencies]
 rapid = ["pypeit==1.14.0", "scipy>=1.9", "matplotlib>=3.5"]
+plots = ["matplotlib>=3.5", "scipy>=1.9", "SciencePlots", "pypalettes"]
 
 [project.scripts]
 epessto-plus = "epessto_plus.__main__:main"
