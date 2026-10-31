@@ -45,6 +45,8 @@ def assess_native_readiness(inventory):
     return {'schema_version': 1, 'calibration_policy': 'native_only',
             'iraf_runtime_required': False, 'iraf_calibration_products_allowed': False,
             'processed_inputs_ignored': ignored, 'invalid_inputs': invalid,
+            'calibration_tests_ignored': [f['path'] for f in inventory['frames']
+                                          if f['role'] == 'flat_test'],
             'input_errors': inventory['errors'], 'identity_conflicts': inventory['identity_conflicts'],
             'exposures': exposures, 'raw_candidates_complete': complete,
             'native_execution_implemented': False, 'reduction_ready': False,

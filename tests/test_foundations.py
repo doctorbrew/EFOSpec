@@ -125,6 +125,33 @@ class InventoryTests(unittest.TestCase):
             self.assertEqual(report["frames"][0]["issues"], [])
             self.assertEqual(len(report["frames"][0]["sha256"]), 64)
 
+    def test_flat_template_test_exposure_does_not_block_or_fill_calibration_stack(self):
+        from efospec.native_readiness import assess_native_readiness
+
+        with tempfile.TemporaryDirectory() as directory:
+            self.write_raw(directory)
+            self.write_raw(directory, "flat-test.fits", **{
+                "ARCFILE": "flat-test.fits", "ESO DPR CATG": "CALIB",
+                "ESO DPR TYPE": "DOME", "ESO TPL ID": "EFOSC_spec_cal_Flats",
+                "ESO TPL EXPNO": 1, "ESO TPL NEXP": 6,
+            })
+            report = inventory([directory])
+            self.assertEqual(report["counts_unique_content"], {"flat_test": 1, "science": 1})
+            test = next(f for f in report['frames'] if f['role'] == 'flat_test')
+            self.assertEqual(test['metadata']['ESO TPL EXPNO'], 1)
+            readiness = assess_native_readiness(report)
+            self.assertEqual(readiness['invalid_inputs'], [])
+            self.assertEqual(readiness['calibration_tests_ignored'], [test['path']])
+            self.assertEqual(readiness['exposures'][0]['raw_calibrations']['flat']['status'], 'missing')
+
+    def test_dome_label_alone_does_not_exempt_unknown_frames(self):
+        for changes in ({}, {'ESO TPL ID': 'EFOSC_spec_cal_Flats'},
+                        {'ESO TPL ID': 'EFOSC_spec_cal_Flats', 'ESO TPL EXPNO': 2},
+                        {'ESO TPL ID': 'different', 'ESO TPL EXPNO': 1}):
+            with self.subTest(changes=changes):
+                header = raw_header(**{'ESO DPR CATG': 'CALIB', 'ESO DPR TYPE': 'DOME', **changes})
+                self.assertEqual(classify(header), 'review_type')
+
     def test_conflicting_archive_identity_is_not_silently_deduplicated(self):
         with tempfile.TemporaryDirectory() as directory:
             self.write_raw(directory)

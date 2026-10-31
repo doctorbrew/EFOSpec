@@ -14,6 +14,7 @@ HEADER_KEYS = (
     "INSTRUME", "OBJECT", "DATE-OBS", "MJD-OBS", "EXPTIME", "ARCFILE",
     "RA", "DEC", "ESO OBS ID", "ESO OBS PROG ID",
     "ESO DPR CATG", "ESO DPR TECH", "ESO DPR TYPE",
+    "ESO TPL ID", "ESO TPL EXPNO", "ESO TPL NEXP",
     "ESO INS GRIS1 NAME", "ESO INS FILT1 NAME", "ESO INS SLIT1 NAME",
     "ESO DET WIN1 BINX", "ESO DET WIN1 BINY", "ESO DET READ SPEED",
     "ESO DET OUT1 GAIN", "ESO DET OUT1 RON", "ESO TEL AIRM START",
@@ -50,6 +51,13 @@ has been inspected; transformed frames can retain all raw ESO header cards.
         return "non_spectroscopic" if tech else "review_type"
     if kind == "WAVE" and category == "CALIB":
         return "arc"
+    # The dome-flat template takes an initial exposure to set the lamp exposure
+    # time. Keep that test frame visible, but do not add it to a master flat.
+    # Unrecognised DOME sequences still require review.
+    if (kind == "DOME" and category == "CALIB"
+            and header.get("ESO TPL ID") == "EFOSC_spec_cal_Flats"
+            and header.get("ESO TPL EXPNO") == 1):
+        return "flat_test"
     if kind in {"FLAT", "LAMP,FLAT", "DOME,FLAT", "SKY,FLAT"} and category == "CALIB":
         return "flat"
     if kind in {"STD", "STD,FLUX"} and category in {"SCIENCE", "CALIB"}:
