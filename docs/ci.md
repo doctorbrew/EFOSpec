@@ -6,7 +6,7 @@
 - `constraints-ci.txt` remains a compatibility entry point to those same pins.
 - Observer environment: `environment.yml` installs runtime extras without the `test` extra.
 - Graphics: real LaTeX rendering; no font/backend substitutions.
-- Checks: package build, dependency consistency, tests, and package line coverage.
+- Checks: package build, dependency consistency, tests, and an **85% package line-coverage floor**.
 - Fixtures: synthetic FITS; small legacy references remain comparison-test inputs.
 - Native end-to-end calibration is **not** covered yet: [missing inputs and work](native-calibration.md).
 
@@ -19,6 +19,7 @@ python -m venv --system-site-packages outputs/efospec-tests
 source outputs/efospec-tests/bin/activate
 python -m pip install -c constraints-ci.txt -e '.[rapid,plots,test]'
 python -m pip check
+python -m playwright install chromium
 python -m build --wheel --no-isolation
 MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
   python -m pytest -v --cov=efospec --cov-report=term-missing
@@ -28,7 +29,12 @@ MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
 - Tests cover inventory, naming, associations, adapter metadata, calibration math, profiles, reports, and metrics.
 - A synthetic exposure exercises all four PDF/JPG figure types and the HTML report.
 - Native preflight tests reject archived substitutes and unsupported readiness claims.
-- Coverage measures `src/efospec/`; it excludes preserved legacy code and plotting scripts.
+- Coverage measures Python in `src/efospec/`; it excludes preserved legacy code, plotting scripts, and JavaScript.
+- Real Chromium tests separately exercise GUI clicks, sky drags, recipe reload, two-source extraction, downloads, and replay.
+- CI installs Chromium; local existing Chrome: set `EFOSPEC_TEST_CHROME` to its executable.
+- Browser testing belongs to the `test` extra; observer environments need no Playwright.
+- Injected-source tests run actual PypeIt, with three noise/brightness cases and a 2% median-flux target.
+- Both archived grism fits, whole-line holdouts, full-run sky shifts, sky-mask replay, and reference-flux checks are tested.
 - Passing tests establish software contracts, not scientific calibration accuracy.
 
 ## Badge updates

@@ -13,7 +13,7 @@
 
 ![Legacy IRAF and current PypeIt reduction paths](docs/figures/reduction-machinery.svg)
 
-[Engine boundaries](docs/pipeline-stages.md) · [GUI roadmap](docs/roadmap/pypeit-migration/gui.md)
+[Engine boundaries](docs/pipeline-stages.md) · [Extraction workbench](docs/gui.md)
 
 ## Install
 
@@ -84,6 +84,17 @@ python -m efospec report runs/my-night
 # Use --existing-plots to rebuild HTML alone.
 ```
 
+## Adjust an extraction
+
+```sh
+efospec gui runs/my-night
+```
+
+- Click trace anchors; adjust FWHM, aperture, and background bands.
+- Extract one or two separated sources; inspect optimal and boxcar spectra.
+- Save/reload recipes; originals stay unchanged in new revisions.
+- [GUI and headless replay](docs/gui.md).
+
 Check raw inputs for the future native path:
 
 ```sh
@@ -102,7 +113,7 @@ python -m efospec native-readiness ../pessto/2024-11-14 /path/to/raw-calibration
 - Not applied: bias, flat, dark, overscan, or telluric corrections.
 - Target identity: nominal-position choices remain flagged until verified.
 - Products: experimental; no ESO Phase 3 certification.
-- GUI: planned; manual editing and two-source export are not implemented yet.
+- GUI: saved detector window; separated traces only, without SN/host deblending.
 
 [Commands and details](EFOSPEC.md) · [Pipeline stages](docs/pipeline-stages.md) ·
 [Migration plan](docs/roadmap/pypeit-migration/README.md) ·

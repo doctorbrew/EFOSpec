@@ -7,7 +7,7 @@
 - Distribution, Python module, command, and Conda environment: `efospec`.
 - Repository: [sPaMFouR/EFOSpec](https://github.com/sPaMFouR/EFOSpec).
 - EFOSpec is the software name; ePESSTO remains the collaboration name.
-- The planned GUI shares the EFOSpec name.
+- The local extraction workbench shares the EFOSpec name.
 
 ## Dedicated runtime
 

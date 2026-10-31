@@ -3,7 +3,7 @@
 - **Install:** [compact README](README.md).
 - **Science:** [engine boundaries](docs/pipeline-stages.md).
 - **Design:** [migration plan](docs/roadmap/pypeit-migration/README.md).
-- **Next:** [manual extraction GUI](docs/roadmap/pypeit-migration/gui.md).
+- **GUI:** [manual extraction and recipe replay](docs/gui.md).
 - **Scope:** experimental EFOSC2 rapid reduction; PypeIt 1.14.0.
 - **Native calibration:** [raw inputs and remaining work](docs/native-calibration.md).
 

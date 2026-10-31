@@ -29,7 +29,8 @@
 - Fully IRAF-independent calibration is still pending: [inputs and status](native-calibration.md).
 - PypeIt supplies air/vacuum conversion utilities and extraction variances.
 - Our exporter propagates diagonal variance; resampling covariance is not saved.
-- Existing neighbour profiles are fitted together; only one selected target is exported.
+- Neighbours are fitted together; automatic mode exports one target, manual recipes export up to two.
+- Manual background regions set the global fit, held during extraction; automatic mode retains local fitting.
 
 ## Current limits
 
@@ -47,7 +48,9 @@
 
 ## Code and next steps
 
-- `rapid.py`: reduction orchestration and export.
+- `rapid.py`: reduction orchestration.
+- `extraction.py`, `products.py`: shared PypeIt engine and exporter.
+- `recipes.py`, `revisions.py`, `workbench.py`: validated edits, replay, and local GUI.
 - `archive_calibration.py`: wavelength, sensitivity, and resampling.
 - `pypeit_adapter.py`: instrument metadata and parameters.
 - `report.py`: offline webpage.

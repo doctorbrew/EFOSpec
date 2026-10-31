@@ -44,6 +44,8 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -c constraints-ci.txt -e '.[rapid,plots,test]'
           python -m pip check
+      - name: Install browser for workbench integration tests
+        run: python -m playwright install --with-deps chromium
       - name: Record scientific versions
         run: |
           python -c "from importlib.metadata import version; print({p: version(p) for p in ['numpy', 'scipy', 'astropy', 'pypeit', 'matplotlib']})"
