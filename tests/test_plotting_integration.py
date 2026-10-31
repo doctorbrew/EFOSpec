@@ -20,7 +20,8 @@ from test_report import Page
 class PlottingIntegrationTests(unittest.TestCase):
     def test_standalone_exposure_renders_all_figures_and_portable_report(self):
         with tempfile.TemporaryDirectory() as directory:
-            run = Path(directory)
+            run = Path(directory)/'original'
+            run.mkdir()
             (run/'products').mkdir()
             (run/'native').mkdir()
             product = run/'products/tSNtest_20241114_Gr13_Free_slit1.0_1_f.fits'
@@ -55,7 +56,12 @@ class PlottingIntegrationTests(unittest.TestCase):
             (run/'run.json').write_text(json.dumps({
                 'input_dir': 'synthetic', 'pypeit_version': '1.14.0',
                 'results': [result], 'errors': [], 'skipped': [], 'limitations': []}))
-            before = {p: sha256(p) for p in [product, native, image]}
+            before = {p.relative_to(run): sha256(p) for p in [product, native, image]}
+            manifest_before = (run/'run.json').read_bytes()
+            moved = Path(directory)/'moved'
+            run.rename(moved)
+            self.assertFalse(run.exists())
+            run = moved
 
             status = build_report(run)
             log = (run/'report-generation.log').read_text()
@@ -83,7 +89,8 @@ class PlottingIntegrationTests(unittest.TestCase):
             for link in page.links+page.images:
                 if not link.startswith('#'):
                     self.assertTrue((run/link).is_file(), link)
-            self.assertEqual(before, {p: sha256(p) for p in before})
+            self.assertEqual(before, {p: sha256(run/p) for p in before})
+            self.assertEqual(manifest_before, (run/'run.json').read_bytes())
 
 
 if __name__ == '__main__':

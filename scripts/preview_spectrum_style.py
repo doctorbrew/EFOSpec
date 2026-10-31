@@ -31,6 +31,7 @@ from matplotlib.patches import Patch
 from efospec.inventory import sha256
 from efospec.qa import compare_legacy, read_flux
 from efospec.spatial_profiles import wavelength_binned_profiles
+from efospec.run_paths import resolve_result_paths
 
 
 # White mixing keeps the line opaque while making xkcd:red a pastel hue.
@@ -255,6 +256,7 @@ def find_comparison(result, run, legacy_root=None):
 
 
 def render_spectrum(result, run, *, no_legacy=False, legacy_root=None, suffix=""):
+    result = resolve_result_paths(result, run)
     comparison = None if no_legacy else find_comparison(result, run, legacy_root)
     inputs = [Path(result['product'])]
     if comparison:

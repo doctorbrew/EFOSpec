@@ -8,6 +8,7 @@ from astropy.time import Time
 
 from .archive_calibration import rebin_density
 from .inventory import sha256
+from .run_paths import resolve_result_paths
 
 
 def read_flux(path):
@@ -46,7 +47,7 @@ def make_report(run_directory, legacy_root, standards_directory=None, reference_
 
     output=Path(run_directory).resolve()
     run=json.loads((output/'run.json').read_text())
-    results=run['results']
+    results=[resolve_result_paths(result, output) for result in run['results']]
     summary={'n_science':len(results),'n_errors':len(run['errors']),
              'n_historical_apertures':sum(r['target']['association']=='historical_aperture' for r in results),
              'n_independent_sky_checks':sum(r['sky_flexure']['held_out_6363_pass'] for r in results),
@@ -118,7 +119,8 @@ def make_report(run_directory, legacy_root, standards_directory=None, reference_
         refpath=Path(reference_root)/'standard/MAB/ml745a.dat'
         ref=np.loadtxt(refpath); reference_flux=10**(-.4*(ref[:,1]+48.6))*2.99792458e18/ref[:,0]**2
         fig,axes=plt.subplots(2,1,figsize=(10,6),layout='constrained',sharex=True)
-        for r,color in zip(standards['results'],[orange,blue]):
+        for saved,color in zip(standards['results'],[orange,blue]):
+            r=resolve_result_paths(saved, standards_directory)
             if r['object']!='L745a':continue
             sw,sb,sh=read_flux(r['product']);expected=np.interp(sw,ref[:,0],reference_flux)
             ratio=sb[0]/expected;good=np.isfinite(ratio)&(sw>4300)&(sw<6800)
