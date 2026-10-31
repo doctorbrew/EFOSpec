@@ -2,6 +2,8 @@
 
 [![python](https://img.shields.io/badge/python-%3E%3D3.9-blue)](pyproject.toml)
 [![build](https://github.com/sPaMFouR/epessto-plus/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/sPaMFouR/epessto-plus/actions/workflows/build.yml)
+[![tests](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FsPaMFouR%2Fepessto-plus%2Fbadges%2Ftests.json)](https://github.com/sPaMFouR/epessto-plus/actions/workflows/build.yml)
+[![coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FsPaMFouR%2Fepessto-plus%2Fbadges%2Fcoverage.json)](https://github.com/sPaMFouR/epessto-plus/actions/workflows/build.yml)
 
 - **Scope:** EFOSC2 optical spectroscopy; SOFI later.
 - **PypeIt:** tracing, sky modelling, optimal and boxcar extraction.
@@ -66,6 +68,7 @@ python -m epessto_plus native-readiness ../2024-11-14 /path/to/raw-calibrations
 
 - Missing/incompatible calibrations return a nonzero status; no archive fallback.
 - Current night: raw standards present; raw arcs/biases/flats absent.
+- Gr13 raw calibration candidates have now been retrieved separately; [locations and checks](docs/native-calibration.md#raw-gr13-inputs-now-retrieved).
 - This checks inputs; it does not execute native reduction.
 
 ## Current limits

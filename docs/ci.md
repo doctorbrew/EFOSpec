@@ -35,3 +35,10 @@ MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
 - Trusted default-branch pushes publish using a temporary GitHub token.
 - Pull requests receive read-only permissions and never publish metrics.
 - Badge errors cannot turn passing tests into a failed build.
+
+## Setup verification
+
+- [First verified run](https://github.com/sPaMFouR/epessto-plus/actions/runs/41220735230): 31 October 2026, source `51a230e`.
+- Step logs: package build passed; **74 tests passed**; **58.6%** package line coverage.
+- Metrics were published successfully; JSON and all four rendered SVG badges were checked.
+- README metrics update automatically; this dated record describes setup verification only.
