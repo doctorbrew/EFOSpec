@@ -34,8 +34,20 @@ def write_raw(root, name, **changes):
     return path
 
 
-@unittest.skipUnless(PYPEIT_AVAILABLE, "requires the existing PypeIt 1.14.0 environment")
+@unittest.skipUnless(PYPEIT_AVAILABLE, "requires PypeIt 1.14.0")
 class PypeItAdapterTests(unittest.TestCase):
+    def test_extraction_engine_imports_in_runtime(self):
+        # Metadata imports alone do not exercise PypeIt's display dependency.
+        # Fresh runtimes must also support the imports used by rapid extraction.
+        import importlib
+
+        for module in ("pypeit.find_objects", "pypeit.extraction", "pypeit.slittrace"):
+            importlib.import_module(module)
+        from pypeit.images.pypeitimage import PypeItImage
+
+        image = PypeItImage(np.ones((4, 4)))
+        self.assertEqual(image.image.shape, (4, 4))
+
     def test_profiles_have_explicit_effective_parameters(self):
         adapter = EPESSTOEFOSC2Spectrograph()
         for profile in ("rapid", "full"):

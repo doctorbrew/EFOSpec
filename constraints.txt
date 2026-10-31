@@ -1,0 +1,8 @@
+# Shared runtime/CI versions. Dependencies are declared in pyproject.toml.
+numpy==1.26.4
+scipy==1.14.0
+astropy==6.1.1
+matplotlib==3.8.4
+pypeit==1.14.0
+# PypeIt 1.14 still imports pkg_resources during extraction.
+setuptools==80.9.0

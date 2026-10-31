@@ -1,0 +1,12 @@
+# Provisional environment name; the Python package remains epessto-plus for now.
+# Run from the repository root: conda env create -f environment.yml
+name: slitcraft
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - '-c constraints.txt'
+      - '-e .[rapid,plots]'

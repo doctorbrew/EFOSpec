@@ -33,6 +33,7 @@ jobs:
           cache: pip
           cache-dependency-path: |
             pyproject.toml
+            constraints.txt
             constraints-ci.txt
       - name: Install LaTeX for scientific plots
         run: |
