@@ -9,6 +9,9 @@ description = "EFOSC2 calibration planning and experimental PypeIt rapid reducti
 requires-python = ">=3.9"
 dependencies = ["astropy>=6,<8"]
 
+[project.optional-dependencies]
+rapid = ["pypeit==1.14.0", "scipy>=1.9", "matplotlib>=3.5"]
+
 [project.scripts]
 epessto-plus = "epessto_plus.__main__:main"
 
