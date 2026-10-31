@@ -166,7 +166,7 @@ Verification: end-to-end fixture tests plus operator review on T1's night.
 ESO archive delivery, if required, must pass its actual current validation
 requirements before any Phase 3 compliance claim.
 
-## T6 — Broader EFOSC2 rollout and subsequent SOFI scope
+## T6 — Broader EFOSC2 rollout
 
 Status: blocked on T5. Depends on: T5.
 
@@ -182,8 +182,6 @@ Outcome: validated configuration matrix and an agreed operational rollout.
   the pinned dependency until their replacement is verified.
 - [ ] Agree release thresholds and collaborator acceptance before making PypeIt
   default. Keep legacy rollback through the transition.
-- [ ] Scope SOFI separately: NIR nod pairs, dark/nonlinearity, illumination,
-  sky/telluric physics and actual engine support need independent investigation.
 
 ## Decisions still requiring evidence
 

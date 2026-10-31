@@ -3,7 +3,7 @@
 - **Required destination:** no IRAF/PyRAF execution or IRAF-derived calibrations.
 - **Current runner:** `reduce-rapid` still uses archived IRAF line IDs and sensitivity.
 - **Native reduction:** not implemented or validated end to end yet.
-- **First scope:** EFOSC2 Gr13/Gr11; SOFI later.
+- **Scope:** EFOSC2 optical spectroscopy; start with Gr13/Gr11.
 
 ## What the local folders contain
 

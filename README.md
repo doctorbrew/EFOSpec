@@ -5,7 +5,7 @@
 [![tests](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FsPaMFouR%2Fepessto-plus%2Fbadges%2Ftests.json)](https://github.com/sPaMFouR/epessto-plus/actions/workflows/build.yml)
 [![coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FsPaMFouR%2Fepessto-plus%2Fbadges%2Fcoverage.json)](https://github.com/sPaMFouR/epessto-plus/actions/workflows/build.yml)
 
-- **Scope:** EFOSC2 optical spectroscopy; SOFI later.
+- **Scope:** EFOSC2 optical spectroscopy only.
 - **PypeIt:** tracing, sky modelling, optimal and boxcar extraction.
 - **Our code:** archived calibration, legacy filenames, diagnostics, and reports.
 - **Status:** experimental; no IRAF/PyRAF execution, but archived IRAF calibrations remain.
@@ -18,18 +18,19 @@
 ## Install
 
 - Keep the checkout: it contains plotting code and archived references.
-- Use Python 3.11 and the tested **PypeIt 1.14.0** engine.
+- Use the dedicated Python 3.11 environment and **PypeIt 1.14.0** engine.
 
 ```sh
 git clone https://github.com/sPaMFouR/epessto-plus.git
 cd epessto-plus
-conda create -n epessto-plus python=3.11 pip
-conda activate epessto-plus
-python -m pip install 'numpy==1.26.4' 'astropy==6.1.1' 'scipy==1.14.0' -e '.[rapid,plots]'
+conda env create -f environment.yml
+conda activate slitcraft
 ```
 
 - **Plot dependencies:** LaTeX, `dvipng`, and `type1cm`/`cm-super`.
-- **Existing environment:** the current `pypeit` Conda environment also works.
+- **Working name:** `slitcraft` for the clean environment; the package name is pending selection.
+- **Migration:** [environment, naming, and observer transition](docs/roadmap/pypeit-migration/adoption.md).
+- **Dependencies:** project extras plus shared scientific pins in `constraints.txt`.
 - **Separate plotting Python:** set `EPESSTO_PLOT_PYTHON` to its executable.
 - **CI:** Python 3.11 build, tests, and plot rendering; [details](docs/ci.md).
 

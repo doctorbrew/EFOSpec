@@ -4,12 +4,13 @@
 - [Manual extraction GUI and two-source roadmap](gui.md)
 - [Legacy compatibility check](../../legacy-compatibility.md)
 - [Native calibration inputs and current blockers](../../native-calibration.md)
+- [Package identity, dedicated environment, and observer migration](adoption.md)
 
 ## Outcome and scope
 
 Replace the IRAF/PyRAF reduction engine while retaining the observer-facing
 ePESSTO product naming, calibration policy, scientific conventions, and delivery
-formats. The user confirmed **EFOSC2 first, SOFI later** on 2026-10-30.
+formats. The current scope is **EFOSC2 optical spectroscopy only**.
 Start with Gr13/Free/slit1.0, then Gr11 and Gr16/OG530. Other configurations,
 including Gr18/20 and wide-slit standards, require their own validation.
 Imaging and automatic external uploads are outside this migration.
@@ -25,8 +26,8 @@ IRAF-derived line identifications, response arrays, or master products.
 Completed in this checkout: public upstream fork, separate `epessto+` repository,
 source/data audit, pure naming functions, conservative read-only inventory,
 raw-calibration planning, catalogue-based standard matching and a native PypeIt
-metadata/raw-reader adapter. The existing Conda `pypeit` environment is the
-test target; no upgrade is required. An experimental archived-calibration bridge
+metadata/raw-reader adapter. A dedicated runtime is defined in `environment.yml`;
+earlier integration evidence used the existing `pypeit` environment. An experimental archived-calibration bridge
 now demonstrates native PypeIt extraction and legacy-named flux products for all
 13 science exposures from 2024-11-14. See the updated [run evidence](evidence.md).
 This is a bounded transition experiment; native calibration generation and
@@ -269,6 +270,6 @@ tolerances depend on obtaining complete calibration nights and operator review.
 3. Validate detector geometry and a Gr13 arc template; obtain native spec1d/spec2d.
 4. Match standards/extinction, flux and second-order treatment; validate errors.
 5. Export legacy products, compare both reductions, and introduce optional CLI dispatch.
-6. Extend Gr11/16, other modes, operator QA and eventually SOFI as separate gates.
+6. Extend Gr11/16, other EFOSC2 configurations, and operator QA as separate gates.
 
 Concrete tasks and unresolved decisions are in [tasks.md](tasks.md).

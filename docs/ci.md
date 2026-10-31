@@ -2,7 +2,9 @@
 
 - Workflow: [build](https://github.com/sPaMFouR/epessto-plus/actions/workflows/build.yml).
 - Runner: Ubuntu 22.04, Python 3.11; no IRAF/PyRAF installation.
-- Dependencies: project extras plus tested numeric versions in `constraints-ci.txt`.
+- Dependencies: project extras plus shared runtime/CI numeric versions in `constraints.txt`.
+- `constraints-ci.txt` remains a compatibility entry point to those same pins.
+- Observer environment: `environment.yml` installs runtime extras without the `test` extra.
 - Graphics: real LaTeX rendering; no font/backend substitutions.
 - Checks: package build, dependency consistency, tests, and package line coverage.
 - Fixtures: synthetic FITS; small legacy references remain comparison-test inputs.
@@ -11,6 +13,10 @@
 ## Run locally
 
 ```sh
+# Keep development tools separate from the observer environment.
+conda activate slitcraft
+python -m venv --system-site-packages outputs/slitcraft-tests
+source outputs/slitcraft-tests/bin/activate
 python -m pip install -c constraints-ci.txt -e '.[rapid,plots,test]'
 python -m pip check
 python -m build --wheel --no-isolation

@@ -5,7 +5,7 @@
 - **Current workflow:** PypeIt extraction + archived-calibration bridge.
 - **Supported demonstration:** EFOSC2 Gr11/Gr13, Free filter, 2×2 binning.
 - **IRAF runtime:** used only by the legacy pipeline.
-- **SOFI:** later migration phase.
+- **Instrument scope:** EFOSC2 optical spectroscopy only.
 
 ## Engine boundaries
 

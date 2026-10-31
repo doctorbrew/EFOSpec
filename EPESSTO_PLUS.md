@@ -46,9 +46,7 @@ python -m epessto_plus download 2026-10-29 --programme 117.29T8.002 --with-calib
 ## Reduce and review
 
 ```sh
-conda activate pypeit
-# Local option when plotting dependencies live in the base environment:
-export EPESSTO_PLOT_PYTHON=/Users/avinash/Softwares/miniconda3/bin/python
+conda activate slitcraft
 PYTHONPATH=src MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
   python -m epessto_plus reduce-rapid ../2024-11-14 --output runs/my-night
 ```
@@ -65,14 +63,17 @@ PYTHONPATH=src MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
 ## Environment and report options
 
 - Default plotting Python: current interpreter.
+- Recommended runtime: `conda env create -f environment.yml`, then `conda activate slitcraft`.
+- The dedicated environment includes plotting dependencies; no second Python is needed.
 - Override: `--plot-python /path/to/python` or `EPESSTO_PLOT_PYTHON`.
+- Clear an older plotting override with `unset EPESSTO_PLOT_PYTHON` to use the dedicated runtime.
 - Plot packages: `pip install -e '.[plots]'` in the chosen environment.
 - System dependencies: LaTeX, `dvipng`, `type1cm`/`cm-super`.
 - Extraction alone: `--skip-report`.
 - Plotting failure: spectra survive; CLI returns nonzero; inspect `report-generation.log`.
 
 ```sh
-PYTHONPATH=src python -m epessto_plus report runs/my-night --plot-python "$EPESSTO_PLOT_PYTHON"
+PYTHONPATH=src python -m epessto_plus report runs/my-night
 PYTHONPATH=src python -m epessto_plus report runs/my-night --existing-plots
 ```
 
@@ -98,7 +99,7 @@ PYTHONPATH=src python -m epessto_plus report runs/my-night --existing-plots
 ## Legacy comparisons and individual plots
 
 ```sh
-"$EPESSTO_PLOT_PYTHON" scripts/preview_spectrum_style.py --run runs/my-night --target SN2023xxj
+python scripts/preview_spectrum_style.py --run runs/my-night --target SN2023xxj
 ```
 
 - Omit `--target` to render every exposure.

@@ -87,12 +87,11 @@
 
 ## Naming proposal
 
-- **SlitNote:** preferred working name; connects slit spectroscopy and the Fieldnotes interface.
-- **TraceDesk:** emphasises interactive trace/aperture work.
-- **SpectraDesk:** broader name if additional instruments follow.
+- The current shortlist and rename strategy are tracked in [observer migration](adoption.md).
+- The GUI should share the pipeline's selected name rather than introduce another product name.
 - Describe it as “an experimental EFOSC2 reduction workbench”.
 - Keep `epessto-plus`, `epessto_plus`, calibration paths, and product names until a rename is agreed.
-- Names are suggestions; package/domain availability and naming rights are not checked.
+- Names remain suggestions; the shortlist records limited registry checks, not a reservation.
 
 ## References
 
