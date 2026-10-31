@@ -15,7 +15,7 @@ Paths below are relative to the parent `pessto/` workspace.
 | `database/idarc*`, `2024-11-14/database/idarc*` | IRAF identified lines and wavelength fits | Comparison only |
 | `database/fcarc*`, `2024-11-14/database/fcarc*` | IRAF coordinate transformations | Comparison only |
 | `2024-11-14/arc_20120825_Gr13_Free_slit1.0_56442_1.fits` | Processed arc; observed 2012-08-26; `FILETYPE=22104` | No |
-| `epessto+/trunk/src/ntt/archive/efosc/` | Older processed arcs, master biases/flats and responses | Comparison only |
+| `EFOSpec/trunk/src/ntt/archive/efosc/` | Older processed arcs, master biases/flats and responses | Comparison only |
 | `2024-11-14/EFOSC*.fits` | Raw science, standards, and imaging | Science/standards: yes |
 
 - **Raw standards exist:** four Feige110 and four L745a exposures.
@@ -29,7 +29,7 @@ Paths below are relative to the parent `pessto/` workspace.
 ## Raw Gr13 inputs now retrieved
 
 - ESO CalSelector returned raw associations for SN2023xxj, exposure `EFOSC.2024-11-15T07:37:44.091`.
-- Downloaded locally to **`data/2024-11-14-eso-calibrations/`** inside `epessto+`.
+- Downloaded locally to **`data/2024-11-14-eso-calibrations/`** inside `EFOSpec`.
 - Contents: **1 arc, 7 flats, 10 biases**, with original `.fits.Z` downloads retained.
 - Arc: `EFOSC.2024-11-15T09:00:31.548.fits`.
 - Arc/flats: Gr13, Free, slit1.0; all frames use 2×2 binning and `fastL` readout.
@@ -48,7 +48,7 @@ Raw files remain ignored by Git; the public repository records their retrieval d
 ## Check another directory
 
 ```sh
-python -m epessto_plus native-readiness /path/to/night /path/to/raw-calibrations
+python -m efospec native-readiness /path/to/night /path/to/raw-calibrations
 ```
 
 - Reads FITS headers and hashes; leaves files unchanged.

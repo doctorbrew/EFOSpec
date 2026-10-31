@@ -16,7 +16,7 @@ def render():
 <text class="heading" x="560" y="128" text-anchor="middle">Science FITS + calibration references</text>
 <path class="arrow" d="M420 148 V166 H288 V212"/><path class="arrow" d="M700 148 V166 H832 V212"/>
 <text class="heading" x="48" y="195">Legacy PESSTO / IRAF</text>
-<text class="heading" x="592" y="195">ePESSTO+ / rapid</text>''']
+<text class="heading" x="592" y="195">EFOSpec / rapid</text>''']
     left = [
         ('IRAF + LEGACY PYTHON', 'Prepare the detector image',
          'ccdproc: rapid trim; full mode can use bias + flat', 'Legacy wrappers select frames and preserve names'),

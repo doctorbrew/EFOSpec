@@ -1,6 +1,6 @@
 # Pipeline Installation Guide
 
-This is the installation guide for the ePESSTO+ data-reduction pipeline, used to reduce data (photometry and spectroscopy) obtained with the New Technology Telescope (NTT).
+These historical instructions install the original PESSTO IRAF/PyRAF pipeline. For EFOSpec, use the [dedicated environment](../README.md#install).
 This new pipeline is compatible with Python 3 and 64bit archs, and finally solves the issues with the Mac M1/M2/M3 chips.
 Thanks to the community that has made IRAF compatible with the latest OS and computers.
 

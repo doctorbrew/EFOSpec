@@ -23,7 +23,7 @@ masters and numerical results will change. Retain legacy masters as comparison
 artifacts. The native path must rebuild calibrations from raw data without
 IRAF-derived line identifications, response arrays, or master products.
 
-Completed in this checkout: public upstream fork, separate `epessto+` repository,
+Completed in this checkout: public upstream fork, separate `EFOSpec` repository,
 source/data audit, pure naming functions, conservative read-only inventory,
 raw-calibration planning, catalogue-based standard matching and a native PypeIt
 metadata/raw-reader adapter. A dedicated runtime is defined in `environment.yml`;
@@ -80,7 +80,7 @@ Suitable only for small independent utilities, not the reduction engine.
 
 ### B. A separate ePESSTO policy layer around PypeIt — recommended
 
-Keep `trunk/` as a reproducible baseline. A new `epessto_plus` package owns
+Keep `trunk/` as a reproducible baseline. A new `efospec` package owns
 metadata normalization, calibration decisions, the run manifest, and export.
 Use PypeIt's public reduction interfaces and native calibration/spec1d/spec2d
 products internally. Export to historical filenames and formats only after

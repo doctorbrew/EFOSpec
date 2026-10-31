@@ -26,9 +26,9 @@ The earlier environment inventory recorded NumPy distribution metadata as
 conda activate pypeit
 mkdir -p outputs
 PYTHONPATH=src python -m unittest discover -s tests -v
-PYTHONPATH=src python -m epessto_plus plan ../pessto_test ../2024-11-14 > outputs/calibration-plan-full.json
-PYTHONPATH=src python -m epessto_plus inspect-pypeit ../pessto_test ../2024-11-14 > outputs/pypeit-setup-full.json
-PYTHONPATH=src python -m epessto_plus inspect-pypeit --profile rapid ../pessto_test ../2024-11-14 > outputs/pypeit-setup-rapid.json
+PYTHONPATH=src python -m efospec plan ../pessto_test ../2024-11-14 > outputs/calibration-plan-full.json
+PYTHONPATH=src python -m efospec inspect-pypeit ../pessto_test ../2024-11-14 > outputs/pypeit-setup-full.json
+PYTHONPATH=src python -m efospec inspect-pypeit --profile rapid ../pessto_test ../2024-11-14 > outputs/pypeit-setup-rapid.json
 ```
 
 Logs go to stderr and the report to stdout. The reports include the interpreter,
@@ -37,7 +37,7 @@ SHA-256 values. A successful inspection exit code does not imply readiness.
 
 ## Implemented planning
 
-`src/epessto_plus/planning.py` creates deterministic raw associations:
+`src/efospec/planning.py` creates deterministic raw associations:
 
 - Positional matches within 100 arcsec of the preserved legacy standard
   catalogue. Header candidate status alone is insufficient; a science-labelled
@@ -68,7 +68,7 @@ ambiguity handling are stated constraints, not claims of complete legacy parity.
 
 ## Native PypeIt integration
 
-`EPESSTOEFOSC2Spectrograph` subclasses the installed EFOSC2 driver. The
+`EFOSpecEFOSC2Spectrograph` subclasses the installed EFOSC2 driver. The
 `PypeItMetaData` constructor accepts a spectrograph instance, so metadata
 inspection needs no global registry patch or edited PypeIt installation.
 

@@ -10,7 +10,7 @@
 <text class="heading" x="560" y="128" text-anchor="middle">Science FITS + calibration references</text>
 <path class="arrow" d="M420 148 V166 H288 V212"/><path class="arrow" d="M700 148 V166 H832 V212"/>
 <text class="heading" x="48" y="195">Legacy PESSTO / IRAF</text>
-<text class="heading" x="592" y="195">ePESSTO+ / rapid</text>
+<text class="heading" x="592" y="195">EFOSpec / rapid</text>
 <rect x="32" y="220" width="512" height="108" rx="9" fill="#f6e9dd" stroke="#cbd3c8"/>
 <text class="label" x="48" y="241">IRAF + LEGACY PYTHON</text>
 <text class="heading" x="48" y="267">Prepare the detector image</text>

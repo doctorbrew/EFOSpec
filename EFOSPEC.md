@@ -1,4 +1,4 @@
-# ePESSTO+ operating notes
+# EFOSpec operating notes
 
 - **Install:** [compact README](README.md).
 - **Science:** [engine boundaries](docs/pipeline-stages.md).
@@ -14,9 +14,9 @@
 export ESO_USERNAME='your-eso-username'
 export ESO_PASSWORD='your-eso-password'
 
-python -m epessto_plus download 2026-10-29
+python -m efospec download 2026-10-29
 # Preview a programme-specific selection, including its raw calibration associations:
-python -m epessto_plus download 2026-10-29 --programme 117.29T8.002 --with-calibrations --dry-run
+python -m efospec download 2026-10-29 --programme 117.29T8.002 --with-calibrations --dry-run
 # Run the same command without --dry-run to download it.
 ```
 
@@ -46,9 +46,9 @@ python -m epessto_plus download 2026-10-29 --programme 117.29T8.002 --with-calib
 ## Reduce and review
 
 ```sh
-conda activate slitcraft
+conda activate efospec
 PYTHONPATH=src MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
-  python -m epessto_plus reduce-rapid ../2024-11-14 --output runs/my-night
+  python -m efospec reduce-rapid ../2024-11-14 --output runs/my-night
 ```
 
 - Use a **fresh output directory**; existing runs are refused.
@@ -63,18 +63,19 @@ PYTHONPATH=src MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
 ## Environment and report options
 
 - Default plotting Python: current interpreter.
-- Recommended runtime: `conda env create -f environment.yml`, then `conda activate slitcraft`.
+- Recommended runtime: `conda env create -f environment.yml`, then `conda activate efospec`.
 - The dedicated environment includes plotting dependencies; no second Python is needed.
-- Override: `--plot-python /path/to/python` or `EPESSTO_PLOT_PYTHON`.
-- Clear an older plotting override with `unset EPESSTO_PLOT_PYTHON` to use the dedicated runtime.
+- Override: `--plot-python /path/to/python` or `EFOSPEC_PLOT_PYTHON`.
+- The former `EPESSTO_PLOT_PYTHON` variable remains a fallback.
+- Use `unset EFOSPEC_PLOT_PYTHON EPESSTO_PLOT_PYTHON` to select the dedicated runtime.
 - Plot packages: `pip install -e '.[plots]'` in the chosen environment.
 - System dependencies: LaTeX, `dvipng`, `type1cm`/`cm-super`.
 - Extraction alone: `--skip-report`.
 - Plotting failure: spectra survive; CLI returns nonzero; inspect `report-generation.log`.
 
 ```sh
-PYTHONPATH=src python -m epessto_plus report runs/my-night
-PYTHONPATH=src python -m epessto_plus report runs/my-night --existing-plots
+PYTHONPATH=src python -m efospec report runs/my-night
+PYTHONPATH=src python -m efospec report runs/my-night --existing-plots
 ```
 
 ## Outputs
@@ -110,7 +111,7 @@ python scripts/preview_spectrum_style.py --run runs/my-night --target SN2023xxj
 - The older `qa` command remains a demonstration-specific comparison report.
 
 ```sh
-PYTHONPATH=src python -m epessto_plus qa runs/my-night --legacy ../2024-11-14
+PYTHONPATH=src python -m efospec qa runs/my-night --legacy ../2024-11-14
 ```
 
 - Standard checks: reduce separately with `--include-standards --target Feige110 --target L745a`.
@@ -118,7 +119,7 @@ PYTHONPATH=src python -m epessto_plus qa runs/my-night --legacy ../2024-11-14
 - Older runs without sky masks: recover once in the original PypeIt environment.
 
 ```sh
-PYTHONPATH=src MPLBACKEND=Agg python -m epessto_plus.sky_regions runs/my-night
+PYTHONPATH=src MPLBACKEND=Agg python -m efospec.sky_regions runs/my-night
 ```
 
 - Recovery must reproduce all recorded candidate positions before saving.
@@ -127,10 +128,10 @@ PYTHONPATH=src MPLBACKEND=Agg python -m epessto_plus.sky_regions runs/my-night
 ## Inspect without reducing
 
 ```sh
-PYTHONPATH=src python -m epessto_plus inventory ../2024-11-14
-PYTHONPATH=src python -m epessto_plus native-readiness ../2024-11-14
-PYTHONPATH=src python -m epessto_plus plan ../2024-11-14
-PYTHONPATH=src python -m epessto_plus inspect-pypeit ../2024-11-14
+PYTHONPATH=src python -m efospec inventory ../2024-11-14
+PYTHONPATH=src python -m efospec native-readiness ../2024-11-14
+PYTHONPATH=src python -m efospec plan ../2024-11-14
+PYTHONPATH=src python -m efospec inspect-pypeit ../2024-11-14
 PYTHONPATH=src python -m unittest discover -s tests -v
 ```
 
@@ -156,4 +157,4 @@ PYTHONPATH=src python -m unittest discover -s tests -v
 - Red fringing, second-order contamination, and absolute flux need further validation.
 - Legacy `trunk/` and existing NOT/PyRAF environments stay separate.
 - Raw data and generated `runs/`, `outputs/`, and `data/` stay outside Git.
-- Migration code and documentation are published in the `sPaMFouR/epessto-plus` fork.
+- Migration code and documentation are published in the `sPaMFouR/efospec` fork.

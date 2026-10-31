@@ -1,9 +1,9 @@
-# ePESSTO+ — EFOSC2 spectroscopy with PypeIt
+# EFOSpec — EFOSC2 spectroscopy with PypeIt
 
 [![python](https://img.shields.io/badge/python-%3E%3D3.9-blue)](pyproject.toml)
-[![build](https://github.com/sPaMFouR/epessto-plus/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/sPaMFouR/epessto-plus/actions/workflows/build.yml)
-[![tests](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FsPaMFouR%2Fepessto-plus%2Fbadges%2Ftests.json)](https://github.com/sPaMFouR/epessto-plus/actions/workflows/build.yml)
-[![coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FsPaMFouR%2Fepessto-plus%2Fbadges%2Fcoverage.json)](https://github.com/sPaMFouR/epessto-plus/actions/workflows/build.yml)
+[![build](https://github.com/sPaMFouR/EFOSpec/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/sPaMFouR/EFOSpec/actions/workflows/build.yml)
+[![tests](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FsPaMFouR%2FEFOSpec%2Fbadges%2Ftests.json)](https://github.com/sPaMFouR/EFOSpec/actions/workflows/build.yml)
+[![coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FsPaMFouR%2FEFOSpec%2Fbadges%2Fcoverage.json)](https://github.com/sPaMFouR/EFOSpec/actions/workflows/build.yml)
 
 - **Scope:** EFOSC2 optical spectroscopy only.
 - **PypeIt:** tracing, sky modelling, optimal and boxcar extraction.
@@ -21,23 +21,24 @@
 - Use the dedicated Python 3.11 environment and **PypeIt 1.14.0** engine.
 
 ```sh
-git clone https://github.com/sPaMFouR/epessto-plus.git
-cd epessto-plus
+git clone https://github.com/sPaMFouR/EFOSpec.git
+cd EFOSpec
 conda env create -f environment.yml
-conda activate slitcraft
+conda activate efospec
 ```
 
 - **Plot dependencies:** LaTeX, `dvipng`, and `type1cm`/`cm-super`.
-- **Working name:** `slitcraft` for the clean environment; the package name is pending selection.
+- **Package, command, and environment:** `efospec`.
 - **Migration:** [environment, naming, and observer transition](docs/roadmap/pypeit-migration/adoption.md).
 - **Dependencies:** project extras plus shared scientific pins in `constraints.txt`.
-- **Separate plotting Python:** set `EPESSTO_PLOT_PYTHON` to its executable.
+- **Separate plotting Python:** set `EFOSPEC_PLOT_PYTHON` to its executable.
+- **Existing scripts:** old commands and imports remain compatibility aliases; see the migration guide.
 - **CI:** Python 3.11 build, tests, and plot rendering; [details](docs/ci.md).
 
 ## Download a night
 
 ```sh
-python -m epessto_plus download 2026-10-29
+python -m efospec download 2026-10-29
 ```
 
 - Saves raw EFOSC2 exposures in **`data/2026-10-29/`**.
@@ -46,7 +47,7 @@ python -m epessto_plus download 2026-10-29
 - Optional: `--programme 117.29T8.002`, `--spectra-only`, `--dry-run`.
 - `--with-calibrations`: adds associated raw inputs under `calibrations/`, including other dates.
 - Repeating the command verifies and reuses completed FITS; failures return nonzero.
-- [Authentication and download details](EPESSTO_PLUS.md#download-raw-data).
+- [Authentication and download details](EFOSPEC.md#download-raw-data).
 
 ## Run the archive-based demonstration
 
@@ -56,7 +57,7 @@ python -m epessto_plus download 2026-10-29
 
 ```sh
 MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
-  python -m epessto_plus reduce-rapid ../2024-11-14 --output runs/my-night
+  python -m efospec reduce-rapid ../2024-11-14 --output runs/my-night
 ```
 
 - **One source:** add `--target SN2023xxj`.
@@ -71,14 +72,14 @@ MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
 Rebuild the page without repeating extraction:
 
 ```sh
-python -m epessto_plus report runs/my-night
+python -m efospec report runs/my-night
 # Use --existing-plots to rebuild HTML alone.
 ```
 
 Check raw inputs for the future native path:
 
 ```sh
-python -m epessto_plus native-readiness ../2024-11-14 /path/to/raw-calibrations
+python -m efospec native-readiness ../2024-11-14 /path/to/raw-calibrations
 ```
 
 - Missing/incompatible calibrations return a nonzero status; no archive fallback.
@@ -95,7 +96,7 @@ python -m epessto_plus native-readiness ../2024-11-14 /path/to/raw-calibrations
 - Products: experimental; no ESO Phase 3 certification.
 - GUI: planned; manual editing and two-source export are not implemented yet.
 
-[Commands and details](EPESSTO_PLUS.md) · [Pipeline stages](docs/pipeline-stages.md) ·
+[Commands and details](EFOSPEC.md) · [Pipeline stages](docs/pipeline-stages.md) ·
 [Migration plan](docs/roadmap/pypeit-migration/README.md) ·
 [Tests and CI](docs/ci.md) ·
 [Legacy PyRAF installation](docs/legacy-installation.md)
@@ -103,7 +104,7 @@ python -m epessto_plus native-readiness ../2024-11-14 /path/to/raw-calibrations
 | Location | Contents |
 | --- | --- |
 | `trunk/` | Preserved legacy pipeline and calibration library |
-| `src/epessto_plus/` | New reduction and reporting code |
+| `src/efospec/` | New reduction and reporting code |
 | `scripts/` | Plotting and diagram generators |
 | `tests/` | Automated checks |
 

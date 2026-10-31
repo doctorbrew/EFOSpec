@@ -85,17 +85,15 @@
 - Establish uncertainty-coverage and contamination limits before approving blended extraction.
 - No-delta recipe regression: same arrays in the same engine/environment, within numerical precision.
 
-## Naming proposal
+## Package identity
 
-- The current shortlist and rename strategy are tracked in [observer migration](adoption.md).
-- The GUI should share the pipeline's selected name rather than introduce another product name.
-- Describe it as “an experimental EFOSC2 reduction workbench”.
-- Keep `epessto-plus`, `epessto_plus`, calibration paths, and product names until a rename is agreed.
-- Names remain suggestions; the shortlist records limited registry checks, not a reservation.
+- **EFOSpec** names both the pipeline and planned extraction workbench.
+- Python package, command, and environment: `efospec`.
+- Preserve calibration paths and product names; see [observer migration](adoption.md).
 
 ## References
 
 - [PypeIt manual extraction](https://pypeit.readthedocs.io/en/latest/manual.html).
 - Local 1.14.0: `pypeit/manual_extract.py`, `find_objects.py`, `extraction.py`.
-- Current wrapper: `src/epessto_plus/rapid.py`.
+- Current wrapper: `src/efospec/rapid.py`.
 - Parent plan: [EFOSC2 migration](README.md).

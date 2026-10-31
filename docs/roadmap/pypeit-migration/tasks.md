@@ -17,7 +17,7 @@ legacy response/extinction conversion, flux-conserving export and native FITS
 round trips. All 13 science exposures produced outputs; eight have historical
 aperture anchors, five retain unverified target-association flags. Two L745a
 standard exposures provide independent flux comparisons. Current automated results
-are published by the [build workflow](https://github.com/sPaMFouR/epessto-plus/actions/workflows/build.yml).
+are published by the [build workflow](https://github.com/sPaMFouR/EFOSpec/actions/workflows/build.yml).
 
 See [measured evidence](evidence.md#2024-11-14-rapid-reduction-demonstration).
 This bypasses the missing raw-calibration requirement only for the explicit

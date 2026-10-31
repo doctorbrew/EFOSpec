@@ -9,7 +9,7 @@
 
 ## Engine boundaries
 
-| Stage | Legacy pipeline | Current ePESSTO+ |
+| Stage | Legacy pipeline | Current EFOSpec |
 | --- | --- | --- |
 | Inventory / naming | Legacy `ntt` helpers | Our Python / Astropy code |
 | Detector preparation | IRAF `ccdproc`; rapid trim or full bias/flat | Our trim, gain conversion, target crop |
