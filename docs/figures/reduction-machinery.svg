@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="1040" viewBox="0 0 1120 1040" role="img" aria-labelledby="title description">
+<title id="title">EFOSC2 reduction machinery: legacy IRAF and current PypeIt bridge</title>
+<desc id="description">Two parallel reduction paths. Legacy uses IRAF tasks. The current pipeline uses custom archived calibration with PypeIt tracing, sky modelling and extraction. A manual multi-object GUI is planned.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#7c857e"/></marker></defs>
+<style>text{font-family:'Avenir Next',Avenir,Arial,sans-serif;fill:#29362e}.title{font-family:Georgia,serif;font-size:29px;fill:#244d3d}.heading{font-size:21px;font-weight:600}.body{font-size:17px}.small{font-size:15px;fill:#536159}.label{font-size:13px;font-weight:600;letter-spacing:1px}.arrow{fill:none;stroke:#7c857e;stroke-width:1.5;marker-end:url(#arrow)}</style>
+<rect width="1120" height="1040" rx="12" fill="#f7f6f0"/>
+<text class="title" x="32" y="45">EFOSC2 reduction machinery</text>
+<text class="small" x="32" y="72">Legacy task sequence and the implemented rapid migration — engine boundaries shown explicitly</text>
+<rect x="340" y="94" width="440" height="54" rx="9" fill="#fffef9" stroke="#cbd3c8"/>
+<text class="heading" x="560" y="128" text-anchor="middle">Science FITS + calibration references</text>
+<path class="arrow" d="M420 148 V166 H288 V212"/><path class="arrow" d="M700 148 V166 H832 V212"/>
+<text class="heading" x="48" y="195">Legacy PESSTO / IRAF</text>
+<text class="heading" x="592" y="195">ePESSTO+ / rapid</text>
+<rect x="32" y="220" width="512" height="108" rx="9" fill="#f6e9dd" stroke="#cbd3c8"/>
+<text class="label" x="48" y="241">IRAF + LEGACY PYTHON</text>
+<text class="heading" x="48" y="267">Prepare the detector image</text>
+<text class="body" x="48" y="292">ccdproc: rapid trim; full mode can use bias + flat</text>
+<text class="small" x="48" y="314">Legacy wrappers select frames and preserve names</text>
+<path class="arrow" d="M288 328 V342"/>
+<rect x="32" y="346" width="512" height="108" rx="9" fill="#f6e9dd" stroke="#cbd3c8"/>
+<text class="label" x="48" y="367">IRAF + LEGACY PYTHON</text>
+<text class="heading" x="48" y="393">Wavelength calibration</text>
+<text class="body" x="48" y="418">identify / reidentify → fitcoords → transform</text>
+<text class="small" x="48" y="440">Legacy sky comparison adjusts the wavelength zero point</text>
+<path class="arrow" d="M288 454 V468"/>
+<rect x="32" y="472" width="512" height="108" rx="9" fill="#f6e9dd" stroke="#cbd3c8"/>
+<text class="label" x="48" y="493">IRAF</text>
+<text class="heading" x="48" y="519">Trace, background, extraction</text>
+<text class="body" x="48" y="544">apall: trace, aperture and background fitting</text>
+<text class="small" x="48" y="566">Weighted extraction / cleaning; interactive options</text>
+<path class="arrow" d="M288 580 V594"/>
+<rect x="32" y="598" width="512" height="108" rx="9" fill="#f6e9dd" stroke="#cbd3c8"/>
+<text class="label" x="48" y="619">IRAF + REFERENCE FILES</text>
+<text class="heading" x="48" y="645">Flux calibration</text>
+<text class="body" x="48" y="670">calibrate: sensitivity curve + extinction</text>
+<text class="small" x="48" y="692">standard / sensfunc can create a sensitivity curve</text>
+<path class="arrow" d="M288 706 V720"/>
+<rect x="32" y="724" width="512" height="108" rx="9" fill="#f6e9dd" stroke="#cbd3c8"/>
+<text class="label" x="48" y="745">LEGACY PYTHON + IRAF</text>
+<text class="heading" x="48" y="771">Delivered products</text>
+<text class="body" x="48" y="796">Legacy FITS / ASCII and product headers</text>
+<text class="small" x="48" y="818">Requires a configured IRAF + PyRAF installation</text>
+<rect x="576" y="220" width="512" height="108" rx="9" fill="#fffef9" stroke="#cbd3c8"/>
+<text class="label" x="592" y="241">OUR PYTHON</text>
+<text class="heading" x="592" y="267">Prepare the detector image</text>
+<text class="body" x="592" y="292">Legacy rapid trim → gain conversion → spatial crop</text>
+<text class="small" x="592" y="314">No bias / flat / dark / overscan correction</text>
+<path class="arrow" d="M832 328 V342"/>
+<rect x="576" y="346" width="512" height="108" rx="9" fill="#fffef9" stroke="#cbd3c8"/>
+<text class="label" x="592" y="367">OUR PYTHON + ARCHIVED IRAF IDs</text>
+<text class="heading" x="592" y="393">Wavelength calibration</text>
+<text class="body" x="592" y="418">2D polynomial → 5577 / 6300 Å sky shift</text>
+<text class="small" x="592" y="440">6364 Å is an independent check when measurable</text>
+<path class="arrow" d="M832 454 V468"/>
+<rect x="576" y="472" width="512" height="108" rx="9" fill="#deeee3" stroke="#cbd3c8"/>
+<text class="label" x="592" y="493">PYPEIT 1.14.0</text>
+<text class="heading" x="592" y="519">Trace, sky, optimal + boxcar extraction</text>
+<text class="body" x="592" y="544">FindObjects → global sky → Extract local joint fit</text>
+<text class="small" x="592" y="566">Fits neighbouring objects; exports one selected target</text>
+<path class="arrow" d="M832 580 V594"/>
+<rect x="576" y="598" width="512" height="108" rx="9" fill="#fffef9" stroke="#cbd3c8"/>
+<text class="label" x="592" y="619">OUR PYTHON + ARCHIVED RESPONSE</text>
+<text class="heading" x="592" y="645">Flux calibration</text>
+<text class="body" x="592" y="670">Archived sensitivity + La Silla extinction</text>
+<text class="small" x="592" y="692">No new sensitivity fit; no telluric correction</text>
+<path class="arrow" d="M832 706 V720"/>
+<rect x="576" y="724" width="512" height="108" rx="9" fill="#fffef9" stroke="#cbd3c8"/>
+<text class="label" x="592" y="745">PYPEIT + OUR PYTHON</text>
+<text class="heading" x="592" y="771">Delivered products</text>
+<text class="body" x="592" y="796">Native spec1d → air-grid legacy FITS / ASCII</text>
+<text class="small" x="592" y="818">Diagnostic figures + automatic Fieldnotes webpage</text>
+
+<text class="small" x="32" y="861">The new route reads legacy reference files; it does not execute IRAF. Full calibration parity remains pending.</text>
+<rect x="32" y="891" width="1056" height="111" rx="9" fill="#eef2f5" stroke="#6f8797" stroke-dasharray="6 4"/>
+<text class="label" x="48" y="916">PLANNED GUI — NOT IMPLEMENTED</text>
+<text class="heading" x="48" y="945">Manual traces + sky → saved recipe → PypeIt extraction → SN and galaxy spectra</text>
+<text class="body" x="48" y="977">Start with separated SN / galaxy traces. Overlapping host subtraction needs a validated deblending model.</text>
+</svg>

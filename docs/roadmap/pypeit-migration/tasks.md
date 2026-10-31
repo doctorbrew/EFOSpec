@@ -3,6 +3,12 @@
 Parent: [migration design](README.md). Tasks are local; no tracker issues have
 been published. Status describes actual work, not promised scientific support.
 
+## Next interface phase
+
+- First priority: [native calibration without IRAF-derived inputs](../../native-calibration.md).
+- [G1–G4: manual trace/background controls and two-source extraction](gui.md).
+- Status: planned; automatic reduction and static reporting remain the current interface.
+
 ## Completed rapid demonstration (2024-11-14 data)
 
 An experimental bridge now spans parts of T3–T5: archived air-wavelength IDs,
@@ -10,7 +16,8 @@ independent sky shifts, native PypeIt finding/sky/optimal and boxcar extraction,
 legacy response/extinction conversion, flux-conserving export and native FITS
 round trips. All 13 science exposures produced outputs; eight have historical
 aperture anchors, five retain unverified target-association flags. Two L745a
-standard exposures provide independent flux comparisons. 47 tests pass.
+standard exposures provide independent flux comparisons. Current automated results
+are published by the [build workflow](https://github.com/sPaMFouR/epessto-plus/actions/workflows/build.yml).
 
 See [measured evidence](evidence.md#2024-11-14-rapid-reduction-demonstration).
 This bypasses the missing raw-calibration requirement only for the explicit
@@ -116,9 +123,9 @@ Status: blocked on T3. Depends on: T1, T3.
 
 Outcome: calibrated spectra with traceable reference standards and uncertainty.
 
-- [ ] Convert/check the same legacy standard references and separate extinction
-  curves for rapid/full; derive native sensitivity rather than importing IRAF
-  response arrays.
+- [ ] Match standards to independently sourced physical flux references and
+  extinction curves; derive native sensitivity without IRAF response arrays.
+  Compare reference conventions with legacy after independent processing.
 - [ ] Verify standard/science airmass correction, response coverage, slit-loss
   policy and lack of unintended extrapolation.
 - [ ] Validate Gr13 Free/GG495 second-order treatment on independent standards;

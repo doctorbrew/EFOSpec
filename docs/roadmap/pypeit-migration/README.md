@@ -1,5 +1,10 @@
 # EFOSC2 spectroscopy migration to PypeIt
 
+- [Pipeline comparison](../../pipeline-stages.md)
+- [Manual extraction GUI and two-source roadmap](gui.md)
+- [Legacy compatibility check](../../legacy-compatibility.md)
+- [Native calibration inputs and current blockers](../../native-calibration.md)
+
 ## Outcome and scope
 
 Replace the IRAF/PyRAF reduction engine while retaining the observer-facing
@@ -14,7 +19,8 @@ reference standards, extinction curves, configuration matching, and explicit
 fallback policy. It cannot mean feeding IRAF master products into PypeIt as
 though their formats and processing histories were interchangeable. PypeIt
 masters and numerical results will change. Retain legacy masters as comparison
-artifacts and rebuild native masters from raw data wherever possible.
+artifacts. The native path must rebuild calibrations from raw data without
+IRAF-derived line identifications, response arrays, or master products.
 
 Completed in this checkout: public upstream fork, separate `epessto+` repository,
 source/data audit, pure naming functions, conservative read-only inventory,
@@ -93,7 +99,7 @@ collaboration-facing solution.
 The proposed flow is:
 
 ```text
-immutable raw files + archived reference catalogues
+immutable raw files + independent physical reference catalogues
     -> inventory and normalized exposure records
     -> explicit calibration plan and human overrides
     -> versioned EFOSC2 PypeIt configuration + native products

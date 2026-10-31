@@ -1,38 +1,56 @@
-# What runs where
+# Reduction machinery
 
-The current `reduce-rapid` workflow is **PypeIt extraction with an ePESSTO+
-archived-calibration bridge**. It does not execute IRAF/PyRAF. It supports the
-inspected EFOSC2 2×2, Free-filter Gr11/Gr13 modes; SOFI remains a later phase.
+![Legacy IRAF and current PypeIt reduction paths](figures/reduction-machinery.svg)
 
-| Stage | Implementation | Current behaviour |
+- **Current workflow:** PypeIt extraction + archived-calibration bridge.
+- **Supported demonstration:** EFOSC2 Gr11/Gr13, Free filter, 2×2 binning.
+- **IRAF runtime:** used only by the legacy pipeline.
+- **SOFI:** later migration phase.
+
+## Engine boundaries
+
+| Stage | Legacy pipeline | Current ePESSTO+ |
 | --- | --- | --- |
-| Inventory and reference selection | ePESSTO+, Astropy | Read FITS headers, hash inputs, associate archived arc/sensitivity references, preserve historical filenames. |
-| Detector preparation | ePESSTO+, NumPy | Apply the legacy rapid trim, convert ADU to electrons using header gain, crop around the expected source. No bias, flat, dark or overscan correction. |
-| Wavelength solution | ePESSTO+, NumPy/SciPy | Refit a 2D polynomial to archived IRAF arc identifications. Measure flexure from 5577/6300 Å sky lines; check 6364 Å independently when measurable. PypeIt's wavelength-calibration solver is not run. |
-| Source finding and sky | PypeIt 1.14.0 | `PypeItImage` carries detector/noise information; `FindObjects` detects and traces sources and fits the global sky. ePESSTO+ supplies a straight cropped slit and selects the target using historical aperture geometry or a flagged nominal position. |
-| Extraction | PypeIt 1.14.0 | `Extract` models local sky and object profiles, performs optimal and boxcar extraction, and supplies variance estimates. Other detected sources remain in the joint model. |
-| Flux calibration | ePESSTO+, archived references | Apply archived logarithmic sensitivity and the La Silla extinction curve with explicit gain/exposure/dispersion factors. No new sensitivity function is fitted by PypeIt. |
-| Output | PypeIt + ePESSTO+ | PypeIt `SpecObjs` writes native electron-count spec1d FITS with vacuum wavelengths. PypeIt air/vacuum conversions are used. Custom bin-overlap resampling propagates flux and diagonal variance onto the air-wavelength grid, then writes historical FITS/ASCII products. |
-| Figures and webpage | ePESSTO+, Matplotlib, HTML | Plot the saved arrays; compare against IRAF products only if present. Build the offline Fieldnotes report automatically. No science is recomputed in the webpage. |
+| Inventory / naming | Legacy `ntt` helpers | Our Python / Astropy code |
+| Detector preparation | IRAF `ccdproc`; rapid trim or full bias/flat | Our trim, gain conversion, target crop |
+| Wavelength solution | IRAF identify/reidentify, fitcoords, transform | Our polynomial fit to archived IRAF IDs |
+| Flexure | Legacy sky comparison / wavelength shift | Our 5577/6300 Å shift; independent 6364 Å check |
+| Trace / background | IRAF `apall` | PypeIt `FindObjects` and `Extract` |
+| Extraction | IRAF `apall` weights / cleaning | PypeIt optimal and boxcar extraction |
+| Flux calibration | IRAF `calibrate`; standard/sensfunc when needed | Our archived sensitivity + La Silla extinction |
+| Native output | IRAF multispec products | PypeIt `SpecObjs` spec1d FITS |
+| Final output | Legacy FITS/ASCII and headers | Our air-wavelength resampling, FITS/ASCII, Fieldnotes |
 
-Code: `src/epessto_plus/rapid.py` orchestrates extraction;
-`archive_calibration.py` implements the reference conversion and resampling;
-`pypeit_adapter.py` supplies instrument parameters; `report.py` builds the page;
-`scripts/preview_spectrum_style.py` renders its figures.
+## Important distinctions
 
-## What is still missing
+- Legacy **full** and **rapid** reductions have different calibration policies.
+- The current new runner implements **rapid** processing only.
+- Both use legacy reference files; the new runner does not execute IRAF.
+- Fully IRAF-independent calibration is still pending: [inputs and status](native-calibration.md).
+- PypeIt supplies air/vacuum conversion utilities and extraction variances.
+- Our exporter propagates diagonal variance; resampling covariance is not saved.
+- Existing neighbour profiles are fitted together; only one selected target is exported.
 
-The demonstrated night has no raw arc, bias or flat calibrations. Native PypeIt
-calibration-master generation, slit-edge calibration and a fresh standard-star
-sensitivity solution are not implemented in this rapid path. `plan` can inventory
-and associate raw calibration candidates; it does not reduce them.
+## Current limits
 
-Telluric correction is absent, fringing remains, red second-order contamination
-and absolute flux accuracy are not fully validated, and resampling covariance
-is not exported. Five of the 13 demonstration science targets use an unverified
-nominal acquisition position. Products remain `EXPERIMENTAL`/`Rapid`; neither
-full legacy parity nor ESO Phase 3 certification is claimed.
+- No fresh bias/flat/arc masters or standard-star sensitivity solution.
+- No bias, flat, dark, overscan, or telluric correction in the new rapid path.
+- Fringing remains; absolute flux and red second-order contamination need validation.
+- Five demonstration targets use unverified nominal acquisition positions.
+- No native spec2d product, full legacy parity, or Phase 3 certification.
 
-The saved sky-background shading represents input to the global fit before
-iterative rejection. Spatial-profile aperture shading shows the actual geometric
-boxcar region, not the weights of the optimal extraction.
+## Read the diagnostic shading
+
+- **Blue:** input sky pixels before iterative rejection.
+- **Red:** geometric boxcar aperture, not optimal-extraction weights.
+- **Opacity:** selected fraction within each wavelength bin.
+
+## Code and next steps
+
+- `rapid.py`: reduction orchestration and export.
+- `archive_calibration.py`: wavelength, sensitivity, and resampling.
+- `pypeit_adapter.py`: instrument metadata and parameters.
+- `report.py`: offline webpage.
+- [GUI and two-source extraction](roadmap/pypeit-migration/gui.md).
+- [Legacy Python 3.11 compatibility check](legacy-compatibility.md).
+- Rebuild the diagram: `python scripts/render_pipeline_diagram.py`.
