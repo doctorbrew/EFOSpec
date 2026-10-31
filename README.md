@@ -33,6 +33,20 @@ python -m pip install 'numpy==1.26.4' 'astropy==6.1.1' 'scipy==1.14.0' -e '.[rap
 - **Separate plotting Python:** set `EPESSTO_PLOT_PYTHON` to its executable.
 - **CI:** Python 3.11 build, tests, and plot rendering; [details](docs/ci.md).
 
+## Download a night
+
+```sh
+python -m epessto_plus download 2026-10-29
+```
+
+- Saves raw EFOSC2 exposures in **`data/2026-10-29/`**.
+- Uses exported `ESO_USERNAME` / `ESO_PASSWORD`, or `ESO_TOKEN`.
+- Observing night: noon UTC on the given date to noon the following day.
+- Optional: `--programme 117.29T8.002`, `--spectra-only`, `--dry-run`.
+- `--with-calibrations`: adds associated raw inputs under `calibrations/`, including other dates.
+- Repeating the command verifies and reuses completed FITS; failures return nonzero.
+- [Authentication and download details](EPESSTO_PLUS.md#download-raw-data).
+
 ## Run the archive-based demonstration
 
 - Run from the repository root.

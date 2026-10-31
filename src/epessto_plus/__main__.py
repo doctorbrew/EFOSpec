@@ -8,6 +8,14 @@ from .inventory import inventory
 def main(argv=None):
     parser = argparse.ArgumentParser(description="EFOSC2 migration tools and experimental rapid reduction")
     commands = parser.add_subparsers(dest="command", required=True)
+    download = commands.add_parser('download', help='Download a night of raw EFOSC2 data into data/YYYY-MM-DD')
+    download.add_argument('night', help='Observing night YYYY-MM-DD (noon UTC to following noon)')
+    download.add_argument('--output-root', default='data')
+    download.add_argument('--programme', help='Optional ESO programme/run identifier')
+    download.add_argument('--spectra-only', action='store_true', help='Exclude imaging/acquisition frames from the night query')
+    download.add_argument('--with-calibrations', action='store_true', help='Also retrieve associated raw calibrations, including other dates')
+    download.add_argument('--dry-run', action='store_true', help='Save the selection without downloading FITS')
+    download.add_argument('--public-only', action='store_true', help='Ignore ESO credentials and attempt anonymous downloads')
     scan = commands.add_parser("inventory", help="Inventory FITS inputs as JSON on stdout")
     scan.add_argument("paths", nargs="+")
     native = commands.add_parser('native-readiness', help='Check raw calibration availability without IRAF references or fallback')
@@ -39,6 +47,14 @@ def main(argv=None):
         command.add_argument("--arc", action="append", default=[], help="Explicit raw arc; repeatable")
     args = parser.parse_args(argv)
     try:
+        if args.command == 'download':
+            from .download import download_night
+            result = download_night(args.night, output_root=args.output_root, programme=args.programme,
+                                    spectra_only=args.spectra_only, with_calibrations=args.with_calibrations,
+                                    dry_run=args.dry_run, public_only=args.public_only,
+                                    progress=lambda message: print(message, file=sys.stderr, flush=True))
+            print(json.dumps(result, indent=2))
+            return 0 if result['status'] in {'complete', 'planned'} else 1
         if args.command == 'report':
             from .report import build_report
             result = build_report(args.path, plot_python=args.plot_python,

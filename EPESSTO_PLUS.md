@@ -7,6 +7,42 @@
 - **Scope:** experimental EFOSC2 rapid reduction; PypeIt 1.14.0.
 - **Native calibration:** [raw inputs and remaining work](docs/native-calibration.md).
 
+## Download raw data
+
+```sh
+# Export these locally in your shell or ~/.zshrc; use your actual values there.
+export ESO_USERNAME='your-eso-username'
+export ESO_PASSWORD='your-eso-password'
+
+python -m epessto_plus download 2026-10-29
+# Preview a programme-specific selection, including its raw calibration associations:
+python -m epessto_plus download 2026-10-29 --programme 117.29T8.002 --with-calibrations --dry-run
+# Run the same command without --dry-run to download it.
+```
+
+- Open a new terminal after changing `.zshrc`; the downloader reads exported variables only.
+- `.zshrc` stores literal passwords as plain text; Keychain can supply `ESO_PASSWORD` for persistent use.
+- Optional `ESO_TOKEN` takes precedence; it also enables searches for protected metadata.
+- Username/password authentication applies to file downloads; metadata queries remain anonymous.
+- Proprietary files require **Data Access** rights for their programme.
+- Default selection: all raw EFOSC2 exposures from noon UTC to the following noon.
+- `--programme ID`: restrict the night query; no programme is hard-coded.
+- `--spectra-only`: omit imaging/acquisition frames from that query.
+- `--with-calibrations`: add associated raw exposures, possibly from other dates/programmes.
+- Night frames: `data/YYYY-MM-DD/*.fits`; additional associations: `calibrations/*.fits`.
+- Custom destination: `--output-root /path/to/data`; the date folder is added automatically.
+- `--public-only`: ignore credentials; inaccessible files remain recorded as failed.
+- ESO `.fits.Z` downloads require system `gzip`; `.fits.gz` and plain FITS also work.
+- Downloads verify raw FITS identity, dates, completeness, available checksums, and SHA-256.
+- `download-manifest.json` records each result; `--dry-run` writes `download-plan.json`.
+- Resume by repeating the command; interrupted files restart, completed files are reused.
+- Changed existing files are preserved and reported; they are never overwritten.
+- One writer per date folder. After a killed process, remove `.download.lock` only once that writer has stopped.
+- Exit codes: **0** complete/planned; **1** empty/incomplete; **2** invalid inputs or query/local failures.
+- Credentials never enter URLs, manifests, or logs; authentication errors do not expose server response bodies.
+- The default `data/` destination is ignored by Git; download success is not scientific calibration approval.
+- [ESO authentication](https://eso.org/cms/eso-data/programmatic-access/authentication-and-authorisation.html) · [Raw calibration associations](https://www.eso.org/cms/application_support/calselectorInfo.html).
+
 ## Reduce and review
 
 ```sh
