@@ -10,6 +10,8 @@ def main(argv=None):
     commands = parser.add_subparsers(dest="command", required=True)
     scan = commands.add_parser("inventory", help="Inventory FITS inputs as JSON on stdout")
     scan.add_argument("paths", nargs="+")
+    native = commands.add_parser('native-readiness', help='Check raw calibration availability without IRAF references or fallback')
+    native.add_argument('paths', nargs='+')
     rapid = commands.add_parser('reduce-rapid', help='Experimental archived-calibration/PypeIt reduction')
     rapid.add_argument('path', help='Night directory; raw inputs remain read-only')
     rapid.add_argument('--output', required=True, help='Fresh run directory')
@@ -59,6 +61,11 @@ def main(argv=None):
                               'report':result.get('report')},indent=2))
             return 1 if result['errors'] or result.get('report', {}).get('status') == 'incomplete' else 0
         result = inventory(args.paths + getattr(args, "arc", []))
+        if args.command == 'native-readiness':
+            from .native_readiness import assess_native_readiness
+            result = assess_native_readiness(result)
+            print(json.dumps(result, indent=2, allow_nan=False))
+            return 0 if result['reduction_ready'] else 1
         if args.command != "inventory":
             from .planning import build_plan
             plan = build_plan(result, args.reference_root, args.profile, args.arc)
