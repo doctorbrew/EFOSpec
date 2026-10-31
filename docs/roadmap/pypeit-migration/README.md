@@ -1,7 +1,7 @@
 # EFOSC2 spectroscopy migration to PypeIt
 
 - [Pipeline comparison](../../pipeline-stages.md)
-- [Manual extraction GUI and two-source roadmap](gui.md)
+- [Desktop extraction GUI and two-source roadmap](gui.md)
 - [Legacy compatibility check](../../legacy-compatibility.md)
 - [Native calibration inputs and current blockers](../../native-calibration.md)
 - [Package identity, dedicated environment, and observer migration](adoption.md)
@@ -36,6 +36,15 @@ full-profile equivalence remain pending.
 The 2.0.1 research below remains a source comparison, not the selected runtime.
 The installed 1.14.0 has now been exercised directly on the supplied inputs.
 See [the integration evidence](pypeit-integration.md) for the tested scope.
+
+## Desktop extraction and nightly log
+
+- Required extraction interface: desktop application; Swift/SwiftUI or a suitable macOS/Linux desktop toolkit.
+- Platform/toolkit selection remains open; no desktop app is delivered yet.
+- The existing browser editor is a prototype for the shared backend and recipe workflow.
+- Fieldnotes is the read-only log of reduced spectra for a night: opening table, per-source plots, status, and downloads.
+- Do not replace the desktop requirement with a browser editor or add extraction controls to the nightly report.
+- [Desktop tasks and acceptance gates](gui.md) · [Repository rules](../../../AGENTS.md).
 
 ## Evidence that changes the approach
 

@@ -6,7 +6,7 @@ from pathlib import Path
 def render():
     parts = ['''<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="1040" viewBox="0 0 1120 1040" role="img" aria-labelledby="title description">
 <title id="title">EFOSC2 reduction machinery: legacy IRAF and current PypeIt bridge</title>
-<desc id="description">Two parallel reduction paths. Legacy uses IRAF tasks. The current pipeline uses custom archived calibration with PypeIt tracing, sky modelling and extraction. A local workbench supports manual anchors and separated two-source extraction.</desc>
+<desc id="description">Two parallel reduction paths. Legacy uses IRAF tasks. The current pipeline uses custom archived calibration with PypeIt tracing, sky modelling and extraction. The desktop extraction application is planned; the existing browser editor is a prototype. The Fieldnotes webpage is a read-only nightly log.</desc>
 <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#7c857e"/></marker></defs>
 <style>text{font-family:'Avenir Next',Avenir,Arial,sans-serif;fill:#29362e}.title{font-family:Georgia,serif;font-size:29px;fill:#244d3d}.heading{font-size:21px;font-weight:600}.body{font-size:17px}.small{font-size:15px;fill:#536159}.label{font-size:13px;font-weight:600;letter-spacing:1px}.arrow{fill:none;stroke:#7c857e;stroke-width:1.5;marker-end:url(#arrow)}</style>
 <rect width="1120" height="1040" rx="12" fill="#f7f6f0"/>
@@ -39,7 +39,7 @@ def render():
         ('OUR PYTHON + ARCHIVED RESPONSE', 'Flux calibration',
          'Archived sensitivity + La Silla extinction', 'No new sensitivity fit; no telluric correction'),
         ('PYPEIT + OUR PYTHON', 'Delivered products',
-         'Native spec1d → air-grid legacy FITS / ASCII', 'Diagnostic figures + automatic Fieldnotes webpage'),
+         'Native spec1d → air-grid legacy FITS / ASCII', 'Diagnostic figures + read-only nightly Fieldnotes log'),
     ]
     for column, steps in enumerate((left, right)):
         x = 32 + 544*column
@@ -57,9 +57,9 @@ def render():
     parts.extend(['''
 <text class="small" x="32" y="861">The new route reads legacy reference files; it does not execute IRAF. Full calibration parity remains pending.</text>
 <rect x="32" y="891" width="1056" height="111" rx="9" fill="#eef2f5" stroke="#6f8797" stroke-dasharray="6 4"/>
-<text class="label" x="48" y="916">LOCAL EXTRACTION WORKBENCH</text>
-<text class="heading" x="48" y="945">Manual anchors + sky → saved recipe → PypeIt → separate source spectra</text>
-<text class="body" x="48" y="977">Separated traces in the saved detector window. Overlapping host subtraction needs a validated model.</text>
+<text class="label" x="48" y="916">PLANNED DESKTOP EXTRACTION APP / SEPARATE NIGHTLY WEB LOG</text>
+<text class="heading" x="48" y="945">Desktop controls → saved recipe → Python / PypeIt → spectra</text>
+<text class="body" x="48" y="977">Swift/macOS or macOS/Linux desktop toolkit: open. Browser editor is a prototype; webpage is the night log.</text>
 </svg>'''])
     return '\n'.join(parts)+'\n'
 

@@ -3,7 +3,9 @@
 - **Install:** [compact README](README.md).
 - **Science:** [engine boundaries](docs/pipeline-stages.md).
 - **Design:** [migration plan](docs/roadmap/pypeit-migration/README.md).
-- **GUI:** [manual extraction and recipe replay](docs/gui.md).
+- **Desktop GUI:** [planned application and tasks](docs/roadmap/pypeit-migration/gui.md).
+- **Browser editor:** [experimental prototype and recipe replay](docs/gui.md); not the desktop app.
+- **Webpage:** read-only nightly log, separate from extraction controls.
 - **Scope:** experimental EFOSC2 rapid reduction; PypeIt 1.14.0.
 - **Native calibration:** [raw inputs and remaining work](docs/native-calibration.md).
 
@@ -48,12 +50,12 @@ python -m efospec download 2026-10-29 --programme 117.29T8.002 --with-calibratio
 ```sh
 conda activate efospec
 PYTHONPATH=src MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
-  python -m efospec reduce-rapid ../pessto/2024-11-14 --output runs/my-night
+  python -m efospec reduce-rapid ../pessto/2024-11-14 --output runs/2024-11-14
 ```
 
 - Use a **fresh output directory**; existing runs are refused.
 - One target: `--target SN2023xxj`; repeat the option for more targets.
-- Automatic report: open `runs/my-night/index.html`.
+- Automatic report: open `runs/2024-11-14/index.html`.
 - Each exposure: spectrum, 2D trace, spatial profiles, PDF/JPG downloads.
 - Repeated targets receive separate entries.
 - Failures and skipped exposures remain recorded.
@@ -76,8 +78,8 @@ PYTHONPATH=src MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
 - Plotting failure: spectra survive; CLI returns nonzero; inspect `report-generation.log`.
 
 ```sh
-PYTHONPATH=src python -m efospec report runs/my-night
-PYTHONPATH=src python -m efospec report runs/my-night --existing-plots
+PYTHONPATH=src python -m efospec report runs/2024-11-14
+PYTHONPATH=src python -m efospec report runs/2024-11-14 --existing-plots
 ```
 
 ## Outputs
@@ -102,7 +104,7 @@ PYTHONPATH=src python -m efospec report runs/my-night --existing-plots
 ## Legacy comparisons and individual plots
 
 ```sh
-python scripts/preview_spectrum_style.py --run runs/my-night --target SN2023xxj
+python scripts/preview_spectrum_style.py --run runs/2024-11-14 --target SN2023xxj
 ```
 
 - Omit `--target` to render every exposure.
@@ -113,7 +115,7 @@ python scripts/preview_spectrum_style.py --run runs/my-night --target SN2023xxj
 - The older `qa` command remains a demonstration-specific comparison report.
 
 ```sh
-PYTHONPATH=src python -m efospec qa runs/my-night --legacy ../pessto/2024-11-14
+PYTHONPATH=src python -m efospec qa runs/2024-11-14 --legacy ../pessto/2024-11-14
 ```
 
 - Standard checks: reduce separately with `--include-standards --target Feige110 --target L745a`.
@@ -121,7 +123,7 @@ PYTHONPATH=src python -m efospec qa runs/my-night --legacy ../pessto/2024-11-14
 - Older runs without sky masks: recover once in the original PypeIt environment.
 
 ```sh
-PYTHONPATH=src MPLBACKEND=Agg python -m efospec.sky_regions runs/my-night
+PYTHONPATH=src MPLBACKEND=Agg python -m efospec.sky_regions runs/2024-11-14
 ```
 
 - Recovery must reproduce all recorded candidate positions before saving.

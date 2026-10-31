@@ -6,8 +6,9 @@ been published. Status describes actual work, not promised scientific support.
 ## Next interface phase
 
 - First priority: [native calibration without IRAF-derived inputs](../../native-calibration.md).
-- [G1–G4: manual trace/background controls and two-source extraction](gui.md).
-- Status: planned; automatic reduction and static reporting remain the current interface.
+- [D1–D5: desktop extraction app, worker integration, and nightly log](gui.md).
+- Shared extraction/recipe backend and browser prototype exist; desktop delivery remains pending.
+- Desktop tasks remain planned; CLI reduction and the read-only nightly report are available.
 
 ## Completed rapid demonstration (2024-11-14 data)
 

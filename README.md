@@ -13,7 +13,7 @@
 
 ![Legacy IRAF and current PypeIt reduction paths](docs/figures/reduction-machinery.svg)
 
-[Engine boundaries](docs/pipeline-stages.md) · [Extraction workbench](docs/gui.md)
+[Engine boundaries](docs/pipeline-stages.md) · [Desktop GUI roadmap](docs/roadmap/pypeit-migration/gui.md)
 
 ## Install
 
@@ -65,12 +65,12 @@ python -m efospec download 2026-10-29
 
 ```sh
 MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
-  python -m efospec reduce-rapid ../pessto/2024-11-14 --output runs/my-night
+  python -m efospec reduce-rapid ../pessto/2024-11-14 --output runs/2024-11-14
 ```
 
 - **One source:** add `--target SN2023xxj`.
 - **New reduction:** choose a fresh output directory.
-- **Review:** open **`runs/my-night/index.html`**.
+- **Review:** open **`runs/2024-11-14/index.html`**.
 - **Plots:** spectrum, 2D trace, and spatial profiles appear side by side.
 
 - `products/`: legacy-named flux FITS and ASCII spectra.
@@ -80,20 +80,19 @@ MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
 Rebuild the page without repeating extraction:
 
 ```sh
-python -m efospec report runs/my-night
+python -m efospec report runs/2024-11-14
 # Use --existing-plots to rebuild HTML alone.
 ```
 
-## Adjust an extraction
+## Desktop extraction and nightly reports
 
-```sh
-efospec gui runs/my-night
-```
+- **Desktop GUI — planned:** trace, aperture, background, and extraction controls in a desktop application.
+- **Toolkit — open:** Swift/SwiftUI for macOS or a suitable desktop toolkit for macOS/Linux.
+- **Fieldnotes webpage — available:** read-only nightly log, opening table, per-source plots, and downloads.
+- **Browser editor — prototype:** `efospec gui` currently opens a browser; it does not deliver the requested desktop app.
+- [Desktop roadmap](docs/roadmap/pypeit-migration/gui.md) · [Prototype instructions](docs/gui.md) · [Project rules](AGENTS.md).
 
-- Click trace anchors; adjust FWHM, aperture, and background bands.
-- Extract one or two separated sources; inspect optimal and boxcar spectra.
-- Save/reload recipes; originals stay unchanged in new revisions.
-- [GUI and headless replay](docs/gui.md).
+## Native calibration readiness
 
 Check raw inputs for the future native path:
 
@@ -113,7 +112,8 @@ python -m efospec native-readiness ../pessto/2024-11-14 /path/to/raw-calibration
 - Not applied: bias, flat, dark, overscan, or telluric corrections.
 - Target identity: nominal-position choices remain flagged until verified.
 - Products: experimental; no ESO Phase 3 certification.
-- GUI: saved detector window; separated traces only, without SN/host deblending.
+- Desktop GUI: not implemented; the browser prototype is retained for backend development.
+- Manual backend: saved detector window and separated sources; no SN/host deblending.
 
 [Commands and details](EFOSPEC.md) · [Pipeline stages](docs/pipeline-stages.md) ·
 [Migration plan](docs/roadmap/pypeit-migration/README.md) ·

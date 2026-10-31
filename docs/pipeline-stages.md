@@ -40,6 +40,14 @@
 - Five demonstration targets use unverified nominal acquisition positions.
 - No native spec2d product, full legacy parity, or Phase 3 certification.
 
+## Desktop app and nightly webpage
+
+- Planned desktop app: interactive trace/aperture/background selection and extraction jobs.
+- Shared Python engine: all scientific processing and revision export.
+- Fieldnotes webpage: read-only nightly reduction log; table, per-source plots, and downloads.
+- Existing `efospec gui`: browser prototype; desktop implementation is still pending.
+- [Interface rules](../AGENTS.md) · [Desktop roadmap](roadmap/pypeit-migration/gui.md).
+
 ## Read the diagnostic shading
 
 - **Blue:** input sky pixels before iterative rejection.
@@ -50,10 +58,11 @@
 
 - `rapid.py`: reduction orchestration.
 - `extraction.py`, `products.py`: shared PypeIt engine and exporter.
-- `recipes.py`, `revisions.py`, `workbench.py`: validated edits, replay, and local GUI.
+- `recipes.py`, `revisions.py`: validated edits and replay; reusable by the desktop app.
+- `workbench.py`: retained experimental browser editor.
 - `archive_calibration.py`: wavelength, sensitivity, and resampling.
 - `pypeit_adapter.py`: instrument metadata and parameters.
-- `report.py`: offline webpage.
-- [GUI and two-source extraction](roadmap/pypeit-migration/gui.md).
+- `report.py`: read-only nightly Fieldnotes log.
+- [Desktop GUI and two-source extraction](roadmap/pypeit-migration/gui.md).
 - [Legacy Python 3.11 compatibility check](legacy-compatibility.md).
 - Rebuild the diagram: `python scripts/render_pipeline_diagram.py`.
