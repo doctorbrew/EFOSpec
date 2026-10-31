@@ -45,6 +45,16 @@ Paths below are relative to the parent `pessto/` workspace.
 
 Raw files remain ignored by Git; the public repository records their retrieval details.
 
+## Recent nights with complete raw candidates
+
+- Authenticated retrieval: **2026-10-28 and 2026-10-29**, including associated raw calibrations.
+- Local directories: `data/2026-10-28/` and `data/2026-10-29/` inside EFOSpec.
+- Preflight finds arc/bias/flat candidates for all 38 science/standard exposures.
+- Same-night standard candidates are available for all 15 science exposures.
+- Initial dome-flat test exposures are recorded separately and excluded from master-flat candidates.
+- Candidate availability does not validate standard identities, calibration quality, or native execution.
+- Proprietary identifiers and products remain local; [aggregate validation](validation-2026-10.md).
+
 ## Check another directory
 
 ```sh
@@ -62,7 +72,7 @@ python -m efospec native-readiness /path/to/night /path/to/raw-calibrations
 
 ## Work required before native acceptance
 
-- Complete raw calibration retrieval for the other configurations.
+- Check raw-calibration coverage for each additional night and configuration.
 - Match binning/readout and grism/filter/slit; retain acquisition metadata.
 - Build bias/flat masters from raw frames through PypeIt.
 - Fit wavelength/tilts from raw lamps and independent physical line lists.

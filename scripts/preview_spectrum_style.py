@@ -344,7 +344,9 @@ def render_spectrum(result, run, *, no_legacy=False, legacy_root=None, suffix=""
     record['input_files_unchanged'] = all(sha256(p) == before[str(p)] for p in inputs)
     if not record['input_files_unchanged']:
         raise ValueError('input files changed while rendering')
-    stem.with_suffix('.json').write_text(json.dumps(record, indent=2)+'\n')
+    # A repeated-target stem contains decimal slit widths (e.g. slit1.5).
+    # Append the extension: with_suffix would truncate the identifying suffix.
+    stem.with_name(stem.name+'.json').write_text(json.dumps(record, indent=2)+'\n')
     return record
 
 

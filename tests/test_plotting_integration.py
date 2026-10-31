@@ -5,6 +5,7 @@ LaTeX and the project plotting extras are required, as they are in CI.
 """
 import json
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 
@@ -18,7 +19,7 @@ from test_report import Page
 
 
 class PlottingIntegrationTests(unittest.TestCase):
-    def test_standalone_exposure_renders_all_figures_and_portable_report(self):
+    def test_same_target_two_slit_widths_render_distinct_portable_reports(self):
         with tempfile.TemporaryDirectory() as directory:
             run = Path(directory)/'original'
             run.mkdir()
@@ -53,10 +54,18 @@ class PlottingIntegrationTests(unittest.TestCase):
                       'date_obs': header['DATE-OBS'], 'product': str(product),
                       'native_spec1d': str(native), 'median_native_snr_4000_8500': 20.,
                       'target': {'selected': 'TARGET', 'association': 'synthetic_fixture'}}
+            # Decimal slit widths are part of the product name, not a file
+            # extension. Both exposures must survive plot-metadata indexing.
+            second_product = product.with_name(product.name.replace('slit1.0', 'slit1.5'))
+            second_image = image.with_name(image.name.replace('slit1.0', 'slit1.5'))
+            shutil.copyfile(product, second_product)
+            shutil.copyfile(image, second_image)
+            second_result = {**result, 'product': str(second_product)}
             (run/'run.json').write_text(json.dumps({
                 'input_dir': 'synthetic', 'pypeit_version': '1.14.0',
-                'results': [result], 'errors': [], 'skipped': [], 'limitations': []}))
-            before = {p.relative_to(run): sha256(p) for p in [product, native, image]}
+                'results': [result, second_result], 'errors': [], 'skipped': [], 'limitations': []}))
+            before = {p.relative_to(run): sha256(p)
+                      for p in [product, native, image, second_product, second_image]}
             manifest_before = (run/'run.json').read_bytes()
             moved = Path(directory)/'moved'
             run.rename(moved)
@@ -66,15 +75,18 @@ class PlottingIntegrationTests(unittest.TestCase):
             status = build_report(run)
             log = (run/'report-generation.log').read_text()
             self.assertEqual(status['status'], 'complete', log)
-            record_path, = (run/'style-preview').glob('FitSpectrum_*.json')
-            record = json.loads(record_path.read_text())
+            records = [json.loads(p.read_text()) for p in (run/'style-preview').glob('FitSpectrum_*.json')]
+            self.assertEqual(len(records), 2)
+            self.assertEqual({Path(r['product']).name for r in records},
+                             {product.name, second_product.name})
+            record = records[0]
             self.assertIsNone(record['legacy_comparison'])
             self.assertEqual(record['legend_labels'], ['PypeIt', r'Propagated $\pm 1\sigma$'])
             self.assertEqual(record['footer_text'], [])
             self.assertTrue(record['latex'])
             self.assertTrue(record['combined_upper_wavelength_ticklabels'])
             self.assertEqual(len(record['outputs']), 8)
-            for name in record['outputs']:
+            for name in [name for record in records for name in record['outputs']]:
                 path = Path(name)
                 if path.suffix == '.pdf':
                     self.assertTrue(path.read_bytes().startswith(b'%PDF-'))
@@ -85,7 +97,7 @@ class PlottingIntegrationTests(unittest.TestCase):
                         self.assertGreater(img.width, 2000)
                         img.verify()
             page = Page((run/'index.html').read_text())
-            self.assertEqual(len(page.images), 3)
+            self.assertEqual(len(page.images), 6)
             for link in page.links+page.images:
                 if not link.startswith('#'):
                     self.assertTrue((run/link).is_file(), link)
