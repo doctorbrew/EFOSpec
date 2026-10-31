@@ -1,0 +1,116 @@
+name: build
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    outputs:
+      metrics: ${{ steps.metrics.outcome }}
+    env:
+      MPLBACKEND: Agg
+      OMP_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            constraints-ci.txt
+      - name: Install LaTeX for scientific plots
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends texlive-latex-extra texlive-fonts-recommended cm-super dvipng
+      - name: Install project dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -c constraints-ci.txt -e '.[rapid,plots,test]'
+          python -m pip check
+      - name: Record scientific versions
+        run: |
+          python -c "from importlib.metadata import version; print({p: version(p) for p in ['numpy', 'scipy', 'astropy', 'pypeit', 'matplotlib']})"
+      - name: Build package
+        run: python -m build --wheel --no-isolation
+      - name: Run all tests with coverage
+        id: tests
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p test-results
+          rm -f test-results/junit.xml test-results/coverage.xml .coverage
+          set +e
+          python -m pytest -v --junitxml=test-results/junit.xml --cov=epessto_plus --cov-report=term-missing --cov-report=xml:test-results/coverage.xml
+          test_status=$?
+          printf 'exit_code=%s\n' "$test_status" >> "$GITHUB_OUTPUT"
+          exit "$test_status"
+      - name: Prepare automatic badge metrics
+        id: metrics
+        if: always()
+        continue-on-error: true
+        env:
+          TEST_EXIT_CODE: ${{ steps.tests.outputs.exit_code || '1' }}
+        run: |
+          python .github/scripts/parse_ci_metrics.py --junit test-results/junit.xml --coverage test-results/coverage.xml --exit-code "$TEST_EXIT_CODE" --output-dir badge-data
+      - name: Save metric payloads
+        if: always() && steps.metrics.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: badge-data
+          path: badge-data/
+          retention-days: 14
+      - name: Save test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: test-results/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Preserve the real test result
+        if: always()
+        env:
+          TEST_OUTCOME: ${{ steps.tests.outcome }}
+        run: test "$TEST_OUTCOME" = success
+
+  publish-metrics:
+    needs: tests
+    if: always() && github.event_name == 'push' && github.ref_name == github.event.repository.default_branch && needs.tests.outputs.metrics == 'success'
+    runs-on: ubuntu-22.04
+    continue-on-error: true
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: badge-data
+          path: badge-data
+      - name: Publish metrics on the badges branch
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: python .github/scripts/publish_metrics.py

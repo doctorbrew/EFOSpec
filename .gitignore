@@ -45,3 +45,8 @@ __pycache__/
 /outputs/
 /runs/
 .env
+.pytest_cache/
+.coverage
+htmlcov/
+/badge-data/
+/test-results/

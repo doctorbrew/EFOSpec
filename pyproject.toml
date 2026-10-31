@@ -12,9 +12,19 @@ dependencies = ["astropy>=6,<8"]
 [project.optional-dependencies]
 rapid = ["pypeit==1.14.0", "scipy>=1.9", "matplotlib>=3.5"]
 plots = ["matplotlib>=3.5", "scipy>=1.9", "SciencePlots", "pypalettes"]
+test = ["pytest>=7,<9", "pytest-cov>=4,<7", "build>=1,<2"]
 
 [project.scripts]
 epessto-plus = "epessto_plus.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["epessto_plus"]
+
+[tool.coverage.report]
+show_missing = true

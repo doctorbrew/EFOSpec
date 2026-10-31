@@ -1,14 +1,22 @@
 # ePESSTO+ — EFOSC2 spectroscopy with PypeIt
 
-An experimental migration of the PESSTO optical spectroscopy pipeline. PypeIt
-handles source tracing, sky modelling, and optimal/boxcar extraction; our Python
-code applies archived wavelength and flux calibrations and preserves legacy
-FITS/ASCII filenames. IRAF/PyRAF is not executed. SOFI is a later phase.
+[![python](https://img.shields.io/badge/python-%3E%3D3.9-blue)](pyproject.toml)
+[![build](https://github.com/sPaMFouR/epessto-plus/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/sPaMFouR/epessto-plus/actions/workflows/build.yml)
+
+- **Scope:** EFOSC2 optical spectroscopy; SOFI later.
+- **PypeIt:** tracing, sky modelling, optimal and boxcar extraction.
+- **Our code:** archived calibration, legacy filenames, diagnostics, and reports.
+- **Status:** experimental; no IRAF/PyRAF execution, but archived IRAF calibrations remain.
+- **Native calibration:** required next; [inputs and remaining work](docs/native-calibration.md).
+
+![Legacy IRAF and current PypeIt reduction paths](docs/figures/reduction-machinery.svg)
+
+[Engine boundaries](docs/pipeline-stages.md) · [GUI roadmap](docs/roadmap/pypeit-migration/gui.md)
 
 ## Install
 
-Keep the source checkout: plotting and archived calibration references live here.
-Use a separate environment with the tested PypeIt 1.14.0 engine:
+- Keep the checkout: it contains plotting code and archived references.
+- Use Python 3.11 and the tested **PypeIt 1.14.0** engine.
 
 ```sh
 git clone https://github.com/sPaMFouR/epessto-plus.git
@@ -18,25 +26,26 @@ conda activate epessto-plus
 python -m pip install 'numpy==1.26.4' 'astropy==6.1.1' 'scipy==1.14.0' -e '.[rapid,plots]'
 ```
 
-Plots also require LaTeX: `latex`, `dvipng`, and `type1cm`/`cm-super` (TeX Live
-or MacTeX). Existing PypeIt environments can be used instead. If plotting uses
-another environment, set `EPESSTO_PLOT_PYTHON` to that Python executable.
-The current checks use existing environments; the fresh-install recipe above
-has not yet been validated in a clean environment.
+- **Plot dependencies:** LaTeX, `dvipng`, and `type1cm`/`cm-super`.
+- **Existing environment:** the current `pypeit` Conda environment also works.
+- **Separate plotting Python:** set `EPESSTO_PLOT_PYTHON` to its executable.
+- **CI:** Python 3.11 build, tests, and plot rendering; [details](docs/ci.md).
 
-## Reduce a night
+## Run the archive-based demonstration
 
-From the repository root, put the raw EFOSC2 FITS files in a night directory
-outside this checkout. Example for the demonstrated night (data are not bundled):
+- Run from the repository root.
+- Keep raw FITS in a separate night directory; data are not bundled.
+- Example: the demonstrated 2024-11-14 night.
 
 ```sh
 MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
   python -m epessto_plus reduce-rapid ../2024-11-14 --output runs/my-night
 ```
 
-Add `--target SN2023xxj` to select one source. Choose a fresh output directory
-for each reduction. Open **`runs/my-night/index.html`** for the Fieldnotes table
-and side-by-side spectrum, 2D trace, and spatial-profile plots.
+- **One source:** add `--target SN2023xxj`.
+- **New reduction:** choose a fresh output directory.
+- **Review:** open **`runs/my-night/index.html`**.
+- **Plots:** spectrum, 2D trace, and spatial profiles appear side by side.
 
 - `products/`: legacy-named flux FITS and ASCII spectra.
 - `native/`: PypeIt spec1d files and saved detector/sky/trace arrays.
@@ -47,21 +56,37 @@ Rebuild the page without repeating extraction:
 ```sh
 python -m epessto_plus report runs/my-night
 # Use --existing-plots to rebuild HTML alone.
-python -m unittest discover -s tests -v
 ```
+
+Check raw inputs for the future native path:
+
+```sh
+python -m epessto_plus native-readiness ../2024-11-14 /path/to/raw-calibrations
+```
+
+- Missing/incompatible calibrations return a nonzero status; no archive fallback.
+- Current night: raw standards present; raw arcs/biases/flats absent.
+- This checks inputs; it does not execute native reduction.
 
 ## Current limits
 
-Demonstrated on 13 science exposures from 2024-11-14: EFOSC2 Gr11/Gr13, Free
-filter, 2×2 binning. This rapid mode uses archived IRAF arc IDs and sensitivity;
-it does not build fresh calibration masters or apply bias, flat, dark, overscan,
-or telluric corrections. Nominal-position target choices remain flagged until
-verified. Products are experimental, not ESO Phase 3 certified.
+- Tested night: **13 science exposures**, Gr11/Gr13, Free filter, 2×2 binning.
+- Calibration: archived IRAF arc IDs and sensitivity; no fresh masters.
+- Not applied: bias, flat, dark, overscan, or telluric corrections.
+- Target identity: nominal-position choices remain flagged until verified.
+- Products: experimental; no ESO Phase 3 certification.
+- GUI: planned; manual editing and two-source export are not implemented yet.
 
 [Commands and details](EPESSTO_PLUS.md) · [Pipeline stages](docs/pipeline-stages.md) ·
 [Migration plan](docs/roadmap/pypeit-migration/README.md) ·
+[Tests and CI](docs/ci.md) ·
 [Legacy PyRAF installation](docs/legacy-installation.md)
 
-The preserved upstream pipeline and calibration library are under `trunk/`;
-new code is under `src/epessto_plus/`, with scripts in `scripts/` and tests in
-`tests/`. Raw data, local runs, and generated outputs are excluded from Git.
+| Location | Contents |
+| --- | --- |
+| `trunk/` | Preserved legacy pipeline and calibration library |
+| `src/epessto_plus/` | New reduction and reporting code |
+| `scripts/` | Plotting and diagram generators |
+| `tests/` | Automated checks |
+
+Raw data, local runs, and generated outputs stay outside Git.
