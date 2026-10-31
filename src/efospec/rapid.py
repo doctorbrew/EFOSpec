@@ -11,10 +11,9 @@ from pathlib import Path
 import shutil
 
 import numpy as np
-from astropy import units as u
 from astropy.io import fits
 
-from .archive_calibration import fit_arc, sky_flexure, sensitivity_factor, rebin_density
+from .archive_calibration import fit_arc, sky_flexure
 from .inventory import inventory, sha256
 from .naming import science_stem, product_name
 
@@ -64,12 +63,6 @@ def select_archive(frame, reference_root):
 def extract_frame(frame, reference_root, output, hint, hint_info, waveair, arc_qa,
                   sensitivity, shift, sky_qa):
     import pypeit
-    from pypeit.images.pypeitimage import PypeItImage
-    from pypeit.slittrace import SlitTraceSet
-    from pypeit.find_objects import FindObjects
-    from pypeit.extraction import Extract
-    from pypeit.specobjs import SpecObjs
-    from pypeit.core.wave import airtovac, vactoair
     from .pypeit_adapter import EFOSpecEFOSC2Spectrograph
 
     if pypeit.__version__ != '1.14.0':
@@ -90,126 +83,14 @@ def extract_frame(frame, reference_root, output, hint, hint_info, waveair, arc_q
         det = inst.get_detector_par(1,hdus)
         data = hdus[0].data[ymin:1015,99+xlo:99+xhi].astype(float)*h['ESO DET OUT1 GAIN']
     w = waveair[:,xlo:xhi]+shift
-    tilts = (w-w.min())/(w.max()-w.min())
-    par = inst.profile_parameters('rapid')
-    par['flexure']['spec_method']='skip'  # already measured explicitly in air wavelengths
-    par['reduce']['findobj']['maxnumber_sci']=3
-    par['reduce']['findobj']['snr_thresh']=5
-    par['reduce']['findobj']['skip_second_find']=True
-    par['reduce']['skysub']['bspline_spacing']=1.0
-    par['rdx']['redux_path']=str(output)
-    rn = np.full(data.shape, h['ESO DET OUT1 RON']**2)
-    sci = PypeItImage(data, ivar=1/(np.maximum(data,0)+rn), rn2img=rn, base_var=rn,
-                     detector=det, exptime=h['EXPTIME'], noise_floor=0.,shot_noise=True,
-                     bpm=~np.isfinite(data))
-    sci.build_mask(saturation=det['saturation']*h['ESO DET OUT1 GAIN'],mincounts=-1e10)
-    slits = SlitTraceSet(np.zeros(ny),np.full(ny,xhi-xlo-1.),'MultiSlit',
-                        detname='DET01',nspat=xhi-xlo,PYP_SPEC=inst.name,binspec=2,binspat=2)
-    finder = FindObjects.get_instance(sci,slits,inst,par,'science',tilts=tilts,
-                                     show=False,basename=basename)
-    sky, found = finder.run()
-    from .sky_regions import capture_sky_selection
-    sky_selection = capture_sky_selection(finder, found)
-    candidates = [{'name':s.NAME,'trimmed_spatial_pixel':float(s.SPAT_PIXPOS+xlo)} for s in found]
-    if len(found)==0:
-        raise ValueError('no source detected in target window')
-    distances = np.array([abs(s.SPAT_PIXPOS+xlo-hint) for s in found])
-    order = np.argsort(distances)
-    if distances[order[0]]>15 or (len(order)>1 and distances[order[1]]<15):
-        raise ValueError(f'absent or ambiguous source at expected position {hint}: {candidates}')
-    # Keep other detected sources in the sky/object model; export only the target.
-    target_name = found[order[0]].NAME
-    extractor = Extract.get_instance(sci,slits,found,inst,par,'science',global_sky=sky,
-                    tilts=tilts,waveimg=airtovac(w*u.AA).value,show=False,basename=basename)
-    result = extractor.run()
-    extracted = result[4]
-    selected = [i for i,s in enumerate(extracted) if s.NAME==target_name]
-    if len(selected)!=1:
-        raise ValueError('target lost during extraction')
-    objects = extracted[np.array(selected)]
-    s = objects[0]
-    s.DETECTOR = det
-    native = output/'native'/('spec1d_'+basename+'.fits')
-    subheader = {k:h[k] for k in ('RA','DEC','EXPTIME','DATE-OBS','INSTRUME','MJD-OBS')}
-    subheader.update({'TARGET':h['OBJECT'],'PYP_SPEC':inst.name,'PYPELINE':'MultiSlit',
-                     'WAVEMED':'vacuum','SPECSYS':'TOPOCENT','EPSTATUS':'EXPERIMENTAL'})
-    objects.write_to_fits(subheader,str(native),overwrite=False)
-    check = SpecObjs.from_fitsfile(str(native))
-    if len(check)!=1 or not np.array_equal(check[0].OPT_COUNTS,s.OPT_COUNTS):
-        raise ValueError('native spectrum did not round-trip')
-    np.savez_compressed(output/'native'/(basename+'_images.npz'),data=data,
-        sky=result[0],object_model=result[1],ivar=result[2],mask=result[3].mask, waveair=w,
-        trace=s.TRACE_SPAT,spatial_origin=xlo,raw_y_origin=ymin, **sky_selection)
-    extinction = Path(reference_root)/'standard/extinction/extinction_lasilla.dat'
-    wave = vactoair(s.OPT_WAVE*u.AA).value
-    # Stay inside the archived reference-line bracket (shifted to this science exposure).
-    low, high = np.min(arc_qa['reference_lines'])+shift, np.max(arc_qa['reference_lines'])+shift
-    step = 5.5 if setup['grism']=='Gr13' else 4.0
-    grid = np.arange(np.ceil(low/step)*step,high-step,step)
-    bands, variances, masks = [],[],[]
-    for kind in ('OPT','BOX'):
-        kw = vactoair(s[kind+'_WAVE']*u.AA).value
-        factor, valid = sensitivity_factor(kw,sensitivity,extinction,h['EXPTIME'],
-                                          h['ESO TEL AIRM START'],h['ESO DET OUT1 GAIN'])
-        ivar = s[kind+'_COUNTS_IVAR']
-        var = np.divide(1,ivar,out=np.full_like(ivar,np.nan),where=ivar>0)
-        good = valid & s[kind+'_MASK'] & (ivar>0) & (kw>=low) & (kw<=high)
-        flux, variance, mask = rebin_density(kw,s[kind+'_COUNTS']*factor,var*factor**2,good,grid)
-        bands.append(flux); variances.append(variance); masks.append(mask)
-        if kind=='OPT':
-            sky_flux,_,sky_mask = rebin_density(kw,s.OPT_COUNTS_SKY*factor,var*factor**2,good,grid)
-    products = np.array([bands[0],bands[1],sky_flux,np.sqrt(variances[0])])[:,None,:]
-    header = fits.Header(subheader)
-    header['OBJECT']=h['OBJECT']; header['CRVAL1']=float(grid[0]); header['CRPIX1']=1.
-    header['CD1_1']=step; header['CDELT1']=step; header['CTYPE1']='LINEAR'
-    header['CUNIT1']='Angstrom'; header['WAVEMED']='air'; header['DC-FLAG']=0
-    header['BUNIT']='erg / (s cm2 Angstrom)'; header['GRISM']=setup['grism']
-    header['FILTER']=setup['filter'];header['SLIT']=setup['slit'];header['FILETYPE']=22208
-    header['ARCFILE']=h['ARCFILE'];header['EXPTIME']=h['EXPTIME'];header['AIRMASS']=h['ESO TEL AIRM START']
-    header['PROV1']=h['ARCFILE'];header['TRACE1']=native.name
-    header['QUALITY']='Rapid';header['PYPEITV']=pypeit.__version__
-    header['SENSFUN']=sensitivity.name;header['ARCREF']=Path(arc_qa['arc']).name
-    header['WAVSHIFT']=shift;header['FLUXCAL']='ARCHIVE';header['TELLURIC']='NONE'
-    header['BANDID1']='optimal flux';header['BANDID2']='boxcar flux'
-    header['BANDID3']='sky flux in optimal aperture';header['BANDID4']='optimal flux uncertainty'
-    center = float(np.nanmedian(s.TRACE_SPAT)+xlo)+1  # IRAF one-based aperture coordinates
-    header['APNUM1']=f'1 1 {center-float(s.BOX_RADIUS):.3f} {center+float(s.BOX_RADIUS):.3f}'
-    header['HISTORY']='Experimental archive bridge; PypeIt sky, trace, optimal and boxcar extraction.'
-    header['HISTORY']='No bias/flat/dark/overscan or telluric correction. Not a certified ESO product.'
-    header['HISTORY']='Bin-overlap resampling; propagated diagonal variance; covariance not stored.'
-    final = output/'products'/filename
-    fits.HDUList([fits.PrimaryHDU(products,header),
-                  fits.ImageHDU(np.array([masks[0],masks[1],sky_mask,masks[0]],dtype=np.uint8),name='VALID')]
-                 ).writeto(final,checksum=True)
-    np.savetxt(final.with_suffix('.asci'),np.column_stack([grid,bands[0]]),fmt='%.8e')
-    snmask = s.OPT_MASK & (s.OPT_COUNTS_IVAR>0) & (wave>4000)&(wave<8500)
-    qa = {'raw':str(path),'raw_sha256':frame['sha256'],'object':h['OBJECT'],
-          'role':frame['role'],'grism':setup['grism'],'slit':setup['slit'],
-          'date_obs':h['DATE-OBS'],'exptime_s':h['EXPTIME'],
-          'arc':arc_qa,'sky_flexure':sky_qa,
-          'sensitivity':{'path':str(sensitivity),'sha256':sha256(sensitivity),
-                         'mjd':fits.getheader(sensitivity)['MJD-OBS'],
-                         'selection':'nearest archived MJD, matching grism/filter; slit ignored as legacy'},
-          'extinction':{'path':str(extinction),'sha256':sha256(extinction)},
-          'target':{**hint_info,'hint_trimmed_pixel':hint,'candidates':candidates,
-                    'selected':target_name,'median_trace_trimmed_pixel':float(np.median(s.TRACE_SPAT)+xlo)},
-          'native_spec1d':str(native),'product':str(final),
-          'processing':{'trim_numpy_yx':[ymin,1015,99,950],
-                        'spatial_crop_in_trim':[xlo,xhi], 'gain_e_per_adu':h['ESO DET OUT1 GAIN'],
-                        'read_noise_e':h['ESO DET OUT1 RON'], 'airmass':h['ESO TEL AIRM START'],
-                        'bias':False,'flat':False,'overscan':False,'dark':False,'cosmic_ray_premask':False,
-                        'spectral_flexure':'two-line sky offset before native extraction',
-                        'sky_bspline_spacing':1.0,'findobj_snr_threshold':5.,'findobj_maxnumber':3,
-                        'native_counts_unit':'electrons per spectral pixel',
-                        'output_step_angstrom':step},
-          'median_native_snr_4000_8500':float(np.median(s.OPT_COUNTS[snmask]*np.sqrt(s.OPT_COUNTS_IVAR[snmask]))),
-          'valid_flux_fraction':float(np.mean(masks[0])), 'flux_band_order':['optimal','boxcar','sky','sigma'],
-          'output_wavelength_medium':'air','native_wavelength_medium':'vacuum','reference_frame':'topocentric',
-          'status':'EXPERIMENTAL','raw_unchanged':sha256(path)==frame['sha256']}
-    if not qa['raw_unchanged']:
-        raise ValueError('raw input changed during processing')
-    (output/'qa'/(basename+'.json')).write_text(json.dumps(qa,indent=2,allow_nan=False)+'\n')
-    return qa
+    from .extraction import extract_spectra
+    from .products import PreparedExposure, export_spectrum
+    context = PreparedExposure(frame, Path(reference_root), det, data, w, xlo, ymin,
+                               hint, hint_info, arc_qa, Path(sensitivity), shift, sky_qa)
+    engine = extract_spectra(data, w, det, exposure_time=h['EXPTIME'],
+                            read_noise=h['ESO DET OUT1 RON'], output=output,
+                            basename=basename, target_position=hint-xlo)
+    return export_spectrum(context, engine, 'primary', output, basename)
 
 
 def reduce_night(input_dir, output_dir, reference_root, *, targets=None, include_standards=False,

@@ -19,7 +19,10 @@ def capture_sky_selection(finder, found):
 
     if not finder.par['reduce']['findobj']['skip_second_find']:
         raise ValueError('sky selection capture requires the saved first-pass objects')
-    selected = finder.create_skymask(found) & finder.sciImg.select_flag(invert=True)
+    # An explicit initial mask is the mask used by PypeIt's sole global fit.
+    initial = getattr(finder, 'initial_skymask', None)
+    selected = (finder.create_skymask(found) if initial is None else initial.copy())
+    selected &= finder.sciImg.select_flag(invert=True)
     selected &= (finder.slitmask >= 0)
     selected &= np.isfinite(finder.sciImg.image) & np.isfinite(finder.sciImg.ivar)
     selected &= finder.sciImg.ivar > 0
