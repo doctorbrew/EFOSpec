@@ -32,3 +32,16 @@ trunk/src/ntt.egg-info
 trunk/src/ntt/*.pyc
 .idea/
 trunk/src/ntt/__pycache__/
+
+# Migration development and local science runs. Bundled upstream calibrations stay tracked.
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+.DS_Store
+/build/
+/dist/
+/data/
+/outputs/
+/runs/
+.env
