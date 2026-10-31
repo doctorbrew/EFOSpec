@@ -41,7 +41,12 @@ geometries and extension-based FITS data require later support.
 
 ## T1 — Freeze a complete Gr13 baseline and reference library
 
-Status: blocked on missing raw calibrations. Depends on: T0.
+Status: Gr13/slit1.0 raw candidates retrieved; scientific baseline validation pending. Depends on: T0.
+
+- [Retrieved inputs and hashes](../../native-calibration.md#raw-gr13-inputs-now-retrieved): one arc, seven flats, ten biases.
+- Candidate checks pass for SN2023xxj and existing Gr13/slit1.0 standards.
+- ESO marks the association uncertified; biases are from 7 November.
+- Native wavelength/sensitivity execution and other configurations remain pending.
 
 Outcome: one reproducible, complete Gr13/Free/slit1.0 night with both input
 calibrations and legacy reference products.
