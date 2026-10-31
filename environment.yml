@@ -1,6 +1,6 @@
-# Provisional environment name; the Python package remains epessto-plus for now.
+# Dedicated EFOSpec runtime; development tools are installed separately.
 # Run from the repository root: conda env create -f environment.yml
-name: slitcraft
+name: efospec
 channels:
   - conda-forge
   - nodefaults

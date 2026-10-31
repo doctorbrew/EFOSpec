@@ -9,7 +9,7 @@ from astropy.io import fits
 
 HAS_SCIPY = importlib.util.find_spec('scipy') is not None
 if HAS_SCIPY:
-    from epessto_plus.archive_calibration import rebin_density, sensitivity_factor, sky_flexure
+    from efospec.archive_calibration import rebin_density, sensitivity_factor, sky_flexure
 
 
 @unittest.skipUnless(HAS_SCIPY, 'rapid calibration tests require SciPy in the PypeIt environment')

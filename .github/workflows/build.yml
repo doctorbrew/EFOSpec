@@ -57,7 +57,7 @@ jobs:
           mkdir -p test-results
           rm -f test-results/junit.xml test-results/coverage.xml .coverage
           set +e
-          python -m pytest -v --junitxml=test-results/junit.xml --cov=epessto_plus --cov-report=term-missing --cov-report=xml:test-results/coverage.xml
+          python -m pytest -v --junitxml=test-results/junit.xml --cov=efospec --cov-report=term-missing --cov-report=xml:test-results/coverage.xml
           test_status=$?
           printf 'exit_code=%s\n' "$test_status" >> "$GITHUB_OUTPUT"
           exit "$test_status"

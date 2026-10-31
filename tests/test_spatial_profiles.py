@@ -3,7 +3,7 @@ import unittest
 
 import numpy as np
 
-from epessto_plus.spatial_profiles import wavelength_binned_profiles
+from efospec.spatial_profiles import wavelength_binned_profiles
 
 
 class SpatialProfileTests(unittest.TestCase):

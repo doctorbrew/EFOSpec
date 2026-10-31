@@ -1,3 +1,2 @@
-"""EFOSC2 migration tools and an explicitly experimental rapid PypeIt bridge."""
-
-__version__ = "0.1.0"
+"""Compatibility imports for EFOSpec; new code should import efospec."""
+from efospec import __version__

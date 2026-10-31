@@ -1,7 +1,7 @@
 from pathlib import Path
 import unittest
 
-from epessto_plus.planning import build_plan, compatibility, _select
+from efospec.planning import build_plan, compatibility, _select
 
 
 REFERENCE = Path(__file__).resolve().parents[1] / "trunk/src/ntt"

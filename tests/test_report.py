@@ -3,13 +3,15 @@ from contextlib import redirect_stdout
 from html.parser import HTMLParser
 import io
 import json
+import os
+import sys
 from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
 
-from epessto_plus.inventory import sha256
-from epessto_plus.report import build_report, write_report
+from efospec.inventory import sha256
+from efospec.report import build_report, write_report
 
 
 class Page(HTMLParser):
@@ -61,6 +63,8 @@ class ReportTests(unittest.TestCase):
         result = write_report(self.run)
         self.assertEqual(result['status'], 'complete')
         html = (self.run/'index.html').read_text()
+        self.assertIn('<title>EFOSpec Fieldnotes', html)
+        self.assertNotIn('ePESSTO+', html)
         self.assertLess(html.index('id="observations"'), html.index('class="target"'))
         self.assertIn('SN&lt;one&gt;', html)
         self.assertNotIn('SN<one>', html)
@@ -98,7 +102,7 @@ class ReportTests(unittest.TestCase):
     def test_renderer_failure_keeps_products_and_writes_honest_html(self):
         product = self.run/'products/a_f.fits'
         before = sha256(product)
-        with patch('epessto_plus.report.subprocess.run') as process:
+        with patch('efospec.report.subprocess.run') as process:
             process.return_value.returncode = 1
             status = build_report(self.run, plot_python='/chosen/python')
             self.assertEqual(process.call_args.args[0][0], '/chosen/python')
@@ -108,16 +112,32 @@ class ReportTests(unittest.TestCase):
         self.assertTrue((self.run/'index.html').is_file())
 
     def test_html_only_does_not_start_a_renderer(self):
-        with patch('epessto_plus.report.subprocess.run') as process:
+        with patch('efospec.report.subprocess.run') as process:
             self.assertEqual(build_report(self.run, render_plots=False)['status'], 'complete')
             process.assert_not_called()
+
+    def test_plotting_python_respects_new_and_legacy_override_precedence(self):
+        cases = [
+            ({}, None, sys.executable),
+            ({'EPESSTO_PLOT_PYTHON': '/old/python'}, None, '/old/python'),
+            ({'EFOSPEC_PLOT_PYTHON': '/new/python', 'EPESSTO_PLOT_PYTHON': '/old/python'},
+             None, '/new/python'),
+            ({'EFOSPEC_PLOT_PYTHON': '/new/python', 'EPESSTO_PLOT_PYTHON': '/old/python'},
+             '/explicit/python', '/explicit/python'),
+        ]
+        for variables, explicit, expected in cases:
+            with self.subTest(variables=variables, explicit=explicit):
+                with patch.dict(os.environ, variables, clear=True), patch('efospec.report.subprocess.run') as process:
+                    process.return_value.returncode = 0
+                    build_report(self.run, plot_python=explicit)
+                    self.assertEqual(process.call_args.args[0][0], expected)
 
     def test_no_successful_exposures_still_lists_failure_and_skip(self):
         self.manifest['results'] = []
         self.manifest['errors'] = [{'object': 'SNfailed', 'error': 'No source'}]
         self.manifest['skipped'] = [{'path': 'Gr16.fits', 'reason': 'Unsupported grism'}]
         (self.run/'run.json').write_text(json.dumps(self.manifest))
-        with patch('epessto_plus.report.subprocess.run') as process:
+        with patch('efospec.report.subprocess.run') as process:
             build_report(self.run)
             process.assert_not_called()
         html = (self.run/'index.html').read_text()
@@ -125,10 +145,10 @@ class ReportTests(unittest.TestCase):
         self.assertIn('Unsupported grism', html)
 
     def test_cli_passes_report_options_and_surfaces_incomplete_report(self):
-        from epessto_plus.__main__ import main
+        from efospec.__main__ import main
         result = {'output_dir': str(self.run), 'results': [], 'errors': [], 'skipped': [],
                   'report': {'status': 'incomplete'}}
-        with patch('epessto_plus.rapid.reduce_night', return_value=result) as reduce, redirect_stdout(io.StringIO()):
+        with patch('efospec.rapid.reduce_night', return_value=result) as reduce, redirect_stdout(io.StringIO()):
             status = main(['reduce-rapid', '/data', '--output', str(self.run),
                            '--plot-python', '/chosen/python'])
         self.assertEqual(status, 1)

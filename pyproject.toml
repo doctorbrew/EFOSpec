@@ -3,9 +3,9 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "epessto-plus"
+name = "efospec"
 version = "0.1.0"
-description = "EFOSC2 calibration planning and experimental PypeIt rapid reduction"
+description = "EFOSpec: EFOSC2 calibration planning and experimental PypeIt reduction"
 requires-python = ">=3.9"
 dependencies = ["astropy>=6,<8", "requests>=2.28,<3"]
 
@@ -16,7 +16,9 @@ plots = ["matplotlib>=3.5", "scipy>=1.9", "SciencePlots", "pypalettes"]
 test = ["pytest>=7,<9", "pytest-cov>=4,<7", "build>=1,<2"]
 
 [project.scripts]
-epessto-plus = "epessto_plus.__main__:main"
+efospec = "efospec.__main__:main"
+# Compatibility for existing observer scripts.
+epessto-plus = "efospec.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -25,7 +27,7 @@ where = ["src"]
 testpaths = ["tests"]
 
 [tool.coverage.run]
-source = ["epessto_plus"]
+source = ["efospec"]
 
 [tool.coverage.report]
 show_missing = true

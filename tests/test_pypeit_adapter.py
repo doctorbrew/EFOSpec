@@ -6,8 +6,8 @@ import unittest
 import numpy as np
 from astropy.io import fits
 
-from epessto_plus.inventory import inventory, sha256
-from epessto_plus.planning import build_plan
+from efospec.inventory import inventory, sha256
+from efospec.planning import build_plan
 from test_foundations import raw_header
 from test_planning import REFERENCE
 
@@ -15,7 +15,7 @@ PYPEIT_AVAILABLE = importlib.util.find_spec("pypeit") is not None
 if PYPEIT_AVAILABLE:
     import pypeit
     PYPEIT_AVAILABLE = pypeit.__version__ == "1.14.0"
-    from epessto_plus.pypeit_adapter import EPESSTOEFOSC2Spectrograph, inspect_setup
+    from efospec.pypeit_adapter import EFOSpecEFOSC2Spectrograph, inspect_setup
     from pypeit.metadata import PypeItMetaData
     from astropy.table import Table
 
@@ -49,7 +49,7 @@ class PypeItAdapterTests(unittest.TestCase):
         self.assertEqual(image.image.shape, (4, 4))
 
     def test_profiles_have_explicit_effective_parameters(self):
-        adapter = EPESSTOEFOSC2Spectrograph()
+        adapter = EFOSpecEFOSC2Spectrograph()
         for profile in ("rapid", "full"):
             par = adapter.profile_parameters(profile)
             self.assertEqual(par["calibrations"]["wavelengths"]["refframe"], "observed")
@@ -60,7 +60,7 @@ class PypeItAdapterTests(unittest.TestCase):
                 self.assertEqual(frame["process"]["use_pixelflat"], profile == "full")
 
     def test_frame_roles_are_mutually_exclusive(self):
-        adapter = EPESSTOEFOSC2Spectrograph()
+        adapter = EFOSpecEFOSC2Spectrograph()
         table = Table({"idname": ["science", "standard_candidate", "non_spectroscopic", "processed", "dark"],
                        "exptime": [100., 100., 100., 100., 100.]})
         self.assertEqual(adapter.check_frame_type("science", table).tolist(), [True, False, False, False, False])
@@ -73,7 +73,7 @@ class PypeItAdapterTests(unittest.TestCase):
             paths = [write_raw(directory, "a.fits"),
                      write_raw(directory, "b.fits", **{"ESO INS FILT1 NAME": "GG495"}),
                      write_raw(directory, "c.fits", **{"ESO DET READ SPEED": "slow"})]
-            instrument = EPESSTOEFOSC2Spectrograph()
+            instrument = EFOSpecEFOSC2Spectrograph()
             table = PypeItMetaData(instrument, instrument.profile_parameters("full"), files=[str(p) for p in paths])
             table.get_frame_types(user={p.name: "science" for p in paths})
             table.set_configurations()
@@ -82,7 +82,7 @@ class PypeItAdapterTests(unittest.TestCase):
     def test_native_reader_uses_header_noise_and_rejects_processed(self):
         with tempfile.TemporaryDirectory() as directory:
             path = write_raw(directory, "a.fits")
-            instrument = EPESSTOEFOSC2Spectrograph()
+            instrument = EFOSpecEFOSC2Spectrograph()
             det, raw, hdu, _, datamask, _ = instrument.get_rawimage(str(path), 1)
             try:
                 self.assertEqual(float(det["ronoise"][0]), 7.8)

@@ -12,8 +12,8 @@ import numpy as np
 from astropy.io import fits
 from PIL import Image
 
-from epessto_plus.inventory import sha256
-from epessto_plus.report import build_report
+from efospec.inventory import sha256
+from efospec.report import build_report
 from test_report import Page
 
 

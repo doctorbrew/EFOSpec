@@ -4,7 +4,7 @@ import json
 import unittest
 from unittest.mock import patch
 
-from epessto_plus.native_readiness import assess_native_readiness
+from efospec.native_readiness import assess_native_readiness
 from test_planning import frame, report
 
 
@@ -59,9 +59,9 @@ class NativeReadinessTests(unittest.TestCase):
         self.assertFalse(result['raw_candidates_complete'])
 
     def test_cli_returns_nonzero_with_explicit_native_blockers(self):
-        from epessto_plus.__main__ import main
+        from efospec.__main__ import main
         output = io.StringIO()
-        with patch('epessto_plus.__main__.inventory', return_value=report([frame()])), redirect_stdout(output):
+        with patch('efospec.__main__.inventory', return_value=report([frame()])), redirect_stdout(output):
             status = main(['native-readiness', '/data'])
         self.assertEqual(status, 1)
         result = json.loads(output.getvalue())

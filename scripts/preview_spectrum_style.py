@@ -28,9 +28,9 @@ from matplotlib.colors import to_rgb, to_hex
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
-from epessto_plus.inventory import sha256
-from epessto_plus.qa import compare_legacy, read_flux
-from epessto_plus.spatial_profiles import wavelength_binned_profiles
+from efospec.inventory import sha256
+from efospec.qa import compare_legacy, read_flux
+from efospec.spatial_profiles import wavelength_binned_profiles
 
 
 # White mixing keeps the line opaque while making xkcd:red a pastel hue.
@@ -98,7 +98,7 @@ def load_trace_data(result):
             source_details_path = sidecar.with_suffix('.json')
             if not sidecar.is_file() or not source_details_path.is_file():
                 raise ValueError('sky background selection is missing; recover it with '
-                                 'python -m epessto_plus.sky_regions RUN in the PypeIt environment')
+                                 'python -m efospec.sky_regions RUN in the PypeIt environment')
             source_details = json.loads(source_details_path.read_text())
             if (sha256(image_path) != source_details['images_sha256']
                     or sha256(sidecar) != source_details['sidecar_sha256']):
@@ -366,7 +366,7 @@ def main():
             suffix = "_" + Path(result["product"]).stem
         records.append(render_spectrum(result, run, no_legacy=args.no_legacy,
                                        legacy_root=args.legacy, suffix=suffix))
-    from epessto_plus.report import write_report
+    from efospec.report import write_report
     all_records = [json.loads(path.read_text())
                    for path in sorted((run/'style-preview').glob('FitSpectrum_*.json'))]
     (run/'style-preview/all-plots.json').write_text(json.dumps(all_records, indent=2)+'\n')

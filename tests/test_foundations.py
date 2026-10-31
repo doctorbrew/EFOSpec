@@ -7,8 +7,8 @@ import unittest
 import numpy as np
 from astropy.io import fits
 
-from epessto_plus.inventory import classify, inventory
-from epessto_plus.naming import observing_night, processing_mjd, product_name, science_stem
+from efospec.inventory import classify, inventory
+from efospec.naming import observing_night, processing_mjd, product_name, science_stem
 
 
 def raw_header(**changes):

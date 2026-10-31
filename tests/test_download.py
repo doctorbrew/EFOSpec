@@ -14,7 +14,7 @@ from astropy.table import Table
 from astropy.time import Time
 import requests
 
-from epessto_plus.download import (DownloadError, ESOClient, TAP, DATALINK, FILES,
+from efospec.download import (DownloadError, ESOClient, TAP, DATALINK, FILES,
     download_night, fetch_file, file_url, night_bounds, table_rows)
 
 ID = 'EFOSC.2026-10-30T02:42:46.563'
@@ -107,7 +107,7 @@ class DownloaderTests(unittest.TestCase):
         with self.assertRaises(DownloadError):ESOClient(environ={'ESO_USERNAME': 'user'})
 
     def test_only_the_expected_eso_raw_association_redirect_is_followed(self):
-        from epessto_plus.download import CALSELECTOR
+        from efospec.download import CALSELECTOR
         params = {'ID': 'ivo://eso.org/ID?'+ID, 'eso_download': 'calSelector_raw2raw'}
         redirect = response(b'', 303)
         redirect.headers = {'Location': CALSELECTOR+f'?dp_id={ID}&mode=Raw2Raw&responseformat=votable'}
@@ -172,7 +172,7 @@ class DownloaderTests(unittest.TestCase):
         first = download_night('2026-10-29', output_root=self.root, client=self.client)
         manifest = Path(first['manifest'])
         digest = json.loads(manifest.read_text())['files'][0]['sha256']
-        with patch('epessto_plus.download.fetch_file', side_effect=KeyboardInterrupt), self.assertRaises(KeyboardInterrupt):
+        with patch('efospec.download.fetch_file', side_effect=KeyboardInterrupt), self.assertRaises(KeyboardInterrupt):
             download_night('2026-10-29', output_root=self.root, client=self.client)
         self.assertEqual(json.loads(manifest.read_text())['files'][0]['sha256'], digest)
         self.assertFalse((manifest.parent/'.download.lock').exists())
@@ -215,8 +215,8 @@ class DownloaderTests(unittest.TestCase):
         self.client.query.assert_not_called()
 
     def test_cli_passes_flags_and_returns_failure_for_incomplete_download(self):
-        from epessto_plus.__main__ import main
-        with patch('epessto_plus.download.download_night', return_value={'status': 'incomplete'}) as download, redirect_stdout(io.StringIO()):
+        from efospec.__main__ import main
+        with patch('efospec.download.download_night', return_value={'status': 'incomplete'}) as download, redirect_stdout(io.StringIO()):
             status = main(['download', '2026-10-29', '--programme', '117.29T8.002', '--with-calibrations'])
         self.assertEqual(status, 1)
         self.assertTrue(download.call_args.kwargs['with_calibrations'])
