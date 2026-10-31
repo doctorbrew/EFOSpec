@@ -50,6 +50,7 @@ def mark_sky_lines(ax):
 
 
 def draw_spectrum(ax, result, wave, bands, comparison=None, legacy_data=None):
+    display_label = result['object'].replace('_', r'\_')
     uncertainty = ax.fill_between(
         wave, (bands[0]-bands[3])/1e-16, (bands[0]+bands[3])/1e-16,
         color=PYPEIT_COLOUR, alpha=0.18, linewidth=0, zorder=1,
@@ -74,7 +75,7 @@ def draw_spectrum(ax, result, wave, bands, comparison=None, legacy_data=None):
     set_plotparams(ax, xticks=(1000, 200), yticks=None, fs=TICK_LABEL_PT)
     for spine in ax.spines.values():
         spine.set_visible(True)
-    ax.set_title(rf"{result['object']} (EFOSC2 / {result['grism']} $\cdot$ {result['exptime_s']:.0f}\,s)",
+    ax.set_title(rf"{display_label} (EFOSC2 / {result['grism']} $\cdot$ {result['exptime_s']:.0f}\,s)",
                  loc='center', pad=17)
     handles = [native, uncertainty] + ([legacy] if comparison else [])
     styled_legend(ax, handles=handles, loc='upper right', ncol=len(handles),
@@ -151,6 +152,7 @@ def rectify_display(data, output_wave):
 
 
 def draw_trace(ax, result, wave, data):
+    display_label = result['object'].replace('_', r'\_')
     image, background, trace_wave = rectify_display(data, wave)
     nx = image.shape[1]
     origin = int(data['spatial_origin'])
@@ -173,7 +175,7 @@ def draw_trace(ax, result, wave, data):
     set_plotparams(ax, xticks=(1000, 200), yticks=(20, 5), fs=TICK_LABEL_PT)
     mark_sky_lines(ax)
     styled_legend(ax, handles=[
-        Line2D([], [], color=PYPEIT_COLOUR, linewidth=1.6, label=result['object']+' trace'),
+        Line2D([], [], color=PYPEIT_COLOUR, linewidth=1.6, label=display_label+' trace'),
         Patch(facecolor=BACKGROUND_COLOUR, alpha=0.5, label='Sky background')],
         loc='upper right', ncol=2, borderpad=0.5)
     return {'sky_mask_fraction': float(data['sky_input_mask'].mean()),
@@ -184,12 +186,13 @@ def draw_trace(ax, result, wave, data):
 
 
 def draw_spatial_profiles(result, wave, data):
+    display_label = result['object'].replace('_', r'\_')
     # Equal wavelength intervals over the same calibrated range as the spectrum.
     profiles = wavelength_binned_profiles(data, np.linspace(wave[0], wave[-1], 4),
                                           data['box_radius'])
     fig, axes = plt.subplots(3, 1, figsize=(13, 12), sharex=True)
     fig.subplots_adjust(left=0.13, right=0.985, bottom=0.09, top=0.86, hspace=0.27)
-    fig.suptitle(rf"{result['object']} (EFOSC2 / {result['grism']} $\cdot$ {result['exptime_s']:.0f}\,s)",
+    fig.suptitle(rf"{display_label} (EFOSC2 / {result['grism']} $\cdot$ {result['exptime_s']:.0f}\,s)",
                  x=0.5575, y=0.97, fontsize=20)
     for ax, profile in zip(axes, profiles):
         x = profile['spatial_pixel']

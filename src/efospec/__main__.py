@@ -8,6 +8,18 @@ from .inventory import inventory
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="efospec", description="EFOSpec: EFOSC2 spectroscopy with PypeIt")
     commands = parser.add_subparsers(dest="command", required=True)
+    gui = commands.add_parser('gui', help='Open the local trace/background extraction workbench')
+    gui.add_argument('path', help='Completed rapid run directory')
+    gui.add_argument('--reference-root')
+    gui.add_argument('--port', type=int, default=0)
+    gui.add_argument('--no-browser', action='store_true')
+    revision = commands.add_parser('reextract', help='Replay a saved manual or automatic recipe')
+    revision.add_argument('path')
+    revision.add_argument('--product', required=True, help='Original product filename')
+    revision.add_argument('--recipe', required=True, help='Saved JSON recipe')
+    revision.add_argument('--output', required=True, help='New revision directory')
+    revision.add_argument('--reference-root')
+    revision.add_argument('--skip-report', action='store_true')
     download = commands.add_parser('download', help='Download a night of raw EFOSC2 data into data/YYYY-MM-DD')
     download.add_argument('night', help='Observing night YYYY-MM-DD (noon UTC to following noon)')
     download.add_argument('--output-root', default='data')
@@ -47,6 +59,17 @@ def main(argv=None):
         command.add_argument("--arc", action="append", default=[], help="Explicit raw arc; repeatable")
     args = parser.parse_args(argv)
     try:
+        if args.command == 'gui':
+            from .workbench import serve
+            return serve(args.path,args.reference_root,args.port,not args.no_browser)
+        if args.command == 'reextract':
+            from pathlib import Path
+            from .revisions import reextract
+            result = reextract(args.path,args.product,json.loads(Path(args.recipe).read_text()),
+                               args.output,args.reference_root,render_report=not args.skip_report)
+            print(json.dumps({'output_dir':result['output_dir'], 'reduced':len(result['results']),
+                              'report':result.get('report')},indent=2))
+            return 0
         if args.command == 'download':
             from .download import download_night
             result = download_night(args.night, output_root=args.output_root, programme=args.programme,

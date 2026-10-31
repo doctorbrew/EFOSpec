@@ -49,7 +49,7 @@ class PlottingIntegrationTests(unittest.TestCase):
                 [fits.Column(name='TRACE_SPAT', format='D', array=trace)], name='TARGET')
             table.header['BOX_RADIUS'] = 4.
             fits.HDUList([fits.PrimaryHDU(), table]).writeto(native)
-            result = {'object': 'SNtest', 'grism': 'Gr13', 'exptime_s': 600.,
+            result = {'object': 'SN_test', 'grism': 'Gr13', 'exptime_s': 600.,
                       'date_obs': header['DATE-OBS'], 'product': str(product),
                       'native_spec1d': str(native), 'median_native_snr_4000_8500': 20.,
                       'target': {'selected': 'TARGET', 'association': 'synthetic_fixture'}}

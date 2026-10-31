@@ -19,7 +19,7 @@ PIPELINE_STAGES = (
     ('Wavelength calibration', 'EFOSpec / NumPy + SciPy',
      'Fit a 2D polynomial to archived IRAF arc IDs. Measure a shift from sky lines 5577 and 6300 Å; reserve 6364 Å as a check.'),
     ('Trace, sky & extraction', 'PypeIt',
-     'PypeItImage and slit geometry; FindObjects detection/tracing and global sky; Extract local sky/object fitting, optimal and boxcar extraction with uncertainties.'),
+     'PypeItImage and slit geometry; FindObjects detection/tracing and global sky; Extract sky/object fitting, optimal and boxcar extraction with uncertainties. Explicit manual sky regions retain their global sky fit.'),
     ('Flux calibration', 'EFOSpec / archived references',
      'Apply the archived sensitivity and La Silla extinction curve, with gain, exposure and wavelength-dispersion factors. No new PypeIt sensitivity fit.'),
     ('Products', 'PypeIt + EFOSpec',
@@ -101,7 +101,7 @@ def write_report(run_directory, *, generation_error=None):
                          f'<span class="plot-links">{links}</span></figcaption>{content}</figure>')
         association = result.get('target', {}).get('association')
         notice = ('<p class="note">Target identity is unverified: extraction used the nominal acquisition position.</p>'
-                  if association != 'historical_aperture' else '')
+                  if association not in {'historical_aperture', 'operator_selected'} else '')
         sections.append(f'<section class="target" id="{anchor}"><div class="target-head"><div>'
                         f'<span class="eyebrow">EFOSC2 / {grism}</span><h2>{target}</h2>'
                         f'<p class="caption">{escape(result["date_obs"])} UTC · {exposure:.0f} s · '
