@@ -26,9 +26,9 @@ The earlier environment inventory recorded NumPy distribution metadata as
 conda activate pypeit
 mkdir -p outputs
 PYTHONPATH=src python -m unittest discover -s tests -v
-PYTHONPATH=src python -m efospec plan ../pessto_test ../2024-11-14 > outputs/calibration-plan-full.json
-PYTHONPATH=src python -m efospec inspect-pypeit ../pessto_test ../2024-11-14 > outputs/pypeit-setup-full.json
-PYTHONPATH=src python -m efospec inspect-pypeit --profile rapid ../pessto_test ../2024-11-14 > outputs/pypeit-setup-rapid.json
+PYTHONPATH=src python -m efospec plan ../pessto/pessto_test ../pessto/2024-11-14 > outputs/calibration-plan-full.json
+PYTHONPATH=src python -m efospec inspect-pypeit ../pessto/pessto_test ../pessto/2024-11-14 > outputs/pypeit-setup-full.json
+PYTHONPATH=src python -m efospec inspect-pypeit --profile rapid ../pessto/pessto_test ../pessto/2024-11-14 > outputs/pypeit-setup-rapid.json
 ```
 
 Logs go to stderr and the report to stdout. The reports include the interpreter,

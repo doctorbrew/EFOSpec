@@ -102,7 +102,7 @@ supersede the initial inventory-only status and proposed environment upgrade.
 
 - Public fork: https://github.com/sPaMFouR/EFOSpec ; API verified
   `fork=true`, `private=false`, parent `svalenti/pessto`, default branch `master`.
-- Local independent checkout: `/Users/avinash/Work/Reduction/pessto/EFOSpec` (renamed from `epessto+`).
+- Local independent checkout: `/Users/avinash/Work/Reduction/EFOSpec` (renamed from `epessto+`).
   Repository contents are at that root, with no extra `pessto/` level.
 - `origin` points to the public fork; `upstream` points to
   https://github.com/svalenti/pessto . Upstream MIT licence and history retained.
@@ -118,8 +118,8 @@ Do not add it to the parent with a broad `git add .`.
 
 ## Data inspection
 
-The read-only inventory found 92 FITS files across `../pessto_test` and
-`../2024-11-14`, recursively: 14 raw science spectra, 8 raw standard candidates,
+The read-only inventory found 92 FITS files across `../pessto/pessto_test` and
+`../pessto/2024-11-14`, recursively: 14 raw science spectra, 8 raw standard candidates,
 36 non-spectroscopic images, and 34 processed products. No byte duplicates,
 raw archive-identity conflicts, unreadable files or reported metadata issues
 were found. This does not establish complete validity of all headers/pixels.

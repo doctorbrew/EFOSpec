@@ -48,7 +48,7 @@ python -m efospec download 2026-10-29 --programme 117.29T8.002 --with-calibratio
 ```sh
 conda activate efospec
 PYTHONPATH=src MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
-  python -m efospec reduce-rapid ../2024-11-14 --output runs/my-night
+  python -m efospec reduce-rapid ../pessto/2024-11-14 --output runs/my-night
 ```
 
 - Use a **fresh output directory**; existing runs are refused.
@@ -58,6 +58,8 @@ PYTHONPATH=src MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
 - Repeated targets receive separate entries.
 - Failures and skipped exposures remain recorded.
 - Share/move the entire run directory; HTML links are relative and work offline.
+- Plot regeneration reads products and native spectra from the selected run, including after a move.
+- Historical manifest paths remain unchanged; raw inputs and external comparison spectra must still be available.
 - Keep one reduction writer per run; raw inputs remain unchanged.
 
 ## Environment and report options
@@ -111,7 +113,7 @@ python scripts/preview_spectrum_style.py --run runs/my-night --target SN2023xxj
 - The older `qa` command remains a demonstration-specific comparison report.
 
 ```sh
-PYTHONPATH=src python -m efospec qa runs/my-night --legacy ../2024-11-14
+PYTHONPATH=src python -m efospec qa runs/my-night --legacy ../pessto/2024-11-14
 ```
 
 - Standard checks: reduce separately with `--include-standards --target Feige110 --target L745a`.
@@ -128,10 +130,10 @@ PYTHONPATH=src MPLBACKEND=Agg python -m efospec.sky_regions runs/my-night
 ## Inspect without reducing
 
 ```sh
-PYTHONPATH=src python -m efospec inventory ../2024-11-14
-PYTHONPATH=src python -m efospec native-readiness ../2024-11-14
-PYTHONPATH=src python -m efospec plan ../2024-11-14
-PYTHONPATH=src python -m efospec inspect-pypeit ../2024-11-14
+PYTHONPATH=src python -m efospec inventory ../pessto/2024-11-14
+PYTHONPATH=src python -m efospec native-readiness ../pessto/2024-11-14
+PYTHONPATH=src python -m efospec plan ../pessto/2024-11-14
+PYTHONPATH=src python -m efospec inspect-pypeit ../pessto/2024-11-14
 PYTHONPATH=src python -m unittest discover -s tests -v
 ```
 

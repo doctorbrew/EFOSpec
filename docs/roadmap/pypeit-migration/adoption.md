@@ -95,5 +95,11 @@ efospec --help
 - Prefer `EFOSPEC_PLOT_PYTHON`; the old `EPESSTO_PLOT_PYTHON` variable remains a fallback.
 - Selection order: `--plot-python`, new variable, old variable, current interpreter.
 - Product names, calibration paths, and the saved `PYP_SPEC` identifier remain stable.
-- Local checkout: `EFOSpec/`; the old `epessto+` path is a symlink for saved local run references.
+- Local checkouts are siblings: `/Users/avinash/Work/Reduction/EFOSpec` and `/Users/avinash/Work/Reduction/pessto`.
+- The former nested checkout and `epessto+` symlink have been removed.
+- Existing raw data stay in `../pessto/2024-11-14`; new downloads use EFOSpec's `data/` folder.
+- Moved runs resolve their own product/native files; missing local files are reported instead of using another copy.
 - Historical manifests and source snapshots retain their original names and hashes.
+- After moving a checkout, reinstall with the pinned editable-install command above; recreate development virtual environments.
+- Relocation verified: **100 tests passed**, SN2023xxj plots regenerated, and hashes unchanged for 258 saved run files and 15 raw inputs.
+- Local relocation evidence: `runs/relocation-verification.json`.

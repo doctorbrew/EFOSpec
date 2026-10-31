@@ -35,6 +35,14 @@ conda activate efospec
 - **Existing scripts:** old commands and imports remain compatibility aliases; see the migration guide.
 - **CI:** Python 3.11 build, tests, and plot rendering; [details](docs/ci.md).
 
+Keep the two checkouts beside each other:
+
+```text
+Reduction/
+├── pessto/   # original pipeline and existing raw data
+└── EFOSpec/  # independent repository, downloads, and new reductions
+```
+
 ## Download a night
 
 ```sh
@@ -57,7 +65,7 @@ python -m efospec download 2026-10-29
 
 ```sh
 MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
-  python -m efospec reduce-rapid ../2024-11-14 --output runs/my-night
+  python -m efospec reduce-rapid ../pessto/2024-11-14 --output runs/my-night
 ```
 
 - **One source:** add `--target SN2023xxj`.
@@ -79,7 +87,7 @@ python -m efospec report runs/my-night
 Check raw inputs for the future native path:
 
 ```sh
-python -m efospec native-readiness ../2024-11-14 /path/to/raw-calibrations
+python -m efospec native-readiness ../pessto/2024-11-14 /path/to/raw-calibrations
 ```
 
 - Missing/incompatible calibrations return a nonzero status; no archive fallback.
