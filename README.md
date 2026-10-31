@@ -1,5 +1,7 @@
 # EFOSpec — EFOSC2 spectroscopy with PypeIt
 
+<img src="docs/brand/efospec-logo.png" alt="EFOSpec: slit and spectral-wave emblem" width="580">
+
 [![python](https://img.shields.io/badge/python-%3E%3D3.9-blue)](pyproject.toml)
 [![build](https://github.com/sPaMFouR/EFOSpec/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/sPaMFouR/EFOSpec/actions/workflows/build.yml)
 [![tests](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FsPaMFouR%2FEFOSpec%2Fbadges%2Ftests.json)](https://github.com/sPaMFouR/EFOSpec/actions/workflows/build.yml)
@@ -101,13 +103,15 @@ python -m efospec native-readiness ../pessto/2024-11-14 /path/to/raw-calibration
 ```
 
 - Missing/incompatible calibrations return a nonzero status; no archive fallback.
-- Current night: raw standards present; raw arcs/biases/flats absent.
+- Original 2024-11-14 directory: raw standards present; raw arcs/biases/flats absent.
 - Gr13 raw calibration candidates have now been retrieved separately; [locations and checks](docs/native-calibration.md#raw-gr13-inputs-now-retrieved).
+- October 2026 nights: raw candidates available; [download and reduction checks](docs/validation-2026-10.md).
 - This checks inputs; it does not execute native reduction.
 
 ## Current limits
 
-- Tested night: **13 science exposures**, Gr11/Gr13, Free filter, 2×2 binning.
+- Initial demonstration: **13 science exposures**, Gr11/Gr13, Free filter, 2×2 binning.
+- Recent nights: partial reductions; weak sky lines, unsupported setups, and source selection still stop exposures.
 - Calibration: archived IRAF arc IDs and sensitivity; no fresh masters.
 - Not applied: bias, flat, dark, overscan, or telluric corrections.
 - Target identity: nominal-position choices remain flagged until verified.
