@@ -94,7 +94,7 @@ def test_cli_starts_in_fresh_process_before_http_threads_import_pypeit(saved_exp
     from urllib.parse import urlsplit
     run,reference,_=saved_exposure
     with (tmp_path/'gui.log').open('w') as log:
-        process=subprocess.Popen([sys.executable,'-m','efospec','gui',str(run),
+        process=subprocess.Popen([sys.executable,'-m','efospec','browser-prototype',str(run),
             '--reference-root',str(reference),'--no-browser'],stdout=subprocess.PIPE,
             stderr=log,text=True)
         try:

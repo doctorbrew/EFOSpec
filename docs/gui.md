@@ -3,13 +3,13 @@
 - **This is the existing experimental browser editor, not the requested desktop GUI.**
 - Desktop application requirements and tasks: [roadmap](roadmap/pypeit-migration/gui.md).
 - The separate Fieldnotes webpage remains a read-only log of each reduced night.
-- The prototype is retained for backend testing and recipe experiments; desktop implementation is pending.
+- The prototype is retained for backend testing and recipe experiments; the [Qt desktop app](desktop.md) is the user-facing extraction interface.
 
 ## Run the prototype
 
 ```sh
 conda activate efospec
-efospec gui runs/2024-11-14
+efospec browser-prototype runs/2024-11-14
 ```
 
 - Opens a local browser tab; no uploads or additional runtime environment.

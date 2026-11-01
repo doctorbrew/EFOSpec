@@ -3,10 +3,10 @@
 - **Install:** [compact README](README.md).
 - **Science:** [engine boundaries](docs/pipeline-stages.md).
 - **Design:** [migration plan](docs/roadmap/pypeit-migration/README.md).
-- **Desktop GUI:** [planned application and tasks](docs/roadmap/pypeit-migration/gui.md).
+- **Desktop GUI:** [PySide6 controls and usage](docs/desktop.md).
 - **Browser editor:** [experimental prototype and recipe replay](docs/gui.md); not the desktop app.
 - **Webpage:** read-only nightly log, separate from extraction controls.
-- **Scope:** experimental EFOSC2 rapid reduction; PypeIt 1.14.0.
+- **Scope:** experimental EFOSC2 archive/raw-only reduction; PypeIt 1.14.0.
 - **Native calibration:** [raw inputs and remaining work](docs/native-calibration.md).
 
 ## Download raw data

@@ -3,11 +3,11 @@
 ## Interfaces
 
 - **Extraction GUI means a desktop application.** It must provide desktop controls for trace selection, apertures, background regions, and extraction jobs.
-- Evaluate Swift/SwiftUI for macOS or a suitable desktop toolkit for macOS/Linux. The toolkit and supported-platform commitment remain open.
+- Use PySide6/Qt for macOS and Linux, as selected by the user. Verify platform claims with native Qt interactions.
 - Do not substitute a browser editor, localhost service, or WebView wrapper for the requested desktop application.
 - **The Fieldnotes webpage is the read-only nightly reduction log.** Keep the opening table, per-source spectrum/trace/spatial-profile plots, status, and downloads.
 - Do not put extraction controls or job execution into the nightly report. Omit the previously rejected source-selection table column.
-- `efospec gui` currently launches a **browser prototype**. Document that limitation; it does not fulfil the desktop GUI requirement.
+- `efospec gui` launches the native Qt app. `efospec browser-prototype` retains the earlier browser editor.
 - Preserve useful prototype code/tests while reusing its Python backend for desktop development. Do not claim the desktop app is delivered until its acceptance gates pass.
 - Canonical GUI requirements and tasks: [desktop roadmap](docs/roadmap/pypeit-migration/gui.md).
 
@@ -16,7 +16,7 @@
 - Keep reduction, calibration, units, masks, and export in the shared Python/PypeIt engine. The desktop frontend edits validated recipes and manages workers.
 - Preserve legacy primary filenames, calibration associations, wavelength conventions, and source identifiers.
 - Save manual changes in new revisions; never overwrite raw data or accepted products.
-- Keep GUI work separate from native calibration completion. The existing archive bridge is not an IRAF-independent calibration solution.
+- Keep GUI work separate from native calibration validation. Only the experimental raw-only path may claim independence from archived IRAF calibrations.
 - Separated two-source extraction does not establish overlapping SN/host deblending or extended-galaxy optimal-extraction accuracy.
 - Treat `trunk/` as the preserved legacy baseline; keep the original `../pessto/` checkout and scientific environments separate.
 

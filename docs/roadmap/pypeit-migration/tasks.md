@@ -7,8 +7,8 @@ been published. Status describes actual work, not promised scientific support.
 
 - First priority: [native calibration without IRAF-derived inputs](../../native-calibration.md).
 - [D1–D5: desktop extraction app, worker integration, and nightly log](gui.md).
-- Shared extraction/recipe backend and browser prototype exist; desktop delivery remains pending.
-- Desktop tasks remain planned; CLI reduction and the read-only nightly report are available.
+- Qt desktop and shared extraction/recipe workers are implemented; see the desktop validation record.
+- Desktop platform validation and extended-source accuracy remain explicit acceptance gates.
 
 ## Completed rapid demonstration (2024-11-14 data)
 
@@ -47,7 +47,7 @@ Status: Gr13/slit1.0 raw candidates retrieved; scientific baseline validation pe
 - [Retrieved inputs and hashes](../../native-calibration.md#raw-gr13-inputs-now-retrieved): one arc, seven flats, ten biases.
 - Candidate checks pass for SN2023xxj and existing Gr13/slit1.0 standards.
 - ESO marks the association uncertified; biases are from 7 November.
-- Native wavelength/sensitivity execution and other configurations remain pending.
+- Native wavelength/sensitivity execution is demonstrated separately on one Gr13/Free pair; full baseline and other configurations remain unvalidated.
 
 Outcome: one reproducible, complete Gr13/Free/slit1.0 night with both input
 calibrations and legacy reference products.
@@ -98,8 +98,9 @@ serialized plan is stable under input-path ordering and reruns. No reduction.
 
 ## T3 — EFOSC2 driver and Gr13 wavelength experiment
 
-Status: metadata/raw-reader integration implemented; wavelength/reduction work
-blocked on T1 and validated T2 associations. Depends on: T1, T2.
+Status: experimental raw processing, physical arc fitting and one Gr13/Free pair
+demonstrated. Broader scientific acceptance still depends on T1/T2.
+See [native evidence](../../native-desktop-validation.md).
 
 Outcome: native PypeIt spec1d/spec2d from one validated Gr13 configuration.
 
@@ -120,16 +121,17 @@ Outcome: native PypeIt spec1d/spec2d from one validated Gr13 configuration.
 - [ ] Record failure modes and do not claim broader EFOSC2 support.
 
 Verification: retain configuration, intermediate calibrations, line-identification
-QA, extracted products, software lock and measured residuals. No delivery export
-or production CLI switch yet.
+QA, extracted products, software lock and measured residuals. The experimental
+`reduce-native` pair command exports products; the default nightly path remains unchanged.
 
 ## T4 — Flux, second order, telluric and errors
 
-Status: blocked on T3. Depends on: T1, T3.
+Status: observed-standard response and uncertainty propagation implemented;
+absolute-flux, telluric and second-order validation remain open. Depends on T1/T3.
 
 Outcome: calibrated spectra with traceable reference standards and uncertainty.
 
-- [ ] Match standards to independently sourced physical flux references and
+- [x] Match standards to independently sourced physical flux references and
   extinction curves; derive native sensitivity without IRAF response arrays.
   Compare reference conventions with legacy after independent processing.
 - [ ] Verify standard/science airmass correction, response coverage, slit-loss

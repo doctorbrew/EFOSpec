@@ -8,7 +8,7 @@
 - Graphics: real LaTeX rendering; no font/backend substitutions.
 - Checks: package build, dependency consistency, tests, and an **85% package line-coverage floor**.
 - Fixtures: synthetic FITS; small legacy references remain comparison-test inputs.
-- Native end-to-end calibration is **not** covered yet: [missing inputs and work](native-calibration.md).
+- Synthetic raw photons exercise actual PypeIt masters, response fitting, native export and replay without legacy-file access.
 
 ## Run locally
 
@@ -17,11 +17,11 @@
 conda activate efospec
 python -m venv --system-site-packages outputs/efospec-tests
 source outputs/efospec-tests/bin/activate
-python -m pip install -c constraints-ci.txt -e '.[rapid,plots,test]'
+python -m pip install -c constraints-ci.txt -e '.[rapid,plots,test,desktop,desktop-test]'
 python -m pip check
 python -m playwright install chromium
 python -m build --wheel --no-isolation
-MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+QT_API=pyside6 QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
   python -m pytest -v --cov=efospec --cov-report=term-missing
 ```
 
@@ -33,7 +33,7 @@ MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
 - Real Chromium tests separately exercise browser-prototype clicks, sky drags, recipe reload, two-source extraction, downloads, and replay.
 - CI installs Chromium; local existing Chrome: set `EFOSPEC_TEST_CHROME` to its executable.
 - Browser testing belongs to the `test` extra; observer environments need no Playwright.
-- These tests do not validate a desktop app; platform-specific UI tests are required before desktop delivery.
+- Separate pytest-qt tests exercise the desktop controls and real subprocess lifecycle. Linux CI uses Qt/XCB under Xvfb; macOS Cocoa is checked locally.
 - Injected-source tests run actual PypeIt, with three noise/brightness cases and a 2% median-flux target.
 - Both archived grism fits, whole-line holdouts, full-run sky shifts, sky-mask replay, and reference-flux checks are tested.
 - Passing tests establish software contracts, not scientific calibration accuracy.

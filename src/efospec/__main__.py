@@ -8,11 +8,23 @@ from .inventory import inventory
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="efospec", description="EFOSpec: EFOSC2 spectroscopy with PypeIt")
     commands = parser.add_subparsers(dest="command", required=True)
-    gui = commands.add_parser('gui', help='Open the local trace/background extraction workbench')
-    gui.add_argument('path', help='Completed rapid run directory')
+    gui = commands.add_parser('gui', help='Open the PySide6 desktop extraction application')
+    gui.add_argument('path', nargs='?', help='Completed run directory; omitted opens a file picker')
     gui.add_argument('--reference-root')
-    gui.add_argument('--port', type=int, default=0)
-    gui.add_argument('--no-browser', action='store_true')
+    browser = commands.add_parser('browser-prototype', help='Legacy local browser extraction prototype')
+    browser.add_argument('path')
+    browser.add_argument('--reference-root')
+    browser.add_argument('--port',type=int,default=0)
+    browser.add_argument('--no-browser',action='store_true')
+    raw = commands.add_parser('reduce-native', help='Experimental raw-only science/standard pair')
+    raw.add_argument('path',help='Night directory with raw calibrations')
+    raw.add_argument('--science',required=True)
+    raw.add_argument('--standard',required=True)
+    raw.add_argument('--science-position',type=float,default=548.)
+    raw.add_argument('--standard-position',type=float,default=548.)
+    raw.add_argument('--output',required=True)
+    raw.add_argument('--skip-report',action='store_true')
+    raw.add_argument('--reuse-calibrations',help='Previous raw-only attempt; hashes and associations must match')
     revision = commands.add_parser('reextract', help='Replay a saved manual or automatic recipe')
     revision.add_argument('path')
     revision.add_argument('--product', required=True, help='Original product filename')
@@ -60,12 +72,26 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         if args.command == 'gui':
+            from .desktop import launch
+            return launch(args.path,args.reference_root)
+        if args.command == 'reduce-native':
+            from .native_reduction import reduce_pair
+            result=reduce_pair(args.path,args.science,args.standard,args.output,
+                science_position=args.science_position,standard_position=args.standard_position,
+                render_report=not args.skip_report,reuse_calibrations=args.reuse_calibrations)
+            print(json.dumps({'output_dir':result['output_dir'],'reduced':len(result['results']),
+                              'report':result.get('report')}))
+            return int(result.get('report',{}).get('status')=='incomplete')
+        if args.command == 'browser-prototype':
             from .workbench import serve
             return serve(args.path,args.reference_root,args.port,not args.no_browser)
         if args.command == 'reextract':
             from pathlib import Path
             from .revisions import reextract
-            result = reextract(args.path,args.product,json.loads(Path(args.recipe).read_text()),
+            recipe=json.loads(Path(args.recipe).read_text())
+            if recipe.get('schema_version')==2:
+                from .joint_revisions import reextract_joint as reextract
+            result = reextract(args.path,args.product,recipe,
                                args.output,args.reference_root,render_report=not args.skip_report)
             print(json.dumps({'output_dir':result['output_dir'], 'reduced':len(result['results']),
                               'report':result.get('report')},indent=2))
