@@ -144,6 +144,9 @@ def write_report(run_directory, *, generation_error=None):
         association = result.get('target', {}).get('association')
         notice = ('<p class="note">Target identity is unverified: extraction used the nominal acquisition position.</p>'
                   if association not in {'historical_aperture', 'operator_selected'} else '')
+        if result.get('valid_flux_fraction',1.) < .8:
+            notice += (f'<p class="note">Flux calibration covers only {100*result["valid_flux_fraction"]:.0f}% '
+                       'of the output bins. Unsupported bins remain masked; inspect the recorded response coverage.</p>')
         sections.append(f'<section class="target" id="{anchor}"><div class="target-head"><div>'
                         f'<span class="eyebrow">EFOSC2 / {grism}</span><h2>{target}</h2>'
                         f'<p class="caption">{escape(result["date_obs"])} UTC · {exposure:.0f} s · '

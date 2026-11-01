@@ -167,4 +167,3 @@ class Workbench:
                         {'.html','.json','.jpg','.pdf','.fits','.asci'} and path.resolve().is_relative_to(root.resolve())):
                     archive.write(path,path.relative_to(root))
         return result.getvalue()
-

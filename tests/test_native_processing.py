@@ -83,6 +83,21 @@ def test_native_response_cgs_air_units_and_no_extrapolation(tmp_path):
     np.testing.assert_allclose(f[good],2e-17*corr[good]/100/5,rtol=1e-10)
     f,m=response_factor(np.arange(3500.,8501.,5.),response,100.,1.)
     assert not m[0] and not m[-1] and np.isnan(f[0])
+    with fits.open(response,mode='update') as h:h['RESPONSE'].data['VALID'][300:320]=False
+    f,m=response_factor(air,response,100.,1.)
+    assert not m[300:320].any() and np.isnan(f[300:320]).all()
+    assert m[250] and m[350]
+
+
+def test_standard_reference_may_not_be_extrapolated(tmp_path):
+    from types import SimpleNamespace
+    from efospec.native_flux import build_response
+    wave=np.linspace(4000.,8000.,400)
+    spectrum=SimpleNamespace(OPT_WAVE=wave,OPT_COUNTS=np.ones(400),
+                             OPT_COUNTS_IVAR=np.ones(400),OPT_MASK=np.ones(400,bool))
+    reference={'wave':np.array([4500.,7500.])*u.AA}
+    with pytest.raises(ValueError,match='does not cover'):
+        build_response({'metadata':{}},spectrum,tmp_path/'response.fits',reference)
 
 
 def test_unverified_standard_is_not_replaced_by_nearest_star(raw_group,tmp_path,monkeypatch):

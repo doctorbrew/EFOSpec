@@ -19,6 +19,10 @@ def build_response(frame, spectrum, output, standard=None):
     good=spectrum.OPT_MASK & (spectrum.OPT_COUNTS_IVAR>0) & (spectrum.OPT_COUNTS>0)
     if good.sum()<100:
         raise ValueError('too few valid standard pixels for a response')
+    reference_wave=np.asarray(standard['wave'],dtype=float)
+    if (np.min(spectrum.OPT_WAVE[good])<np.min(reference_wave)
+            or np.max(spectrum.OPT_WAVE[good])>np.max(reference_wave)):
+        raise ValueError('physical flux reference does not cover the extracted standard wavelengths')
     # NTT coordinates and PypeIt-bundled La Silla extinction, recorded explicitly.
     longitude,latitude=-70.7336,-29.2584
     extinct='lasillaextinct.dat'
@@ -43,6 +47,10 @@ def build_response(frame, spectrum, output, standard=None):
         'standard_raw':frame['path'],'standard_sha256':frame['sha256'],
         'standard_name':standard['name'],'reference_file':str(standard['cal_file']),
         'reference_library':standard['std_source'],
+        'fit_parameters':{'resolution':400.,'nresln':20.,'hydrogen_mask_wid_angstrom':40.,
+                          'mask_helium_lines':True},
+        'valid_fraction':float(valid.mean()),
+        'valid_vacuum_wavelength_bounds_angstrom':[float(wave[valid].min()),float(wave[valid].max())],
         'reference_details':{k:standard[k] for k in ('reference_url','reference_sha256','wavelength_interpretation','coordinate_separation_arcsec') if k in standard},
         'extinction':{'path':str(extinction),'sha256':sha256(extinction)},
         'limitations':['Narrow-slit throughput and time-variable transparency remain uncorrected.',
@@ -65,6 +73,9 @@ def response_factor(waveair, path, exposure, airmass):
         valid_ref=table['VALID'] & np.isfinite(table['ZEROPOINT'])
         lo,hi=table['WAVE'][valid_ref].min(),table['WAVE'][valid_ref].max()
         valid=(wavevac>=lo)&(wavevac<=hi)&np.isfinite(wavevac)
+        # A fit may have unsupported internal intervals as well as bad edges.
+        # Both interpolation endpoints must be supported; never bridge such gaps.
+        valid &= np.interp(wavevac,table['WAVE'],valid_ref.astype(float),left=0.,right=0.)>=1.-1e-9
         factor=np.full(wavevac.shape,np.nan)
         if valid.sum()<2:return factor,np.zeros_like(valid)
         zp=np.interp(wavevac[valid],table['WAVE'],table['ZEROPOINT'])

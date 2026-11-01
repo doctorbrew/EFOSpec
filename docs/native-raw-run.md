@@ -2,6 +2,7 @@
 
 - Gr11/Gr13, Free/GG495, 2×2; centered slit1.0/slit1.5.
 - Real end-to-end demonstration: one Gr13/Free exposure; broader setup validation remains pending.
+- That example has flux support only around **5655–6958 Å** (≈25% of output bins); full-range response validation is unfinished.
 - Requires raw science, ≥3 biases, ≥3 flats, an arc, and a compatible raw standard.
 - Uses existing association/naming policies; no IRAF/PyRAF execution or archived calibration fallback.
 

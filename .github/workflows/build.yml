@@ -51,6 +51,11 @@ jobs:
       - name: Record scientific versions
         run: |
           python -c "from importlib.metadata import version; print({p: version(p) for p in ['numpy', 'scipy', 'astropy', 'pypeit', 'matplotlib']})"
+      - name: Verify the Linux Qt display runtime
+        run: |
+          efospec_qt_plugin=$(python -c "from PySide6.QtCore import QLibraryInfo; print(QLibraryInfo.path(QLibraryInfo.LibraryPath.PluginsPath) + '/platforms/libqxcb.so')")
+          ldd "$efospec_qt_plugin"
+          QT_DEBUG_PLUGINS=1 xvfb-run -a python -c "from PySide6.QtWidgets import QApplication; app=QApplication([]); print('Qt platform:', app.platformName()); app.processEvents()"
       - name: Build package
         run: python -m build --wheel --no-isolation
       - name: Run all tests with coverage

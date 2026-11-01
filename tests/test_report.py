@@ -118,6 +118,7 @@ class ReportTests(unittest.TestCase):
 
     def test_methods_follow_native_and_joint_engines(self):
         self.manifest['results'][0]['calibration'] = {'mode': 'native_raw_only'}
+        self.manifest['results'][0]['valid_flux_fraction'] = .25
         for method, joint in [('native_raw_calibration_with_PypeIt_extraction', False),
                               ('fixed_profile_joint_extraction', True)]:
             self.manifest['method'] = method
@@ -125,6 +126,7 @@ class ReportTests(unittest.TestCase):
             write_report(self.run)
             html = (self.run/'index.html').read_text()
             self.assertIn('Build raw bias and flat masters', html)
+            self.assertIn('Flux calibration covers only 25%', html)
             self.assertIn('observed spectrophotometric standard', html)
             self.assertNotIn('Fit a 2D polynomial to archived IRAF arc IDs', html)
             self.assertNotIn('No new PypeIt sensitivity fit', html)
