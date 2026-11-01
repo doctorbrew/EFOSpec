@@ -80,7 +80,7 @@ class ExtractionWindow(Q.QMainWindow):
         self.engine=Q.QComboBox();self.engine.addItems(['PypeIt · optimal + boxcar','Joint profiles · experimental']);engine_layout.addWidget(self.engine)
         self.manual=Q.QCheckBox('Use selected source anchors');self.manual.setChecked(True);engine_layout.addWidget(self.manual)
         self.degree=Q.QComboBox();self.degree.addItems(['Select from held-out sky','Constant','Linear','Quadratic']);engine_layout.addWidget(self.degree);self.degree.setVisible(False)
-        self.manual.toggled.connect(self.edited);self.engine.currentIndexChanged.connect(self.engine_changed);self.degree.currentIndexChanged.connect(self.edited)
+        self.manual.toggled.connect(self.source_mode_changed);self.engine.currentIndexChanged.connect(self.engine_changed);self.degree.currentIndexChanged.connect(self.edited)
         recipebar=Q.QHBoxLayout();self.save=Q.QPushButton('Save recipe');self.load=Q.QPushButton('Load recipe')
         recipebar.addWidget(self.save);recipebar.addWidget(self.load);form.addLayout(recipebar);form.addStretch()
         self.save.clicked.connect(self.save_recipe_dialog);self.load.clicked.connect(self.load_recipe_dialog)
@@ -196,7 +196,13 @@ class ExtractionWindow(Q.QMainWindow):
 
     def set_sources(self,objects):
         self.sources.set_objects(objects)
-        self.remove.setEnabled(len(objects)>1);self.add.setEnabled(len(objects)<2)
+        self.remove.setEnabled(self.manual.isChecked() and len(objects)>1);self.add.setEnabled(self.manual.isChecked() and len(objects)<2)
+
+    def source_mode_changed(self,*_):
+        manual=self.manual.isChecked();self.sources.setEnabled(manual)
+        self.add.setEnabled(manual and len(self.source_values())<2)
+        self.remove.setEnabled(manual and len(self.source_values())>1)
+        self.edited()
 
     def source_values(self):
         return self.sources.objects()

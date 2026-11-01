@@ -96,6 +96,11 @@ def test_loaded_fields_and_saved_background_are_readable_without_changing_automa
     for key,field in w.sources.fields.items():
         assert field.value()==pytest.approx(w.exposure.primary_object()[key],abs=1e-6)
         assert field.lineEdit().width()>60 and field.lineEdit().height()>10
+    w.manual.setChecked(False)
+    assert not w.sources.isEnabled() and not w.add.isEnabled()
+    assert w.recipe()['objects']==[]
+    w.manual.setChecked(True)
+    assert w.sources.isEnabled() and w.add.isEnabled()
     assert w.include.isReadOnly() and w.include.text()
     assert w.recipe()['sky']=={'mode':'automatic','include':[],'exclude':[]}
     w.sky_auto.setChecked(False)
