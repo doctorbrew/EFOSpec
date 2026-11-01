@@ -116,6 +116,31 @@ class ReportTests(unittest.TestCase):
             self.assertEqual(build_report(self.run, render_plots=False)['status'], 'complete')
             process.assert_not_called()
 
+    def test_methods_follow_native_and_joint_engines(self):
+        self.manifest['results'][0]['calibration'] = {'mode': 'native_raw_only'}
+        for method, joint in [('native_raw_calibration_with_PypeIt_extraction', False),
+                              ('fixed_profile_joint_extraction', True)]:
+            self.manifest['method'] = method
+            (self.run/'run.json').write_text(json.dumps(self.manifest))
+            write_report(self.run)
+            html = (self.run/'index.html').read_text()
+            self.assertIn('Build raw bias and flat masters', html)
+            self.assertIn('observed spectrophotometric standard', html)
+            self.assertNotIn('Fit a 2D polynomial to archived IRAF arc IDs', html)
+            self.assertNotIn('No new PypeIt sensitivity fit', html)
+            self.assertEqual('conditional on the selected profiles' in html, joint)
+            self.assertEqual('PypeIt handles tracing, sky modelling and extraction' in html, not joint)
+
+    def test_mixed_methods_do_not_hide_archive_dependency(self):
+        self.add_exposure('b', 'other')
+        self.manifest['results'][0]['calibration'] = {'mode': 'native_raw_only'}
+        (self.run/'run.json').write_text(json.dumps(self.manifest))
+        write_report(self.run)
+        html = (self.run/'index.html').read_text()
+        self.assertIn('both raw-only and archive-bridge calibrations', html)
+        self.assertIn('Archive bridge: Wavelength calibration', html)
+        self.assertIn('Raw-only: Wavelength calibration', html)
+
     def test_plotting_python_respects_new_and_legacy_override_precedence(self):
         cases = [
             ({}, None, sys.executable),

@@ -18,7 +18,16 @@ def read_flux(path):
 
 
 def compare_legacy(result, legacy_root):
-    matches=list(Path(legacy_root).rglob(Path(result['product']).name))
+    # Revision directories can share the raw-data parent. They are not IRAF
+    # references, even when the compatibility filename is identical.
+    product=Path(result['product']).resolve()
+    matches=[]
+    for path in Path(legacy_root).rglob(product.name):
+        if path.resolve()==product:
+            continue
+        header=fits.getheader(path)
+        if 'PYPEITV' not in header and 'PYP_SPEC' not in header:
+            matches.append(path)
     if not matches:
         return None
     unique={sha256(p):p for p in matches}
