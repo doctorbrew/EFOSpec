@@ -20,17 +20,21 @@ sudo apt-get install libegl1 libopengl0 libxcb-cursor0 libxkbcommon-x11-0 \
   libxcb-icccm4 libxcb-keysyms1 libxcb-shape0
 ```
 
-1. **Open night:** select a directory containing `run.json`.
+1. **Open night:** select a directory containing `run.json`; later launches reopen the last valid night.
 2. Select an exposure; inspect the spectrum, detector image and spatial profiles.
-3. Click the 2D image to place the selected source; edit FWHM and aperture radius.
+3. Use the source selector and labelled centre/FWHM/radius fields; click the 2D image to move an anchor.
 4. Drag across the spatial profile to add background bands; edit exclusions if needed.
 5. Save the recipe, then **Extract new revision**.
-6. Open the completed revision and inspect its trace, residuals and spectrum.
+6. Expand **Revisions & activity**, open the completed revision, and inspect its diagnostics.
 
 - Positions: zero-based raw detector pixels after binning.
 - FWHM: spatial profile width; radius: boxcar half-width.
 - Include/exclude bands: `lower:upper, lower:upper`.
-- Automatic sky must have empty edited bands; invalid controls disable extraction.
+- Source fields load measured values from the selected exposure.
+- Automatic sky shows common bands from the saved mask in read-only boxes; its recipe still delegates the full mask to PypeIt.
+- Turn automatic selection off to edit those bands; dragging a first band starts a fresh manual selection.
+- Invalid controls disable extraction; **Inspect / Pan / Zoom** separate editing from navigation.
+- Night preferences stay in local Qt settings; no user paths or observing data are shipped.
 - Original raw files and accepted products remain unchanged.
 - Cancellation stops the worker process group; partial revisions remain for diagnosis.
 - Recipes bind to input hashes; CLI replay uses the same worker.

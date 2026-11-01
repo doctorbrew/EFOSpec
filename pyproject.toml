@@ -36,4 +36,4 @@ show_missing = true
 fail_under = 85
 
 [tool.setuptools.package-data]
-efospec = ["web/*.html", "web/*.css", "web/*.js"]
+efospec = ["web/*.html", "web/*.css", "web/*.js", "assets/*.svg"]
