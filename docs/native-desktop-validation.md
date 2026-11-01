@@ -13,7 +13,11 @@
 | Injections into observed background | Six trials; median flux errors <0.5% for both sources | Same background realization; no real host truth |
 | SN2023xxj trial | Two candidate components exported; constant/linear backgrounds admissible | No trusted host reference; no host-subtracted science claim |
 | Background sensitivity | SN median 1626.8 vs 1629.5 electrons/bin: ≈0.2% | Tests only the selected profile geometry |
-| Qt desktop | File picker, source edits, sky bands, recipe reload, worker, cancel/restart, revision open | Cocoa smoke check and local interaction tests; Linux CI pending |
+| Qt desktop | File picker, source edits, sky bands, recipe reload, worker, cancel/restart, revision open | macOS Cocoa locally; Linux XCB/Xvfb in CI |
+| Linux build/tests | 170 passed; 91.7% package coverage; wheel and dependency check passed | Tested source `bbd82c0`; no proprietary fixtures |
+
+- Verified [CI step logs and metric artifacts](https://github.com/sPaMFouR/EFOSpec/actions/runs/41262157980).
+- Feature-branch metrics do not overwrite the README's `master` badges.
 
 ## Critical findings
 

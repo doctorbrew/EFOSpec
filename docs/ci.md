@@ -55,3 +55,12 @@ QT_API=pyside6 QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBL
 - Step logs: package build passed; **74 tests passed**; **58.6%** package line coverage.
 - Metrics were published successfully; JSON and all four rendered SVG badges were checked.
 - README metrics update automatically; this dated record describes setup verification only.
+
+## Native/desktop verification — 1 November 2026
+
+- [Verified Linux run](https://github.com/sPaMFouR/EFOSpec/actions/runs/41262157980), tested source `bbd82c0`.
+- **170 passed; 91.7% coverage**; wheel build and `pip check` passed.
+- Real Qt/XCB startup, source/sky edits, workers, cancellation and replay passed under Xvfb.
+- Synthetic raw-photon reduction passed without legacy calibration access.
+- Initial Qt startup failure traced to three missing XCB libraries; runtime dependencies corrected.
+- This branch generates metric artifacts; default-branch badges remain unchanged until integration.

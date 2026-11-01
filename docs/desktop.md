@@ -3,7 +3,7 @@
 - **Toolkit:** PySide6/Qt; real desktop windows, no web server.
 - **Engine:** the active Python 3.11 / PypeIt 1.14 environment.
 - **Fieldnotes:** separate, read-only nightly report.
-- **Validation:** macOS Cocoa and automated Qt interactions tested locally; Linux CI verification pending.
+- **Validation:** macOS Cocoa interactions tested locally; Linux XCB/Xvfb interactions pass [CI](https://github.com/sPaMFouR/EFOSpec/actions/runs/41262157980).
 
 ```sh
 conda activate efospec

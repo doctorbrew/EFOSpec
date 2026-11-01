@@ -3,7 +3,7 @@
 - **Selected:** PySide6/Qt for macOS and Linux.
 - **Implemented:** desktop viewer, source/background controls, recipes and subprocess workers.
 - **Verified locally:** macOS Cocoa window, Qt interaction tests, real worker/replay/cancellation.
-- **Linux:** XCB/Xvfb CI configured; remote result still to be verified.
+- **Linux:** XCB/Xvfb interactions, real workers and replay pass [CI](https://github.com/sPaMFouR/EFOSpec/actions/runs/41262157980).
 - [Usage](../../desktop.md) · [Evidence](../../native-desktop-validation.md) · [Rules](../../../AGENTS.md).
 
 | Interface | Responsibility |
@@ -23,7 +23,7 @@
 
 ## Remaining gates
 
-- Verify remote Linux desktop interactions and complete a user usability review.
+- Complete a user usability review on each desktop platform.
 - Package launchers/installers; add raw-night control only when calibration status is explicit.
 - Add crop widening and arbitrary trace-curve editing with coordinate/variance tests.
 - Validate extended profiles against trusted SN/galaxy reference extractions.

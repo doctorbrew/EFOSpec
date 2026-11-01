@@ -47,3 +47,11 @@
 - Synthetic/raw-background injections and an SN2023xxj candidate pair are exercised.
 - [Measured results and limits](../../native-desktop-validation.md).
 - Keep this branch separate until reconciling the other thread's native-calibration implementation.
+
+## Merge coordination
+
+- Shared edits: `__main__.py`, `extraction.py`, `revisions.py`, `native_readiness.py`.
+- Other checkout: preserve its `archive_calibration.py`, `pypeit_adapter.py` and nightly-runner fixes.
+- Consolidate this branch's `native_calibrations.py` / `native_wave.py` with the other thread's `native_calibration.py` / `native_wavelength.py`; choose one production implementation.
+- Re-run both October nights, raw-photon tests, recipe replay and desktop interactions after integration.
+- Keep proprietary data and diagnostic products outside Git.
