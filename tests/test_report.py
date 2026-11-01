@@ -126,7 +126,7 @@ class ReportTests(unittest.TestCase):
             write_report(self.run)
             html = (self.run/'index.html').read_text()
             self.assertIn('Build raw bias and flat masters', html)
-            self.assertIn('Flux calibration covers only 25%', html)
+            self.assertIn('Only 25% of output flux bins are valid', html)
             self.assertIn('observed spectrophotometric standard', html)
             self.assertNotIn('Fit a 2D polynomial to archived IRAF arc IDs', html)
             self.assertNotIn('No new PypeIt sensitivity fit', html)

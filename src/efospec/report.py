@@ -145,8 +145,8 @@ def write_report(run_directory, *, generation_error=None):
         notice = ('<p class="note">Target identity is unverified: extraction used the nominal acquisition position.</p>'
                   if association not in {'historical_aperture', 'operator_selected'} else '')
         if result.get('valid_flux_fraction',1.) < .8:
-            notice += (f'<p class="note">Flux calibration covers only {100*result["valid_flux_fraction"]:.0f}% '
-                       'of the output bins. Unsupported bins remain masked; inspect the recorded response coverage.</p>')
+            notice += (f'<p class="note">Only {100*result["valid_flux_fraction"]:.0f}% '
+                       'of output flux bins are valid. Unsupported bins remain masked; inspect extraction and response coverage.</p>')
         sections.append(f'<section class="target" id="{anchor}"><div class="target-head"><div>'
                         f'<span class="eyebrow">EFOSC2 / {grism}</span><h2>{target}</h2>'
                         f'<p class="caption">{escape(result["date_obs"])} UTC · {exposure:.0f} s · '
@@ -175,7 +175,7 @@ def write_report(run_directory, *, generation_error=None):
 <div class="masthead"><span class="brand">Fieldnotes<span aria-hidden="true">.</span> / EFOSpec</span>
 <span class="eyebrow">EFOSC2 · reduction notebook</span></div>
 <div class="intro"><div><span class="eyebrow">Observing night / {night}</span><h1>The night's spectra.</h1></div>
-<p><span class="badge">Experimental rapid reduction</span> &nbsp; {len(manifest['results'])} reduced · {len(errors)} failed · {len(skips)} skipped</p></div>
+<p><span class="badge">Experimental reduction</span> &nbsp; {len(manifest['results'])} reduced · {len(errors)} failed · {len(skips)} skipped</p></div>
 <div id="observations" class="table-wrap"><table><thead><tr><th>Target</th><th>Grism</th>
 <th class="num">Exposure (s)</th><th class="num">Median SNR</th><th>Figures</th><th>Products</th></tr></thead>
 <tbody>{''.join(rows) or '<tr><td colspan="6">No reduced exposures.</td></tr>'}</tbody></table></div>

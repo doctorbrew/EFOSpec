@@ -13,6 +13,13 @@ efospec gui
 efospec gui runs/2024-11-14
 ```
 
+- Ubuntu/Debian display libraries, when absent:
+
+```sh
+sudo apt-get install libegl1 libopengl0 libxcb-cursor0 libxkbcommon-x11-0 \
+  libxcb-icccm4 libxcb-keysyms1 libxcb-shape0
+```
+
 1. **Open night:** select a directory containing `run.json`.
 2. Select an exposure; inspect the spectrum, detector image and spatial profiles.
 3. Click the 2D image to place the selected source; edit FWHM and aperture radius.
