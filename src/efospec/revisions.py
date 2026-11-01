@@ -39,10 +39,19 @@ class Exposure:
         if self.frame['issues'] or self.frame['role'] not in ('science','standard_candidate'):
             raise ValueError('saved exposure requires valid raw EFOSC2 spectroscopy')
         root = Path(reference_root or reference_directory()).resolve()
+        calibration = self.result.get('calibration')
         sens_record = self.result['sensitivity']
-        # A relocated reference is acceptable only with the recorded content hash.
-        sens = root/'archive/efosc/sens'/self.result['grism']/self.frame['setup']['filter']/Path(sens_record['path']).name
-        extinction = root/'standard/extinction/extinction_lasilla.dat'
+        if calibration:
+            sens = Path(sens_record['path'])
+            extinction = Path(self.result['extinction']['path'])
+            for path, digest in calibration['raw_inputs'].items():
+                if sha256(Path(path)) != digest:
+                    raise ValueError('raw calibration input changed')
+            if sha256(self.images_path) != self.result['images_sha256']:
+                raise ValueError('native processed image changed')
+        else:
+            sens = root/'archive/efosc/sens'/self.result['grism']/self.frame['setup']['filter']/Path(sens_record['path']).name
+            extinction = root/'standard/extinction/extinction_lasilla.dat'
         for path, record in ((sens,sens_record), (extinction,self.result['extinction'])):
             if sha256(path) != record['sha256']:
                 raise ValueError(f'calibration input changed: {path.name}')
@@ -59,13 +68,14 @@ class Exposure:
         with fits.open(raw) as hdus:
             detector = EFOSpecEFOSC2Spectrograph().get_detector_par(1, hdus)
             expected = hdus[0].data[ymin:ymin+data.shape[0],99+xlo:99+xlo+data.shape[1]].astype(float)
-        if not np.array_equal(data, expected*self.frame['metadata']['ESO DET OUT1 GAIN'], equal_nan=True):
+        if not calibration and not np.array_equal(data, expected*self.frame['metadata']['ESO DET OUT1 GAIN'], equal_nan=True):
             raise ValueError('saved electrons do not match the recorded raw detector window')
         self.native = SpecObjs.from_fitsfile(self.result['native_spec1d'])[0]
         target = self.result['target']
         self.context = PreparedExposure(self.frame, root, detector, data, wave, xlo, ymin,
             target['hint_trimmed_pixel'], target, self.result['arc'], sens,
-            self.result['sky_flexure']['shift_angstrom'], self.result['sky_flexure'])
+            self.result['sky_flexure']['shift_angstrom'], self.result['sky_flexure'], calibration,
+            {k.removeprefix('processed_'):v for k,v in self.images.items() if k.startswith('processed_')} or None)
 
     def default_recipe(self):
         return dict(schema_version=1, engine_version='1.14.0',
@@ -105,6 +115,8 @@ def reextract(run, product, recipe, output, reference_root=None, *, render_repor
             'Manual anchors seed PypeIt tracing; the fitted trace/profile may move.',
             'Separated sources only; no host subtraction or validated extended-source optimal model.',
             'Shared sky fitting may correlate source errors.'], results=[], errors=[], skipped=[])
+    if exposure.context.calibration:
+        manifest['method'] = 'native_raw_calibration_with_PypeIt_extraction'
     try:
         context = exposure.context
         manual = None
@@ -115,7 +127,7 @@ def reextract(run, product, recipe, output, reference_root=None, *, render_repor
             exposure_time=context.frame['metadata']['EXPTIME'],
             read_noise=context.frame['metadata']['ESO DET OUT1 RON'], output=output,
             basename=exposure.basename, target_position=context.hint-context.spatial_origin,
-            manual=manual, sky_input_mask=sky_mask(recipe, exposure.window))
+            manual=manual, sky_input_mask=sky_mask(recipe, exposure.window), processed=context.processed)
         sources = recipe['objects'] if manual else [dict(id='primary',label=exposure.result['object'])]
         for obj in sources:
             identity = obj['id']

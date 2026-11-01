@@ -27,6 +27,8 @@ class PreparedExposure:
     sensitivity: Path
     shift: float
     sky_qa: dict
+    calibration: dict = None
+    processed: dict = None
 
 
 def export_spectrum(context, engine, identity, output, basename, *, label=None):
@@ -42,6 +44,8 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None):
     filename = basename+'_f.fits'
     if (output/'products'/filename).exists():
         raise FileExistsError('product already exists; choose a fresh revision directory')
+    native_calibration = context.calibration is not None
+    joint = engine.get('method') == 'fixed_profile_joint_extraction'
     frame = context.frame
     path = Path(frame['path'])
     h, setup = dict(frame['metadata']), frame['setup']
@@ -64,25 +68,32 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None):
     native = output/'native'/('spec1d_'+basename+'.fits')
     subheader = {k:h[k] for k in ('RA','DEC','EXPTIME','DATE-OBS','INSTRUME','MJD-OBS')}
     subheader.update({'TARGET':h['OBJECT'],'PYP_SPEC':inst.name,'PYPELINE':'MultiSlit',
-                     'WAVEMED':'vacuum','SPECSYS':'TOPOCENT','EPSTATUS':'EXPERIMENTAL'})
+                     'WAVEMED':'vacuum','SPECSYS':'TOPOCENT','EPSTATUS':'EXPERIMENTAL',
+                     'EXTRACT':'JOINTFIX' if joint else 'PYPEIT'})
     objects.write_to_fits(subheader,str(native),overwrite=False)
     check = SpecObjs.from_fitsfile(str(native))
-    if len(check)!=1 or not np.array_equal(check[0].OPT_COUNTS,s.OPT_COUNTS):
+    if len(check)!=1 or not np.array_equal(check[0].OPT_COUNTS,s.OPT_COUNTS,equal_nan=True):
         raise ValueError('native spectrum did not round-trip')
     np.savez_compressed(output/'native'/(basename+'_images.npz'),data=data,
         sky=result[0],object_model=result[1],ivar=result[2],mask=result[3].mask, waveair=w,
-        trace=s.TRACE_SPAT,spatial_origin=xlo,raw_y_origin=ymin, **sky_selection)
-    extinction = Path(reference_root)/'standard/extinction/extinction_lasilla.dat'
+        trace=s.TRACE_SPAT,spatial_origin=xlo,raw_y_origin=ymin, **sky_selection,
+        **({('processed_'+k):v for k,v in context.processed.items()} if context.processed else {}))
+    extinction = (Path(context.calibration['extinction']['path']) if native_calibration
+                  else Path(reference_root)/'standard/extinction/extinction_lasilla.dat')
     wave = vactoair(s.OPT_WAVE*u.AA).value
-    # Stay inside the archived reference-line bracket (shifted to this science exposure).
+    # Stay inside the fitted reference-line bracket (shifted to this science exposure).
     low, high = np.min(arc_qa['reference_lines'])+shift, np.max(arc_qa['reference_lines'])+shift
     step = 5.5 if setup['grism']=='Gr13' else 4.0
     grid = np.arange(np.ceil(low/step)*step,high-step,step)
     bands, variances, masks = [],[],[]
     for kind in ('OPT','BOX'):
         kw = vactoair(s[kind+'_WAVE']*u.AA).value
-        factor, valid = sensitivity_factor(kw,sensitivity,extinction,h['EXPTIME'],
-                                          h['ESO TEL AIRM START'],h['ESO DET OUT1 GAIN'])
+        if native_calibration:
+            from .native_flux import response_factor
+            factor, valid = response_factor(kw,sensitivity,h['EXPTIME'],h['ESO TEL AIRM START'])
+        else:
+            factor, valid = sensitivity_factor(kw,sensitivity,extinction,h['EXPTIME'],
+                                              h['ESO TEL AIRM START'],h['ESO DET OUT1 GAIN'])
         ivar = s[kind+'_COUNTS_IVAR']
         var = np.divide(1,ivar,out=np.full_like(ivar,np.nan),where=ivar>0)
         good = valid & s[kind+'_MASK'] & (ivar>0) & (kw>=low) & (kw<=high)
@@ -102,14 +113,20 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None):
     header['PROV1']=h['ARCFILE'];header['TRACE1']=native.name
     header['QUALITY']='Rapid';header['PYPEITV']=pypeit.__version__
     header['SENSFUN']=sensitivity.name;header['ARCREF']=Path(arc_qa['arc']).name
-    header['WAVSHIFT']=shift;header['FLUXCAL']='ARCHIVE';header['TELLURIC']='NONE'
+    header['WAVSHIFT']=shift;header['FLUXCAL']='NATIVE' if native_calibration else 'ARCHIVE';header['TELLURIC']='NONE'
     header['BANDID1']='optimal flux';header['BANDID2']='boxcar flux'
     header['BANDID3']='sky flux in optimal aperture';header['BANDID4']='optimal flux uncertainty'
     center = float(np.nanmedian(s.TRACE_SPAT)+xlo)+1  # IRAF one-based aperture coordinates
     header['APNUM1']=f'1 1 {center-float(s.BOX_RADIUS):.3f} {center+float(s.BOX_RADIUS):.3f}'
-    header['HISTORY']='Experimental archive bridge; PypeIt sky, trace, optimal and boxcar extraction.'
-    header['HISTORY']='No bias/flat/dark/overscan or telluric correction. Not a certified ESO product.'
-    header['HISTORY']='Bin-overlap resampling; propagated diagonal variance; covariance not stored.'
+    if native_calibration:
+        header['HISTORY']='Experimental raw bias/flat/HeAr and observed standard response.'
+        header['HISTORY']='No telluric or slit-loss correction. Response uncertainty not propagated.'
+    else:
+        header['HISTORY']='Experimental archive calibration bridge.'
+        header['HISTORY']='No bias/flat/dark/overscan or telluric correction. Not a certified ESO product.'
+    header['HISTORY']=('Fixed-profile joint solver; conditional source covariance saved separately.' if joint
+                       else 'PypeIt sky, trace, optimal and boxcar extraction.')
+    header['HISTORY']='Bin-overlap resampling; inter-wavelength covariance not stored.'
     final = output/'products'/filename
     fits.HDUList([fits.PrimaryHDU(products,header),
                   fits.ImageHDU(np.array([masks[0],masks[1],sky_mask,masks[0]],dtype=np.uint8),name='VALID')]
@@ -139,6 +156,15 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None):
           'valid_flux_fraction':float(np.mean(masks[0])), 'flux_band_order':['optimal','boxcar','sky','sigma'],
           'output_wavelength_medium':'air','native_wavelength_medium':'vacuum','reference_frame':'topocentric',
           'status':'EXPERIMENTAL','raw_unchanged':sha256(path)==frame['sha256']}
+    if native_calibration:
+        qa['calibration'] = context.calibration
+        qa['sensitivity'] = context.calibration['sensitivity']
+        qa['extinction'] = context.calibration['extinction']
+        qa['images_sha256'] = sha256(output/'native'/(basename+'_images.npz'))
+        qa['processing'].update(bias=True,flat=True,cosmic_ray_premask=True,
+            trim_numpy_yx=[ymin,ymin+data.shape[0],99+xlo,99+xhi],
+            variance='PypeIt raw processing propagated variance',
+            spectral_flexure=sky_qa.get('policy','unmeasured'))
     qa['processing']['sky_policy'] = engine['sky_policy']
     if not qa['raw_unchanged']:
         raise ValueError('raw input changed during processing')
