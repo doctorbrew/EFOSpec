@@ -49,6 +49,13 @@ class ExtractionWindow(Q.QMainWindow):
         central=Q.QWidget();central.setObjectName('workspace');self.setCentralWidget(central)
         layout=Q.QVBoxLayout(central);layout.setContentsMargins(0,0,0,0);layout.setSpacing(0)
         top=Q.QFrame();top.setObjectName('topbar');bar=Q.QHBoxLayout(top);bar.setContentsMargins(24,15,24,15)
+        logo_path=Path(__file__).parent/'assets/efospec-mark.png'
+        self.setWindowIcon(QtGui.QIcon(str(logo_path)))
+        self.logo=Q.QLabel();self.logo.setAccessibleName('EFOSpec logo');self.logo.setFixedSize(44,44)
+        logo=QtGui.QPixmap(str(logo_path));ratio=self.devicePixelRatioF()
+        logo=logo.scaled(round(44*ratio),round(44*ratio),QtCore.Qt.AspectRatioMode.KeepAspectRatio,QtCore.Qt.TransformationMode.SmoothTransformation)
+        logo.setDevicePixelRatio(ratio);self.logo.setPixmap(logo)
+        self.logo.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter);bar.addWidget(self.logo);bar.addSpacing(6)
         bar.addWidget(label('EFOSpec','brand'));bar.addSpacing(16);bar.addWidget(label('EXTRACTION WORKSPACE','brandDetail'));bar.addStretch()
         self.path_label=label('No night loaded','brandDetail');bar.addWidget(self.path_label);bar.addSpacing(16)
         self.open_button=Q.QPushButton('Open night…');self.open_button.clicked.connect(self.choose_run);bar.addWidget(self.open_button)
