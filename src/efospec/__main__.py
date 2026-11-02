@@ -8,6 +8,10 @@ from .inventory import inventory
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="efospec", description="EFOSpec: EFOSC2 spectroscopy with PypeIt")
     commands = parser.add_subparsers(dest="command", required=True)
+    epoch=commands.add_parser('night',help='One dated epoch: observing log, reduction, QC and final report')
+    from .nightly import add_arguments
+    add_arguments(epoch)
+    epoch.add_argument('--stage',choices=['all','log','reduce','report'],default='all')
     gui = commands.add_parser('gui', help='Open the PySide6 desktop extraction application')
     gui.add_argument('path', nargs='?', help='Completed run directory; omitted opens a file picker')
     gui.add_argument('--reference-root')
@@ -101,6 +105,9 @@ def main(argv=None):
         command.add_argument("--arc", action="append", default=[], help="Explicit raw arc; repeatable")
     args = parser.parse_args(argv)
     try:
+        if args.command == 'night':
+            from .nightly import run_epoch,exit_code
+            return exit_code(run_epoch(args.night,stage=args.stage,project_root=args.project_root,plot_python=args.plot_python))
         if args.command == 'background-gui':
             from .background_gui import launch
             return launch(args.packet)

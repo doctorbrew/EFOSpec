@@ -273,3 +273,11 @@ efospec reduce-rapid data/2026-10-29 --output runs/2026-10-29/new-reduction --in
 ```
 
 Each output directory must be fresh. The batch is completed with explicit failures; full native calibration-to-flux delivery, unsupported-setup validation and remaining source/background decisions are still outstanding.
+
+
+## 2 November: organize the 2026-10-28 artifacts
+
+- Consolidated 23 older entries into the date's `archive/` and `calibrations/`; the current `nightly/` revision and reviewed `QC/` products stayed in place. `runs/2026-10-28/index.html` and its README now provide one starting point. The original reduction is under `archive/initial-reduction/`.
+- Preserved all 1,825 pre-existing files. Scientific data and all saved manifests/recipes are byte-for-byte unchanged. Repaired external links in two moved HTML pages and retained hash-verified copies of their originals. Eight compatibility links preserve older paths used by saved provenance; no files were deleted and raw data were not moved.
+- Verified all 193 raw hashes for this epoch, all 19 native calibration groups referenced by the shared audit, 619 local report links, loading the archived initial reduction, and exact numerical replay of both retained C3 recipes. The current nightly revision is unchanged; no broken report links remain in the checked date tree.
+- Relocation map, before/after hashes, original HTML backups and verification: `runs/2026-10-28/archive/cleanup-20261102/`. The folder-layout policy lives in [the epoch workflow](epoch-workflow.md).

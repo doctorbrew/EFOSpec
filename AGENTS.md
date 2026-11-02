@@ -21,6 +21,12 @@
 - Separated two-source extraction does not establish overlapping SN/host deblending or extended-galaxy optimal-extraction accuracy.
 - Treat `trunk/` as the preserved legacy baseline; keep the original `../pessto/` checkout and scientific environments separate.
 
+## Epoch workflow
+
+- Run and report one explicitly named observing date at a time. Prefer `python scripts/reduce_epoch.py YYYY-MM-DD`, or its separate log/reduction/report scripts. The next epoch is a new invocation with a new date; do not introduce an automatic multi-night loop.
+- Keep generated epoch files inside the dated revision; group retained calibration sets and older diagnostics under that date's `calibrations/` and `archive/`. Treat legacy compatibility links as read-only paths, not new output destinations.
+- Keep the observing date in logs, report titles and parent output paths. Preserve earlier processing revisions. Canonical workflow: [dated scripts](docs/epoch-workflow.md).
+
 ## Documentation and verification
 
 - **All new or regenerated scientific plots must use the `plot-style` skill**, including QC, detector images, profiles and diagnostic spectra. Use the existing root `plot_style.py`: SciencePlots, mandatory LaTeX, Hiroshige colours, inward ticks after setting limits, and both PDF + 300-dpi JPG. PNGs may accompany these as report previews. Do not silently use Matplotlib defaults.

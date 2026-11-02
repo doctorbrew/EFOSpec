@@ -59,6 +59,14 @@ python -m efospec download 2026-10-29
 - Repeating the command verifies and reuses completed FITS; failures return nonzero.
 - [Authentication and download details](EFOSPEC.md#download-raw-data).
 
+## Reduce one observing epoch
+
+```sh
+python scripts/reduce_epoch.py 2026-10-28
+```
+
+Creates that date's observing log, reduces its science/standard exposures, and generates QC plus the final report. Open `runs/2026-10-28/nightly/index.html`. For the next epoch, invoke the same script with the new date. [Separate log/reduction/report scripts, statuses and output layout](docs/epoch-workflow.md).
+
 ## Run the archive-based demonstration
 
 - Run from the repository root.
