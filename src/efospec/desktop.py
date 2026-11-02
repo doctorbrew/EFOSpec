@@ -469,6 +469,10 @@ def launch(run=None,reference_root=None,*,smoke_test=False):
     settings=None if smoke_test else QtCore.QSettings('EFOSpec','Desktop')
     if not smoke_test:run=initial_run(run,settings)
     window=ExtractionWindow(run,reference_root,settings=settings);window.show()
+    # Dispose Qt children while its event dispatcher is still alive. Python
+    # callback cycles can otherwise keep them past QApplication destruction.
+    app.aboutToQuit.connect(window.close)
+    app.aboutToQuit.connect(window.deleteLater)
     if smoke_test:
         def finish():
             ready=run is None or (window.session is not None and (

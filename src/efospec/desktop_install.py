@@ -94,7 +94,7 @@ def install_desktop(destination=None, *, platform=None, python=None):
         else:
             entry = ('[Desktop Entry]\nType=Application\nName=EFOSpec\n'
                 'Comment=EFOSC2 spectra and source review\nTerminal=false\n'
-                'Categories=Education;Science;Astronomy;\n'
+                'Categories=Science;Astronomy;\n'
                 'Exec='+_exec_argument(executable)+' %f\n'
                 'Icon='+_desktop_string(icon)+'\n')
             (target/'org.efospec.Desktop.desktop').write_text(entry)
