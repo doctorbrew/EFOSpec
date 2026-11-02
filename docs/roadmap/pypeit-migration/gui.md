@@ -1,43 +1,66 @@
-# Desktop extraction roadmap
+# Desktop extraction GUI roadmap
 
-- **Selected:** PySide6/Qt for macOS and Linux.
-- **Implemented:** desktop viewer, source/background controls, recipes and subprocess workers.
-- **Verified locally:** macOS Cocoa window, Qt interaction tests, real worker/replay/cancellation.
-- **Linux:** XCB/Xvfb interactions, real workers and replay pass [CI](https://github.com/sPaMFouR/EFOSpec/actions/runs/41262157980).
-- [Usage](../../desktop.md) · [Evidence](../../native-desktop-validation.md) · [Rules](../../../AGENTS.md).
+**Requirement clarified: desktop extraction app; webpage for the nightly reduction log.**
 
-| Interface | Responsibility |
-| --- | --- |
-| Qt desktop | Open nights; edit trace/aperture/sky; run/cancel; inspect revisions |
-| Shared Python/PypeIt | Validate, calibrate, extract and export |
-| Fieldnotes webpage | Read-only nightly table, three diagnostic views and downloads |
+- **First desktop feature implemented:** `background-gui` opens a failed-exposure QC packet in PyQt6, edits a single aperture and two-sided polynomial background, saves/reloads recipes and runs/cancels a worker. Native macOS interactions are checked. The full desktop reduction application remains incomplete; see [workflow and limits](../../polynomial-background.md).
+- **Reusable backend: implemented.** Shared PypeIt extraction, validated recipes, immutable revisions, and CLI replay.
+- **Nightly webpage: implemented.** Read-only Fieldnotes report with an opening table and per-source diagnostic plots.
+- Project rules: [AGENTS.md](../../../AGENTS.md). Prototype instructions: [browser editor](../../gui.md).
 
-## Delivered controls
+## Interface ownership
 
-- Native folder/file pickers; no localhost service or WebView.
-- Spectrum, sky-subtracted 2D detector image and binned spatial profiles.
-- Click source anchors; edit FWHM/radius; drag/edit background bands.
-- One/two sources, immutable revisions, durable cancellation and recipe reload.
-- PypeIt optimal/boxcar engine; separate experimental joint fixed-profile engine.
-- CLI replay and desktop workers share the same recipe contracts.
+| Interface | Purpose | Required behaviour |
+| --- | --- | --- |
+| Desktop application | Interactive extraction | Choose traces, apertures, background, and sources; run/cancel extraction; inspect and save revisions |
+| Python/PypeIt engine | Scientific processing | Validate inputs/recipes; trace, fit sky, extract, calibrate, and export through shared functions |
+| Fieldnotes webpage | Log of a reduced night | Opening exposure table; spectrum, trace, and spatial profile side by side for each source; status and downloads |
 
-## Remaining gates
+- The nightly page must not launch extraction jobs or edit recipes.
+- A browser app or WebView wrapper does not satisfy the requested desktop interface.
+- Preserve the report theme; desktop interaction design can follow platform conventions.
 
-- Complete a user usability review on each desktop platform.
-- Package launchers/installers; add raw-night control only when calibration status is explicit.
-- Add crop widening and arbitrary trace-curve editing with coordinate/variance tests.
-- Validate extended profiles against trusted SN/galaxy reference extractions.
-- Include profile/background uncertainty and spectral covariance before precision deblending claims.
-- Reconcile native-calibration changes with the independent two-night debugging branch.
+## Platform decision — first bounded implementation
 
-## Scientific contracts
+- PyQt6 is used for the first background editor: it embeds the shared Matplotlib diagnostics and starts the current Python environment as a subprocess.
+- Native macOS launch, canvas band dragging, recipe replay, extraction and cancellation are tested. Linux support and packaged distribution remain unverified.
+- Do not promise Linux support for a macOS-only implementation.
+- Reuse the `efospec` Python environment; do not rewrite scientific algorithms in Swift or UI code.
+- Prefer a subprocess boundary with structured requests, progress, errors, cancellation, and output paths.
+- The desktop app should use file/folder pickers; observers should not need a localhost URL or internal test-directory name.
 
-- Coordinates: zero-based raw detector pixels after binning.
-- PypeIt manual anchors initialise tracing; the fitted trace may move.
-- Joint profiles are fixed Gaussians sharing measured curvature; host identity is not inferred.
-- Background order uses held-out sky, never source pixels; retain plausible alternatives.
-- Preserve primary names; companions append `_obj_<stable-ID>`.
-- Save hashes, source snapshots, recipes and new products; never overwrite inputs.
-- Native calibration and GUI usability require separate evidence.
+## Delivery tasks
+
+| Task | Scope | Acceptance evidence |
+| --- | --- | --- |
+| D1 — platform and worker contract | Record toolkit/platform choice; define versioned recipe/job messages and runtime selection | Desktop process starts the pinned Python engine; missing environment produces an actionable error |
+| D2 — desktop exposure viewer | Open a night/run; select exposures; inspect spectrum, native detector image, and binned spatial profiles | Actual desktop window and file picker work on each claimed platform; pixel mapping matches saved geometry |
+| D3 — extraction editor | Manual anchors, FWHM, aperture, include/exclude sky, optional second source, optimal/boxcar views | Mouse and keyboard edits survive recipe save/reload; invalid selections fail before extraction |
+| D4 — workers and revisions | Run/cancel jobs, show progress/errors, inspect products, save new revisions | Desktop and CLI recipes produce matching arrays; cancellation leaves originals unchanged |
+| D5 — nightly log and delivery | Refresh the read-only Fieldnotes report from saved results; document app launch/install | Opening table and three plots per source remain; the report has no extraction controls; desktop smoke tests pass |
+
+- Dependencies: D1 → D2 → D3 → D4 → D5.
+- First bounded milestone achieved for failed-exposure polynomial boxcar experiments. General night/run browsing, PypeIt optimal extraction controls, progress reporting, FWHM/two-source editing and complete desktop delivery remain open.
+- Raw-night reduction controls must expose the actual supported calibration mode; they cannot imply native calibration is finished.
+- Desktop delivery requires desktop UI tests. Existing Chromium tests validate only the browser prototype.
+
+## Backend evidence already available
+
+- Automatic SN2023xxj spectra and validity masks remain unchanged after the shared-engine refactor.
+- Browser and headless recipe replay produce identical arrays for the tested inputs.
+- Three synthetic noise/brightness cases recover separated-source median flux within 2%.
+- Native-pixel coordinates, background selections, input hashes, cancellation, and preserved originals are tested.
+- Real SN2023xxj, 2024-11-14: manual extraction and its Fieldnotes report completed through the prototype.
+- These results support backend reuse; they do not establish desktop usability or platform support.
+
+## Scientific contracts and remaining limits
+
+- Coordinates: zero-based raw detector pixels after binning; explicit pixel FWHM and boxcar half-width.
+- Anchors initialise PypeIt tracing; they do not constrain arbitrary trace curves.
+- In the PypeIt path, explicit sky regions select the global fit, held during extraction; automatic mode retains local refitting. The separate experimental `polynomial` mode fits each raw detector row and produces count-level boxcar products; it cannot be passed to PypeIt's optimal-extraction replay.
+- Preserve the primary basename; companion products append `_obj_<stable-ID>` before `_f.fits`.
+- Bind recipes to input/calibration hashes; save source versions and new revisions.
+- Current backend: saved detector window, at most two sources separated by ≥5 FWHM.
+- Crop widening, extended profiles, overlapping-source models, and cross-source covariance need separate validation.
+- Native raw calibration remains a separate unfinished requirement.
 
 [Parent plan](README.md) · [Engine boundaries](../../pipeline-stages.md)

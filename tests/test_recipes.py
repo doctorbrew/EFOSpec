@@ -67,3 +67,20 @@ class RecipeTests(unittest.TestCase):
         recipe['source_mode'] = 'automatic'
         with self.assertRaisesRegex(ValueError, 'automatic'):
             validate_recipe(recipe, self.window, self.inputs)
+
+    def test_polynomial_recipe_requires_two_sided_samples_and_explicit_order(self):
+        recipe=deepcopy(self.recipe)
+        recipe['sky'].update(mode='polynomial',degree=2,sigma_clip=4.)
+        checked=validate_recipe(recipe,self.window,self.inputs)
+        self.assertEqual(checked['sky']['degree'],2)
+        recipe['sky']['include']=[[100.,130.]]
+        with self.assertRaisesRegex(ValueError,'each side'):
+            validate_recipe(recipe,self.window,self.inputs)
+        recipe['sky']['include']=[[100.,130.],[160.,230.]]
+        recipe['sky']['degree']=8
+        with self.assertRaisesRegex(ValueError,'degree'):
+            validate_recipe(recipe,self.window,self.inputs)
+        for invalid in (None,[], 'polynomial',2):
+            recipe['sky']=invalid
+            with self.assertRaisesRegex(ValueError,'sky selection'):
+                validate_recipe(recipe,self.window,self.inputs)

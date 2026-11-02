@@ -7,8 +7,8 @@ been published. Status describes actual work, not promised scientific support.
 
 - First priority: [native calibration without IRAF-derived inputs](../../native-calibration.md).
 - [D1–D5: desktop extraction app, worker integration, and nightly log](gui.md).
-- Qt desktop and shared extraction/recipe workers are implemented; see the desktop validation record.
-- Desktop platform validation and extended-source accuracy remain explicit acceptance gates.
+- Shared extraction/recipe backend and browser prototype exist. A native macOS-tested polynomial background editor is delivered; complete desktop reduction delivery remains pending. See [workflow](../../polynomial-background.md).
+- Desktop tasks remain planned; CLI reduction and the read-only nightly report are available.
 
 ## Completed rapid demonstration (2024-11-14 data)
 
@@ -98,9 +98,12 @@ serialized plan is stable under input-path ordering and reruns. No reduction.
 
 ## T3 — EFOSC2 driver and Gr13 wavelength experiment
 
-Status: experimental raw processing, physical arc fitting and one Gr13/Free pair
-demonstrated. Broader scientific acceptance still depends on T1/T2.
-See [native evidence](../../native-desktop-validation.md).
+Status: metadata/raw-reader integration and experimental raw calibration
+execution implemented. Two recent nights exercise bias/flat, slit, raw-arc and
+tilt construction, physical wavelength gates and diagnostic science processing.
+Native extraction/flux delivery and independent scientific acceptance remain
+open. See [native calibration status](../../native-calibration.md).
+Depends on: T1, T2.
 
 Outcome: native PypeIt spec1d/spec2d from one validated Gr13 configuration.
 

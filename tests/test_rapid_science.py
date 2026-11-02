@@ -93,3 +93,31 @@ def test_reduce_night_recovers_injected_sky_shift_and_preserves_inputs(tmp_path)
     with pytest.raises(FileExistsError):reduce_night(inputs,output,REFERENCE,skip_report=True)
     with pytest.raises(ValueError,match='no matching'):
         reduce_night(inputs,tmp_path/'empty',REFERENCE,targets=['absent'],skip_report=True)
+
+
+def test_unsupported_only_run_is_incomplete_and_cli_returns_nonzero(tmp_path):
+    from efospec.__main__ import main
+    inputs = tmp_path/'raw'; inputs.mkdir()
+    write_raw(inputs, 'filtered.fits', **{'ESO INS FILT1 NAME':'GG495'})
+    write_raw(inputs, 'red.fits', **{'ESO INS GRIS1 NAME':'Gr16'})
+    output = tmp_path/'reduced'
+    code = main(['reduce-rapid', str(inputs), '--output', str(output),
+                 '--reference-root', str(REFERENCE), '--skip-report'])
+    assert code == 1
+    run = json.loads((output/'run.json').read_text())
+    assert run['execution_status'] == 'failed'
+    assert len(run['skipped']) == 2 and not run['errors'] and not run['results']
+    assert all(e['code'] == 'unsupported_setup' and e['action'] for e in run['skipped'])
+
+
+def test_sky_failure_manifest_has_action_measurements_and_traceback(tmp_path):
+    inputs = tmp_path/'raw'; inputs.mkdir()
+    write_raw(inputs, 'blank.fits')
+    output = tmp_path/'reduced'
+    run = reduce_night(inputs, output, REFERENCE, skip_report=True)
+    assert run['execution_status'] == 'failed'
+    error = run['errors'][0]
+    assert error['code'] == 'sky_flexure_unreliable' and error['stage'] == 'sky_flexure'
+    assert error['action'] and 'lines' in error['diagnostics']
+    assert 'SkyFlexureError' in Path(error['traceback']).read_text()
+    assert not (output/'run.json.tmp').exists()

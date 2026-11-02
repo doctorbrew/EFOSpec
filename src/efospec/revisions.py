@@ -89,12 +89,17 @@ class Exposure:
                     fwhm=float(np.nanmedian(self.native.FWHM)), radius=float(self.native.BOX_RADIUS))
 
 
-def reextract(run, product, recipe, output, reference_root=None, *, render_report=True):
+def reextract(run, product, recipe, output, reference_root=None, *, render_report=True, failed=False):
     """Run the same PypeIt engine as rapid reduction; never reuse an output folder."""
     import pypeit
     from .extraction import extract_spectra
-    exposure = Exposure(run, product, reference_root)
+    exposure_type = FailedExposure if failed else Exposure
+    exposure = exposure_type(run, product, reference_root)
     recipe = validate_recipe(recipe, exposure.window, exposure.hashes)
+    if recipe['sky']['mode']=='polynomial':
+        raise ValueError('Use background-extract for polynomial boxcar extraction; it is not a PypeIt optimal-extraction recipe.')
+    if failed and recipe['source_mode'] != 'manual':
+        raise ValueError('failed exposure recovery requires an explicit manual source recipe')
     output = Path(output).resolve()
     output.mkdir(parents=True, exist_ok=False)
     for sub in ('products','native','qa','QA/PNGs','source'):
@@ -142,7 +147,7 @@ def reextract(run, product, recipe, output, reference_root=None, *, render_repor
             result['object_id'] = identity
             manifest['results'].append(result)
         # Detect edits made to any immutable input during extraction.
-        refreshed = Exposure(run, product, reference_root)
+        refreshed = exposure_type(run, product, reference_root)
         if refreshed.hashes != exposure.hashes:
             raise ValueError('input files changed during extraction')
     except Exception as exc:
@@ -155,3 +160,83 @@ def reextract(run, product, recipe, output, reference_root=None, *, render_repor
         manifest['report'] = build_report(output)
         (output/'run.json').write_text(json.dumps(manifest, indent=2, allow_nan=False)+'\n')
     return manifest
+
+
+class FailedExposure(Exposure):
+    """Verified recovery of a source-selection failure, before any product exists."""
+    def __init__(self, run, raw_name, reference_root=None):
+        from .pypeit_adapter import EFOSpecEFOSC2Spectrograph
+        from .archive_calibration import fit_arc
+        from .naming import science_stem
+        self.run = Path(run).resolve()
+        manifest_path = self.run/'run.json'
+        self.manifest = json.loads(manifest_path.read_text())
+        errors = [e for e in self.manifest['errors'] if Path(e['path']).name == raw_name
+                  and e.get('code') == 'source_selection_required']
+        if len(errors) != 1 or Path(raw_name).name != raw_name:
+            raise ValueError('unknown or ambiguous failed exposure')
+        error = errors[0]; info = error['diagnostics']
+        if not {'raw_sha256','arc','sensitivity','extinction_sha256'} <= info.keys():
+            raise ValueError('failed exposure lacks calibration provenance; rerun with the current reducer')
+        raw = Path(error['path'])
+        if sha256(raw) != info['raw_sha256']: raise ValueError('raw input changed since source failure')
+        self.frame = inspect_file(raw)
+        if self.frame['issues']:raise ValueError('invalid failed-exposure metadata')
+        self.images_path = self.run/'native'/Path(info['diagnostic_file']).name
+        with np.load(self.images_path,allow_pickle=False) as saved:
+            self.images = {key:saved[key] for key in saved.files}
+        data,wave = self.images['data'],self.images['waveair']
+        y0,x0 = info['spectral_origin_in_raw_image'],info['spatial_origin_in_raw_image']
+        self.window = DetectorWindow(tuple(data.shape),(y0,x0))
+        with fits.open(raw) as hdus:
+            detector = EFOSpecEFOSC2Spectrograph().get_detector_par(1,hdus)
+            expected = hdus[0].data[y0:y0+data.shape[0],x0:x0+data.shape[1]].astype(float)*self.frame['metadata']['ESO DET OUT1 GAIN']
+        if not np.array_equal(data,expected,equal_nan=True):
+            raise ValueError('failed diagnostic pixels do not match raw exposure')
+        root = Path(reference_root or reference_directory()).resolve()
+        setup,h = self.frame['setup'],self.frame['metadata']
+        arc = root/'archive/efosc/arc'/setup['grism']/setup['filter']/setup['slit']/Path(info['arc']['arc']).name
+        sens = root/'archive/efosc/sens'/setup['grism']/setup['filter']/Path(info['sensitivity']['path']).name
+        extinction = root/'standard/extinction/extinction_lasilla.dat'
+        for path,digest in [(arc,info['arc']['arc_sha256']),(sens,info['sensitivity']['sha256']),
+                             (extinction,info['extinction_sha256'])]:
+            if sha256(path) != digest:raise ValueError(f'calibration input changed: {path.name}')
+        arcwave,arcqa = fit_arc(arc)
+        if arcqa['identifications_sha256'] != info['arc']['identifications_sha256']:
+            raise ValueError('archive line identifications changed since source failure')
+        shift = info['sky_flexure']['shift_angstrom'];xlo=x0-99
+        if not np.array_equal(wave,arcwave[:,xlo:xlo+data.shape[1]]+shift):
+            raise ValueError('failed diagnostic wavelength map does not match calibration')
+        self.hashes = {'raw':sha256(raw),'images':sha256(self.images_path),
+            'manifest':sha256(manifest_path),'arc':sha256(arc),
+            'identifications':arcqa['identifications_sha256'], 'sensitivity':sha256(sens),'extinction':sha256(extinction)}
+        self.basename=science_stem(h['OBJECT'],h['DATE-OBS'],setup['grism'],setup['filter'],setup['slit'])+'_1'
+        hint=float(info['expected_spatial_pixel'])+xlo
+        self.context=PreparedExposure(self.frame,root,detector,data,wave,xlo,y0,hint,
+            info['target_association'],arcqa,sens,shift,info['sky_flexure'])
+        self.result={'object':h['OBJECT']}
+        self.candidates=[]
+        for candidate in info['candidates']:
+            self.candidates.append(dict(candidate,raw_spatial_pixel=candidate['spatial_pixel']+x0))
+
+    def primary_object(self):
+        raise ValueError('failed exposure has no verified primary object; select a candidate explicitly')
+
+
+def prepare_recovery(run, raw_name, output, reference_root=None):
+    """Write candidate recipes for review, without assigning an astrophysical identity."""
+    exposure=FailedExposure(run,raw_name,reference_root)
+    output=Path(output).resolve();output.mkdir(parents=True,exist_ok=False)
+    review={'raw':raw_name,'status':'TARGET_IDENTITY_REQUIRES_REVIEW','candidates':[]}
+    for index,candidate in enumerate(exposure.candidates):
+        recipe=exposure.default_recipe();recipe['source_mode']='manual'
+        recipe['objects']=[dict(id='primary',label=exposure.result['object'],kind='point',
+            spec=float(exposure.window.origin[0]+exposure.window.shape[0]//2),
+            spat=candidate['raw_spatial_pixel'],fwhm=4.,radius=7.)]
+        recipe=validate_recipe(recipe,exposure.window,exposure.hashes)
+        path=output/f'candidate-{index+1}.json'
+        path.write_text(json.dumps(recipe,indent=2,allow_nan=False)+'\n')
+        review['candidates'].append(dict(candidate,recipe=str(path),
+            warning='Position hypothesis only; inspect acquisition data, trace width, and sky regions before replay.'))
+    (output/'review.json').write_text(json.dumps(review,indent=2,allow_nan=False)+'\n')
+    return review

@@ -74,8 +74,8 @@ python -m efospec native-readiness /path/to/night /path/to/raw-calibrations
 
 - Check raw-calibration coverage for each additional night and configuration.
 - Match binning/readout and grism/filter/slit; retain acquisition metadata.
-- Build bias/flat masters from raw frames through PypeIt.
-- Fit wavelength/tilts from raw lamps and independent physical line lists.
+- Validate the experimental raw bias/flat masters, slit traces and tilt maps.
+- Review raw-lamp identifications against physical line lists and independent arcs.
 - Validate Gr11/Gr13 solutions with held-out arc and night-sky lines.
 - Match observed standards to independently sourced physical flux references.
 - Derive sensitivity from those observations; validate extinction and slit losses.
@@ -84,3 +84,138 @@ python -m efospec native-readiness /path/to/night /path/to/raw-calibrations
 - Compare the resulting products with IRAF only after native processing succeeds.
 
 Full implementation remains tracked in [T1–T5](roadmap/pypeit-migration/tasks.md).
+
+## Native calibration execution — 1 November 2026
+
+- **Implemented experimentally:** `calibrate-native` builds bias, traced slits,
+  processed raw arcs, wavelength fits, tilt maps, and pixel/illumination flats
+  through the pinned PypeIt engine. It uses no legacy reference directory.
+- **Separate diagnostic command:** `validate-native` applies these masters to raw
+  exposures and measures sky offsets. It does not export science spectra or
+  apply an unvalidated flexure correction.
+- **Still absent:** a validated native science-to-flux delivery path, independently
+  derived observed-standard sensitivity, second-order correction, and tellurics.
+  `native_execution_implemented` and `reduction_ready` therefore remain false;
+  `native_calibration_execution_implemented` identifies the new bounded capability.
+
+```sh
+MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+  python -m efospec calibrate-native data/2026-10-29 \
+  --output runs/2026-10-29-native-calibrations
+python -m efospec validate-native runs/2026-10-29-native-calibrations \
+  --output runs/2026-10-29-native-validation
+```
+
+- Both commands require fresh output directories. `--grism Gr13` limits a
+  calibration experiment; repeat for multiple grisms.
+- `--group GROUP_ID` limits a retry to named groups. Optional `--template-map`
+  takes a JSON object mapping group IDs to successful native group directories.
+  Templates must match the entire setup and pass current physical gates; their
+  masters and raw inputs are hash-checked. PypeIt reidentifies and refits the new
+  raw peaks, using only the template's accepted line IDs. It never copies a
+  wavelength solution or silently selects a fallback. See
+  [PypeIt's reidentification algorithm](https://pypeit.readthedocs.io/en/latest/calibrations/wave_calib.html#reidentify).
+- Existing raw associations, detector modes, filters, slit widths and hashes
+  determine groups. No silently substituted arc or flat group is allowed.
+- Each group saves associations, effective parameters, physical line table,
+  calibration FITS, arc-fit QA, execution log and `calibration.json`.
+- Native validation rebuilds its wavelength map from hash-verified masters.
+  It reapplies current wavelength gates to older successful groups. Missing,
+  changed or invalid masters fail their group while other groups continue.
+  A successful calibration command is **not** a scientific acceptance flag.
+- Gr16 does not include 5577 Å: its independent red-sky diagnostic is pending,
+  explicitly reported as `processed_unvalidated`.
+
+### Causes found by executing the native path
+
+- **Circular bias dependency:** the full profile enabled subtraction of a bias
+  from the bias frames used to build that same master. Fixed by disabling
+  `use_biasimage` for bias frames; verified with actual PypeIt image processing.
+- **False arc solutions:** unrestricted blind matching reported a small RMS for
+  a negative central wavelength. Restricting the search alone still admitted
+  a physically wrong solution. A red-line fit also misidentified a blue ghost.
+- Native fitting now requires expected grism range/dispersion, monotonicity,
+  at least 10 accepted lines, at least two per spectral third, sufficient span,
+  RMS <=0.25 pixel, and interior leave-one-out RMS <=0.25/max <=0.5 pixel.
+  Competing accepted identifications remain blocked for review.
+- **Further false-positive discovered:** a Gr11/slit1.5 solution misidentified
+  two blue peaks despite small fit/held-out residuals and plausible red sky
+  checks. The initial ±300 Å endpoint gate admitted it. The acceptance bound
+  is now conservatively ±100 Å; the wider hypothesis search remains separate.
+  This is our experimental acceptance policy, not an ESO accuracy guarantee.
+- **Search-budget defect:** near-duplicate affine guesses occupied the top 300
+  candidates and excluded distinct line assignments. Deduplicating initial
+  assignments recovered the failed Gr11 raw arc. That corrected same-setup
+  solution then seeds a fresh fit for the affected neighbouring group.
+  Early trial products from the false solution are superseded; they must not
+  be used for science. Current validation rejects them.
+- The search uses the instrument range/dispersion from
+  [ESO's grism table](https://www.eso.org/sci/facilities/lasilla/instruments/efosc/inst/Efosc2Grisms.html)
+  and identifies only physical HeI/ArI lines selected using Table 17 of the
+  [EFOSC2 manual](https://www.eso.org/sci/facilities/lasilla/instruments/efosc/doc/manual/EFOSC2manual_v4.2.pdf).
+  Rounded air values select entries in PypeIt's NIST lists; all actual native
+  fitting uses the latter's **vacuum Å** values. Saved ECSV tables preserve them.
+- Detector-end extrapolation is not validated: each solution records its
+  accepted reference-line bracket. Future delivery must mask outside it.
+- The first tested Gr13 raw fit has 18 accepted lines, RMS 0.034 pixel and
+  held-out RMS 0.045 pixel. This establishes an arc fit, not science flux accuracy.
+- New synthetic integration coverage builds the complete set of native masters
+  from raw bias/flat/arc frames, checks the known wavelength map, and verifies
+  raw-file immutability. Another test rejects low-RMS impossible solutions.
+
+### Failed-source recovery
+
+```sh
+python -m efospec prepare-recovery runs/2026-10-29 \
+  --raw EFOSC.example.fits --output runs/2026-10-29-source-recipes
+python -m efospec reextract runs/2026-10-29 \
+  --failed-raw EFOSC.example.fits \
+  --recipe runs/2026-10-29-source-recipes/candidate-1.json \
+  --output runs/2026-10-29-source-revision
+```
+
+- Replace the example basename with an actual failed exposure. The first command
+  generates **position hypotheses**, not approved target identities. Inspect
+  acquisition/finding-chart evidence, widths, and sky regions before replay.
+- Recovery now works without an existing successful product. It retains the
+  archive-bridge calibration used for that exposure; it is not native calibration.
+- Requires the latest failure provenance: raw/arc/line-ID/sensitivity/extinction
+  hashes plus saved detector and wavelength arrays. Older failures need rerunning.
+- Validates raw pixels against the saved image and recomputes the recorded
+  wavelength map; stale recipes and modified inputs are rejected.
+- Fresh revision directories preserve the parent run. Separate failure files
+  prevent repeated-target exposures from overwriting each other's diagnostics.
+- A synthetic ambiguous two-source exposure exercises recipe creation, explicit
+  recovery of the intended source, immutability, and tamper rejection end to end.
+- The four real failures now have candidate recipes and detector/profile plots
+  under the local `runs/native-debug-20261101/recovery-*` evidence directories.
+  Acquisition images were found, but their headers lack a celestial WCS.
+  Nominal telescope coordinates do not identify a trace. These four targets
+  still require verified positions or astrometrically registered finding charts.
+
+### Dated QC packets and candidate trial extraction
+
+```sh
+MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+  python -m efospec recovery-qc /path/to/current-failed-run \
+  --raw EFOSC.example.fits \
+  --output runs/2026-10-29/QC/EFOSC.example --test-recipes
+```
+
+- Requires a fresh exposure subfolder and current failure provenance. Creates
+  raw/window images, saved trace overlays, spatial profiles, same-OB acquisition
+  images, recipes, a read-only `index.html`, and a blank target-selection CSV.
+- All coordinates are zero-based raw image pixels; plotted images retain their
+  original orientation. Spectral and acquisition coordinates are not registered.
+- Recipe anchors use each saved trace at the middle spectral row. Trial labels
+  are neutral `Candidate-N-UNVERIFIED` names; `ORIGOBJ` preserves the exposure
+  label. No candidate is automatically accepted as the astrophysical target.
+- `--test-recipes` extracts each candidate separately in `trials/`, checks finite
+  valid samples and positive inverse variance, and records fitted trace drift.
+  Drift exceeding half the initial FWHM is flagged for inspection. Successful
+  execution is not validation of source identity, aperture, host deblending,
+  background selection or flux calibration.
+- Trials deliberately replay the saved archive bridge; they do not apply the
+  experimental native masters. Existing science products and raw files stay intact.
+- Local packets are available in `runs/2026-10-28/QC/` and
+  `runs/2026-10-29/QC/`, with two ambiguous exposures per night.

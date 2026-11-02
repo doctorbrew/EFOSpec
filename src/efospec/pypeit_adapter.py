@@ -109,6 +109,8 @@ class EFOSpecEFOSC2Spectrograph(NTTEFOSC2Spectrograph):
                                              use_illumflat=False, use_specillum=False)
         else:
             par.reset_all_processimages_par(use_biasimage=True)
+            # A master bias is an input to the other frames, never to itself.
+            par['calibrations']['biasframe']['process']['use_biasimage'] = False
             for frame in (par["scienceframe"], par["calibrations"]["standardframe"]):
                 frame["process"]["use_pixelflat"] = True
                 frame["process"]["use_illumflat"] = True
