@@ -44,15 +44,23 @@ def test_joint_validation_cli_requires_explicit_input_and_loads_recipe(tmp_path,
     assert calls[0][1]['recipe']==json.loads(recipe.read_text())
 
 
-def test_gui_disposes_window_before_application_shutdown(monkeypatch,qtbot):
-    from efospec import desktop
-    from shiboken6 import isValid
-    windows=[]
-    original=desktop.ExtractionWindow
-    class ObservedWindow(original):
-        def __init__(self,*args,**kwargs):
-            super().__init__(*args,**kwargs);windows.append(self)
-    monkeypatch.setattr(desktop,'ExtractionWindow',ObservedWindow)
-    assert desktop.launch(smoke_test=True)==0
-    assert len(windows)==1
-    assert not isValid(windows[0])
+def test_gui_disposes_window_before_application_shutdown():
+    import subprocess
+    import sys
+    # A standalone application's quit sequence must not run inside pytest-qt's
+    # shared QApplication: its quit state can prevent later QProcess callbacks.
+    script='''
+from efospec import desktop
+from shiboken6 import isValid
+windows=[]
+original=desktop.ExtractionWindow
+class ObservedWindow(original):
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs);windows.append(self)
+desktop.ExtractionWindow=ObservedWindow
+assert desktop.launch(smoke_test=True)==0
+assert len(windows)==1
+assert not isValid(windows[0])
+'''
+    result=subprocess.run([sys.executable,'-c',script],capture_output=True,text=True,timeout=30)
+    assert result.returncode==0,result.stdout+result.stderr

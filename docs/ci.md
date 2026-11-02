@@ -39,6 +39,7 @@ QT_API=pyside6 QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBL
 - Conditional two-source tests retain deliberate profile/background mismatches; [scientific limits](validation-desktop-2026-11.md).
 - Launcher checks require a clean process exit, not just a ready window. A Linux shutdown crash exposed delayed widget cleanup; the regression test requires the window to be destroyed before returning from the event loop.
 - Cleanup uses Qt's [`aboutToQuit` / deferred deletion contract](https://doc.qt.io/qt-6/qcoreapplication.html#aboutToQuit).
+- Standalone shutdown tests run in subprocesses; quitting pytest-qt's shared application can prevent later worker callbacks. The shutdown-then-recovery sequence is checked without extending its timeout.
 - Injected-source tests run actual PypeIt, with three noise/brightness cases and a 2% median-flux target.
 - Both archived grism fits, whole-line holdouts, full-run sky shifts, sky-mask replay, and reference-flux checks are tested.
 - Passing tests establish software contracts, not scientific calibration accuracy.
