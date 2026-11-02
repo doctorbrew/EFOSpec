@@ -28,12 +28,12 @@ Equivalent installed entry point: `efospec night 2026-10-28`. Add `--stage log`,
 
 1. **Observing log:** inventory `data/YYYY-MM-DD/`; save a CSV observing log and full JSON provenance before reduction. Include acquisition and calibration frames with their roles and actual dates. Science/standard frames from a different observing night stop the workflow. An epoch spans noon UTC on the requested date to noon the following day.
 2. **Reduction:** verify that the logged raw-file set and hashes have not changed; reduce all science and standard exposures in that epoch through the existing archive-calibration path. Capture complete worker output in a log whose filename and header include the date.
-3. **Final report:** generate the existing house-style Fieldnotes plots/report and candidate QC images for source-selection failures. Produce a dated entry page with the observing table, outcomes, logs, provenance, full spectral report and QC links. Partial science results still get a final report.
+3. **Final report:** generate the existing house-style plots and candidate QC images for source-selection failures. Assemble the observing table, outcomes, spectra, QC and retained diagnostics in the date's single Fieldnotes page, with embedded product and log downloads. Partial science results still get a final report.
 
 The stable entry page for an epoch is:
 
 ```text
-runs/2026-10-28/nightly/index.html
+runs/2026-10-28/index.html
 ```
 
 Each observing-log/all-stages invocation creates a fresh processing revision:
@@ -51,7 +51,15 @@ runs/2026-10-28/nightly/<processing-UTC>-<unique-id>/
   QC/<raw-exposure>/         # candidate images and recipes, when required
 ```
 
-The processing timestamp identifies a revision; the parent folder and every report/log identify the **observing date**. `current.json` points to the revision used by the separate reduction/report steps. Previous revisions, raw files and accepted products are preserved. Repeating the reduction stage on an existing revision is rejected; start with the log step for a new reduction. The report stage can be rerun without re-extraction.
+The date's entry page is a single Fieldnotes document with consecutive sections for the observing log, spectra, issues, source QC, saved background experiments, native calibrations, archive and run record. Navigation stays within the page. Images and product/log downloads are embedded, so the HTML also works when copied by itself; clicking a figure enlarges it in place. Web previews reuse the existing house-style figures; original PDF/JPG files remain unchanged.
+
+Rebuild this page from saved evidence without reducing data or regenerating plots:
+
+```sh
+python scripts/build_epoch_fieldnotes.py 2026-10-28
+```
+
+The processing timestamp identifies a revision; the parent folder and every report/log identify the **observing date**. `current.json` points to the revision used by the separate reduction/report steps. Previous revisions, raw files and accepted products are preserved. Repeating the reduction stage on an existing revision is rejected; start with the log step for a new reduction. The report stage can be rerun without re-extraction. The older `nightly/index.html` remains an entry to revision-specific records.
 
 ## Keeping an epoch readable
 

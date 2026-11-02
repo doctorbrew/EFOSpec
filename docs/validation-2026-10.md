@@ -281,3 +281,9 @@ Each output directory must be fresh. The batch is completed with explicit failur
 - Preserved all 1,825 pre-existing files. Scientific data and all saved manifests/recipes are byte-for-byte unchanged. Repaired external links in two moved HTML pages and retained hash-verified copies of their originals. Eight compatibility links preserve older paths used by saved provenance; no files were deleted and raw data were not moved.
 - Verified all 193 raw hashes for this epoch, all 19 native calibration groups referenced by the shared audit, 619 local report links, loading the archived initial reduction, and exact numerical replay of both retained C3 recipes. The current nightly revision is unchanged; no broken report links remain in the checked date tree.
 - Relocation map, before/after hashes, original HTML backups and verification: `runs/2026-10-28/archive/cleanup-20261102/`. The folder-layout policy lives in [the epoch workflow](epoch-workflow.md).
+
+## 2 November: portable epoch Fieldnotes
+
+- Replaced the date's link directory with a single document: observing log, spectra, issues, source QC, background experiments, calibrations, archive and run record. Embedded 31 existing house-style figure previews and product/log downloads; no sibling pages or network access are required.
+- Verified offline navigation, figure enlargement, byte-identical FITS downloads and mobile layout. The actual 2026-10-28 page loaded all figures without browser errors. All 193 raw hashes and 223 checked science artifacts were unchanged.
+- Integrated the dated workflow with the newer GitHub desktop/native changes. Full suite: 217 passed, 90.40% coverage; final focused checks: 21 passed, including the additional exposure-bound background-revision test. Wheel build passed. Evidence is retained in the current nightly revision's `fieldnotes-verification.json` and dated validation logs.

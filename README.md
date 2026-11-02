@@ -65,7 +65,7 @@ python -m efospec download 2026-10-29
 python scripts/reduce_epoch.py 2026-10-28
 ```
 
-Creates that date's observing log, reduces its science/standard exposures, and generates QC plus the final report. Open `runs/2026-10-28/nightly/index.html`. For the next epoch, invoke the same script with the new date. [Separate log/reduction/report scripts, statuses and output layout](docs/epoch-workflow.md).
+Creates that date's observing log, reduces its science/standard exposures, and generates QC plus a self-contained Fieldnotes report. Open `runs/2026-10-28/index.html`: observations, spectra, issues, source/background QC, calibrations and archive summaries are consecutive sections. For the next epoch, invoke the same script with the new date. [Separate log/reduction/report scripts, statuses and output layout](docs/epoch-workflow.md).
 
 ## Run the archive-based demonstration
 
