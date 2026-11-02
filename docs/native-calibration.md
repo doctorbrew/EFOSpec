@@ -2,7 +2,7 @@
 
 - **Required destination:** no IRAF/PyRAF execution or IRAF-derived calibrations.
 - **Current runner:** `reduce-rapid` still uses archived IRAF line IDs and sensitivity.
-- **Native reduction:** not implemented or validated end to end yet.
+- **Native reduction:** experimental raw-only runner, demonstrated on one Gr13 exposure; [usage and scientific limits](native-raw-run.md).
 - **Scope:** EFOSC2 optical spectroscopy; start with Gr13/Gr11.
 
 ## What the local folders contain
@@ -37,7 +37,7 @@ Paths below are relative to the parent `pessto/` workspace.
 - ESO association: `complete=true`, **`certified=false`**; this is not a quality approval.
 - Our check finds complete raw candidates for SN2023xxj plus the existing Gr13/slit1.0 standards.
 - PypeIt's raw reader opens all 18 frames with the expected 1030×1030 geometry and detector metadata.
-- No end-to-end native reduction has been run; wavelength and sensitivity fitting remain pending.
+- These 2024 inputs are catalogued; the new raw-only end-to-end demonstration uses October 2026 data.
 - This retrieval covers one configuration; Gr11 and other slit/filter combinations still need their inputs.
 - [Input identifiers, download URLs, and SHA-256](calibration-inputs/2024-11-14-gr13.csv).
 - [ESO raw association request](https://archive.eso.org/datalink/links?ID=ivo%3A%2F%2Feso.org%2FID%3FEFOSC.2024-11-15T07%3A37%3A44.091&eso_download=calSelector_raw2raw).

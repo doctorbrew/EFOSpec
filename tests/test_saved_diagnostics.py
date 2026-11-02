@@ -10,6 +10,14 @@ from efospec.inventory import sha256
 from test_revisions import saved_exposure
 
 
+def legacy_fixture(source, destination):
+    """Make a comparison fixture without EFOSpec/PypeIt producer headers."""
+    with fits.open(source) as hdus:
+        del hdus[0].header['PYPEITV']
+        del hdus[0].header['PYP_SPEC']
+        hdus.writeto(destination)
+
+
 def test_sky_replay_recovers_the_original_selection_and_rejects_changed_defaults(saved_exposure):
     from efospec.sky_regions import recover_sky_selection
     from efospec import pypeit_adapter
@@ -41,12 +49,14 @@ def test_legacy_comparison_requires_same_exposure_and_unique_content(saved_expos
     legacy=tmp_path/'legacy';legacy.mkdir()
     assert compare_legacy(result,legacy) is None
     product=Path(result['product']);old=legacy/product.name;shutil.copyfile(product,old)
+    assert compare_legacy(result,tmp_path) is None  # Self and another PypeIt revision are not IRAF.
+    old.unlink();legacy_fixture(product,old)
     with fits.open(old,mode='update') as hdus:hdus[0].data/=2
     comparison=compare_legacy(result,legacy)
     assert comparison['ratio_p16_p50_p84']==pytest.approx([2,2,2])
     with fits.open(old,mode='update') as hdus:hdus[0].header['DATE-OBS']='2020-01-01T00:00:00'
     with pytest.raises(ValueError,match='exposure mismatch'):compare_legacy(result,legacy)
-    (legacy/'duplicate').mkdir();shutil.copyfile(product,legacy/'duplicate'/product.name)
+    (legacy/'duplicate').mkdir();legacy_fixture(product,legacy/'duplicate'/product.name)
     with pytest.raises(ValueError,match='conflicting'):compare_legacy(result,legacy)
 
 
@@ -57,7 +67,7 @@ def test_validation_report_measures_standard_flux_without_changing_products(save
     result['object']='SN2023xxj'
     result['sky_flexure'].update(held_out_6363_pass=True,held_out_6363_residual_angstrom=.1)
     (run/'run.json').write_text(json.dumps(manifest))
-    legacy=tmp_path/'legacy';legacy.mkdir();shutil.copyfile(run/'products/test_f.fits',legacy/'test_f.fits')
+    legacy=tmp_path/'legacy';legacy.mkdir();legacy_fixture(run/'products/test_f.fits',legacy/'test_f.fits')
     standards=tmp_path/'standards';(standards/'products').mkdir(parents=True);(standards/'native').mkdir()
     shutil.copyfile(run/'products/test_f.fits',standards/'products/test_f.fits')
     shutil.copyfile(run/'native/spec1d_test.fits',standards/'native/spec1d_test.fits')

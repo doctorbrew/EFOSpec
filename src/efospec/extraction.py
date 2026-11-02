@@ -46,7 +46,7 @@ def select_sources(found, target_position=None, manual=None):
 
 
 def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
-                    output, basename, target_position=None, manual=None, sky_input_mask=None):
+                    output, basename, target_position=None, manual=None, sky_input_mask=None, processed=None):
     """Jointly model neighbouring objects and return requested spectra and images.
 
     Data and read noise are electrons. Coordinates, manual FWHM and boxcar
@@ -90,9 +90,21 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
     ny, nx = data.shape
     tilts = (waveair-waveair.min())/(waveair.max()-waveair.min())
     rn = np.full(data.shape, float(read_noise)**2)
-    sci = PypeItImage(data, ivar=1/(np.maximum(data, 0)+rn), rn2img=rn, base_var=rn,
-                     detector=detector, exptime=exposure_time, noise_floor=0., shot_noise=True,
-                     bpm=~np.isfinite(data))
+    if processed is None:
+        sci = PypeItImage(data, ivar=1/(np.maximum(data, 0)+rn), rn2img=rn, base_var=rn,
+                         detector=detector, exptime=exposure_time, noise_floor=0., shot_noise=True,
+                         bpm=~np.isfinite(data))
+    else:
+        required = {'ivar', 'rn2img', 'base_var', 'img_scale', 'bad_pixels'}
+        if set(processed) != required or any(np.shape(processed[k]) != data.shape for k in required):
+            raise ValueError('processed variance and mask planes must match the image')
+        if any(np.any(~np.isfinite(processed[k])) or np.any(processed[k] < 0)
+               for k in required - {'bad_pixels'}):
+            raise ValueError('processed variance planes must be finite and nonnegative')
+        sci = PypeItImage(data, ivar=processed['ivar'], rn2img=processed['rn2img'],
+                         base_var=processed['base_var'], img_scale=processed['img_scale'],
+                         bpm=processed['bad_pixels'], detector=detector, exptime=exposure_time,
+                         noise_floor=0., shot_noise=True)
     gain = float(detector['gain'][0])
     sci.build_mask(saturation=detector['saturation']*gain, mincounts=-1e10)
     slits = SlitTraceSet(np.zeros(ny), np.full(ny, nx-1.), 'MultiSlit',

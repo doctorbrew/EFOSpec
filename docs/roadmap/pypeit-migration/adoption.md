@@ -7,8 +7,8 @@
 - Distribution, Python module, command, and Conda environment: `efospec`.
 - Repository: [sPaMFouR/EFOSpec](https://github.com/sPaMFouR/EFOSpec).
 - EFOSpec is the software name; ePESSTO remains the collaboration name.
-- The planned desktop extraction app shares the EFOSpec name.
-- `efospec gui` currently launches a browser prototype; it is not the requested desktop application.
+- The PySide6 desktop extraction app shares the EFOSpec name.
+- `efospec gui` launches the native Qt app; `efospec browser-prototype` retains the earlier editor.
 - The Fieldnotes webpage remains the read-only nightly log.
 
 ## Dedicated runtime

@@ -28,6 +28,48 @@ PIPELINE_STAGES = (
      'Render the saved spectrum, sky-subtracted 2D image and spatial profiles, with optional IRAF comparison. No reduction is performed in the webpage.'),
 )
 
+NATIVE_STAGES = (
+    ('Inventory & association', 'EFOSpec / Astropy',
+     'Hash raw inputs and associate matching biases, flats, arcs and the selected observed standard.'),
+    ('Detector preparation', 'PypeIt',
+     'Build raw bias and flat masters; process detector images with propagated variance and a cosmic-ray mask.'),
+    ('Wavelength calibration', 'EFOSpec + PypeIt',
+     'Identify physical He–Ar wavelengths in the raw arc; fit wavelength and tilt maps. Require physical bounds and line holdouts. Correct science flexure with 5577 and 6300 Å; check 6363 Å independently.'),
+    PIPELINE_STAGES[3],
+    ('Flux calibration', 'PypeIt + physical standard reference',
+     'Fit a new sensitivity curve from the observed standard and its physical flux reference; apply La Silla extinction. No archived IRAF sensitivity or arc IDs.'),
+    *PIPELINE_STAGES[5:],
+)
+
+
+def reduction_methods(manifest):
+    """Describe the engines actually recorded, including native joint revisions."""
+    results = manifest['results']
+    native = any(r.get('calibration', {}).get('mode') == 'native_raw_only' for r in results)
+    native = native or manifest.get('method', '').startswith('native_raw_calibration')
+    archived = any(not r.get('calibration') for r in results)
+    joint = manifest.get('method') == 'fixed_profile_joint_extraction'
+    rows = list(NATIVE_STAGES if native else PIPELINE_STAGES)
+    if native and archived:
+        rows = [(f'Raw-only: {stage}', owner, detail) for stage, owner, detail in NATIVE_STAGES]
+        rows += [(f'Archive bridge: {stage}', owner, detail) for stage, owner, detail in PIPELINE_STAGES]
+        summary = 'This report contains both raw-only and archive-bridge calibrations; see each product’s source details.'
+    elif native:
+        summary = 'Calibration uses raw biases, flats and arcs, plus an observed spectrophotometric standard. No IRAF/PyRAF runtime or archived IRAF calibration products are used.'
+    else:
+        summary = 'The calibration bridge uses archived IRAF references; IRAF/PyRAF is not executed.'
+    if joint:
+        rows = [(stage, 'EFOSpec / weighted linear fit',
+                 'Fit fixed source profiles jointly with a polynomial background. Save cross-source covariance and background alternatives. Errors are conditional on the selected profiles and background.')
+                if stage.endswith('Trace, sky & extraction') else (stage, owner, detail)
+                for stage, owner, detail in rows]
+        summary += ' Source separation uses the experimental EFOSpec fixed-profile joint solver; PypeIt supplies the spectrum file format.'
+        caption = 'Blue shading: regions used to select the polynomial background degree. Red shading: geometric boxcar aperture, not joint-fit weights.'
+    else:
+        summary += ' PypeIt handles tracing, sky modelling and extraction.'
+        caption = 'Blue shading: global-sky input selection before iterative rejection. Red shading in the spatial profiles: geometric boxcar aperture, not optimal-extraction weights. Opacity follows the selected fraction within each wavelength bin.'
+    return rows, summary, caption
+
 CSS = """
 :root{--paper:#f7f6f0;--panel:#fffef9;--forest:#244d3d;--ink:#29362e;--quiet:#616a61;--line:#dfe2d7;--serif:'Iowan Old Style','Palatino Linotype',Georgia,serif}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.55 'Avenir Next',Avenir,'Helvetica Neue',Arial,sans-serif}
@@ -102,6 +144,9 @@ def write_report(run_directory, *, generation_error=None):
         association = result.get('target', {}).get('association')
         notice = ('<p class="note">Target identity is unverified: extraction used the nominal acquisition position.</p>'
                   if association not in {'historical_aperture', 'operator_selected'} else '')
+        if result.get('valid_flux_fraction',1.) < .8:
+            notice += (f'<p class="note">Only {100*result["valid_flux_fraction"]:.0f}% '
+                       'of output flux bins are valid. Unsupported bins remain masked; inspect extraction and response coverage.</p>')
         sections.append(f'<section class="target" id="{anchor}"><div class="target-head"><div>'
                         f'<span class="eyebrow">EFOSC2 / {grism}</span><h2>{target}</h2>'
                         f'<p class="caption">{escape(result["date_obs"])} UTC · {exposure:.0f} s · '
@@ -119,7 +164,8 @@ def write_report(run_directory, *, generation_error=None):
                    + escape(generation_error or 'Some figures are missing; regenerate the report.')
                    + (' <a href="report-generation.log">Generation log</a>.' if (run/'report-generation.log').exists() else '')
                    + '</p>')
-    method_rows = ''.join('<tr>'+''.join(f'<td>{escape(cell)}</td>' for cell in row)+'</tr>' for row in PIPELINE_STAGES)
+    stages, method_summary, shading_caption = reduction_methods(manifest)
+    method_rows = ''.join('<tr>'+''.join(f'<td>{escape(cell)}</td>' for cell in row)+'</tr>' for row in stages)
     failures = ''.join(f'<li>{escape(e.get("object", Path(e.get("path", "")).name))}: '
                        f'{escape(e.get("error", e.get("reason", "")))}</li>' for e in errors+skips)
     limitations = ''.join(f'<li>{escape(note)}</li>' for note in manifest.get('limitations', []))
@@ -129,16 +175,16 @@ def write_report(run_directory, *, generation_error=None):
 <div class="masthead"><span class="brand">Fieldnotes<span aria-hidden="true">.</span> / EFOSpec</span>
 <span class="eyebrow">EFOSC2 · reduction notebook</span></div>
 <div class="intro"><div><span class="eyebrow">Observing night / {night}</span><h1>The night's spectra.</h1></div>
-<p><span class="badge">Experimental rapid reduction</span> &nbsp; {len(manifest['results'])} reduced · {len(errors)} failed · {len(skips)} skipped</p></div>
+<p><span class="badge">Experimental reduction</span> &nbsp; {len(manifest['results'])} reduced · {len(errors)} failed · {len(skips)} skipped</p></div>
 <div id="observations" class="table-wrap"><table><thead><tr><th>Target</th><th>Grism</th>
 <th class="num">Exposure (s)</th><th class="num">Median SNR</th><th>Figures</th><th>Products</th></tr></thead>
 <tbody>{''.join(rows) or '<tr><td colspan="6">No reduced exposures.</td></tr>'}</tbody></table></div>
 <p class="caption">SNR per native pixel over 4000–8500 Å. Click a target to inspect all three plots; click a plot to enlarge it.</p>
 {problem}{''.join(sections)}
 <section class="methods"><span class="eyebrow">Methods / engine boundaries</span><h2>How this reduction was made.</h2>
-<p>PypeIt handles tracing, sky modelling and extraction. The current calibration bridge uses archived IRAF references; IRAF/PyRAF is not executed.</p>
+<p>{escape(method_summary)}</p>
 <div class="table-wrap"><table><thead><tr><th>Stage</th><th>Implementation</th><th>What happens</th></tr></thead><tbody>{method_rows}</tbody></table></div>
-<p class="caption">Blue shading: global-sky input selection before iterative rejection. Red shading in the spatial profiles: geometric boxcar aperture, not optimal-extraction weights. Opacity follows the selected fraction within each wavelength bin.</p>
+<p class="caption">{escape(shading_caption)}</p>
 <details><summary>Run notes & limitations</summary><ul>{failures}{limitations}</ul></details></section>
 <footer><span>FIELDNOTES / EFOSpec · PypeIt {escape(str(manifest.get('pypeit_version', 'not recorded')))}</span>
 <a href="run.json">Source details ↗</a></footer></main></body></html>'''

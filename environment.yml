@@ -9,4 +9,4 @@ dependencies:
   - pip
   - pip:
       - '-c constraints.txt'
-      - '-e .[rapid,plots]'
+      - '-e .[rapid,plots,desktop]'

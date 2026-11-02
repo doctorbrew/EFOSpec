@@ -47,7 +47,7 @@ Status: Gr13/slit1.0 raw candidates retrieved; scientific baseline validation pe
 - [Retrieved inputs and hashes](../../native-calibration.md#raw-gr13-inputs-now-retrieved): one arc, seven flats, ten biases.
 - Candidate checks pass for SN2023xxj and existing Gr13/slit1.0 standards.
 - ESO marks the association uncertified; biases are from 7 November.
-- Native wavelength/sensitivity execution and other configurations remain pending.
+- Native wavelength/sensitivity execution is demonstrated separately on one Gr13/Free pair; full baseline and other configurations remain unvalidated.
 
 Outcome: one reproducible, complete Gr13/Free/slit1.0 night with both input
 calibrations and legacy reference products.
@@ -124,16 +124,17 @@ Outcome: native PypeIt spec1d/spec2d from one validated Gr13 configuration.
 - [ ] Record failure modes and do not claim broader EFOSC2 support.
 
 Verification: retain configuration, intermediate calibrations, line-identification
-QA, extracted products, software lock and measured residuals. No delivery export
-or production CLI switch yet.
+QA, extracted products, software lock and measured residuals. The experimental
+`reduce-native` pair command exports products; the default nightly path remains unchanged.
 
 ## T4 — Flux, second order, telluric and errors
 
-Status: blocked on T3. Depends on: T1, T3.
+Status: observed-standard response and uncertainty propagation implemented;
+absolute-flux, telluric and second-order validation remain open. Depends on T1/T3.
 
 Outcome: calibrated spectra with traceable reference standards and uncertainty.
 
-- [ ] Match standards to independently sourced physical flux references and
+- [x] Match standards to independently sourced physical flux references and
   extinction curves; derive native sensitivity without IRAF response arrays.
   Compare reference conventions with legacy after independent processing.
 - [ ] Verify standard/science airmass correction, response coverage, slit-loss

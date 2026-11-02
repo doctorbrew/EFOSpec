@@ -40,7 +40,7 @@ def assess_native_readiness(inventory):
     blockers.extend([
         'Experimental native masters and wavelength fits require per-group calibration and independent science validation; run calibrate-native. No IRAF IDs or processed arcs may substitute.',
         'Standard identities and independent physical flux references must be matched; sensitivity must be derived from the supplied observations.',
-        'Native calibration execution and legacy-compatible delivery are not yet implemented as an end-to-end path.',
+        'This preflight checks candidate availability only; execute reduce-native and inspect its scientific validation before accepting products.',
     ])
     return {'schema_version': 1, 'calibration_policy': 'native_only',
             'iraf_runtime_required': False, 'iraf_calibration_products_allowed': False,

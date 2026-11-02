@@ -28,7 +28,7 @@ class NativeReadinessTests(unittest.TestCase):
         with patch('builtins.open', side_effect=AssertionError('unexpected reference access')):
             result = assess_native_readiness(report(frames))
         self.assertTrue(result['raw_candidates_complete'])
-        self.assertFalse(result['native_execution_implemented'])
+        self.assertTrue(result['native_execution_implemented'])
         self.assertFalse(result['reduction_ready'])
         self.assertIn('physical flux references', ' '.join(result['blockers']))
 
@@ -67,7 +67,7 @@ class NativeReadinessTests(unittest.TestCase):
         result = json.loads(output.getvalue())
         self.assertEqual(result['calibration_policy'], 'native_only')
         self.assertFalse(result['reduction_ready'])
-        self.assertFalse(result['native_execution_implemented'])
+        self.assertTrue(result['native_execution_implemented'])
         self.assertTrue(result['blockers'])
 
 

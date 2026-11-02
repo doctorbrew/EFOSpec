@@ -39,8 +39,8 @@ See [the integration evidence](pypeit-integration.md) for the tested scope.
 
 ## Desktop extraction and nightly log
 
-- Required extraction interface: desktop application; Swift/SwiftUI or a suitable macOS/Linux desktop toolkit.
-- Platform/toolkit selection remains open; no desktop app is delivered yet.
+- Selected extraction interface: native PySide6/Qt desktop for macOS and Linux.
+- Desktop controls and workers are implemented; platform and scientific validation are tracked separately.
 - The existing browser editor is a prototype for the shared backend and recipe workflow.
 - Fieldnotes is the read-only log of reduced spectra for a night: opening table, per-source plots, status, and downloads.
 - Do not replace the desktop requirement with a browser editor or add extraction controls to the nightly report.
@@ -180,8 +180,8 @@ commented code are not sufficient to determine effective processing.
 
 Build a PypeIt Gr13 wavelength template using verified raw arcs and the correct
 lamp species. Legacy uses Hg/Cd/He/Ne/Ar references; the generic driver defaults
-to He/Ar. IRAF identification databases can guide line identification, but their
-coefficients are not portable PypeIt wavelength solutions. Convert reference
+to He/Ar. The raw-only path identifies independent physical lines; IRAF databases
+may be used only for external comparisons. Convert reference
 wavelengths only after establishing air/vacuum conventions; retain original
 values and the conversion method. Validate on independent arcs and night-sky
 features, not solely the arc used to construct the template.

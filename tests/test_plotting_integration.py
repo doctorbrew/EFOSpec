@@ -60,7 +60,8 @@ class PlottingIntegrationTests(unittest.TestCase):
             second_image = image.with_name(image.name.replace('slit1.0', 'slit1.5'))
             shutil.copyfile(product, second_product)
             shutil.copyfile(image, second_image)
-            second_result = {**result, 'product': str(second_product)}
+            second_result = {**result, 'product': str(second_product),
+                             'joint': {'profile_model': 'fixed_gaussian_shared_trace'}}
             (run/'run.json').write_text(json.dumps({
                 'input_dir': 'synthetic', 'pypeit_version': '1.14.0',
                 'results': [result, second_result], 'errors': [], 'skipped': [], 'limitations': []}))
@@ -79,9 +80,12 @@ class PlottingIntegrationTests(unittest.TestCase):
             self.assertEqual(len(records), 2)
             self.assertEqual({Path(r['product']).name for r in records},
                              {product.name, second_product.name})
-            record = records[0]
+            record = next(r for r in records if Path(r['product']).name == product.name)
             self.assertIsNone(record['legacy_comparison'])
             self.assertEqual(record['legend_labels'], ['PypeIt', r'Propagated $\pm 1\sigma$'])
+            joint_record = next(r for r in records if Path(r['product']).name == second_product.name)
+            self.assertEqual(joint_record['legend_labels'],
+                             ['Joint fixed profiles', r'Conditional $\pm 1\sigma$'])
             self.assertEqual(record['footer_text'], [])
             self.assertTrue(record['latex'])
             self.assertTrue(record['combined_upper_wavelength_ticklabels'])

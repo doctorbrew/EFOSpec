@@ -1,68 +1,39 @@
 # Reduction machinery
 
-![Legacy IRAF and current PypeIt reduction paths](figures/reduction-machinery.svg)
+![Legacy IRAF and experimental native reduction](figures/reduction-machinery.svg)
 
-- **Current workflow:** PypeIt extraction + archived-calibration bridge.
-- **Supported demonstration:** EFOSC2 Gr11/Gr13, Free filter, 2×2 binning.
-- **IRAF runtime:** used only by the legacy pipeline.
-- **Instrument scope:** EFOSC2 optical spectroscopy only.
+| Stage | Legacy IRAF | Archive bridge (`reduce-rapid`) | Raw-only (`reduce-native`) |
+| --- | --- | --- | --- |
+| Inventory / names | `ntt` | EFOSpec / Astropy | Same association/naming contracts |
+| Detector | `ccdproc` | Trim, gain, crop | PypeIt bias/flat, variance and masks |
+| Wavelength | identify/reidentify, fitcoords | Fit archived IRAF pixel IDs | Physical He–Ar matching + PypeIt fit/tilts |
+| Flexure | Legacy sky comparison | Two-line sky offset | Isolated 5577/6300; independent 6363 gate |
+| Trace / sky | `apall` | PypeIt FindObjects/Extract | Same shared PypeIt engine |
+| Extraction | Weighted / boxcar | PypeIt optimal / boxcar | PypeIt optimal / boxcar |
+| Response | standard/sensfunc/calibrate | Archived response | PypeIt fit to observed standard + physical flux reference |
+| Export | Multispec / ASCII | EFOSpec air-grid FITS/ASCII | Same filenames/bands; `FLUXCAL=NATIVE` |
+| Review | Legacy interactive tasks | Qt desktop + Fieldnotes | Same desktop and read-only report |
 
-## Engine boundaries
+- **IRAF runtime:** needed only for the preserved legacy pipeline.
+- **Archived IRAF products:** used by the bridge; forbidden in the native path.
+- **EFOSpec owns:** source identity, physical validation, naming, recipes, joint-profile solver and delivery.
+- **PypeIt owns:** detector processing, slit/tilt/flat machinery, fitted wavelength model, ordinary extraction and native response fitting.
+- **Joint mode:** EFOSpec's conditional weighted profile fit; it is not PypeIt's optimal extractor.
+- **Scope:** EFOSC2 optical spectroscopy; no full legacy parity or Phase 3 certification.
 
-| Stage | Legacy pipeline | Current EFOSpec |
-| --- | --- | --- |
-| Inventory / naming | Legacy `ntt` helpers | Our Python / Astropy code |
-| Detector preparation | IRAF `ccdproc`; rapid trim or full bias/flat | Our trim, gain conversion, target crop |
-| Wavelength solution | IRAF identify/reidentify, fitcoords, transform | Our polynomial fit to archived IRAF IDs |
-| Flexure | Legacy sky comparison / wavelength shift | Our 5577/6300 Å shift; independent 6364 Å check |
-| Trace / background | IRAF `apall` | PypeIt `FindObjects` and `Extract` |
-| Extraction | IRAF `apall` weights / cleaning | PypeIt optimal and boxcar extraction |
-| Flux calibration | IRAF `calibrate`; standard/sensfunc when needed | Our archived sensitivity + La Silla extinction |
-| Native output | IRAF multispec products | PypeIt `SpecObjs` spec1d FITS |
-| Final output | Legacy FITS/ASCII and headers | Our air-wavelength resampling, FITS/ASCII, Fieldnotes |
+## Errors and diagnostics
 
-## Important distinctions
+- Detector variance and flat scaling are preserved through native extraction.
+- Delivered resampling propagates diagonal variance; wavelength-bin covariance is not stored.
+- Joint mode saves source covariance and alternative backgrounds on its rectified count grid.
+- Profile uncertainty, response uncertainty, slit losses and tellurics remain outside reported statistical errors.
+- High spatial scatter can indicate source structure, sky residuals, fringing or defects.
+- Blue shading: selected background. Red shading: geometric aperture, not optimal weights.
 
-- Legacy **full** and **rapid** reductions have different calibration policies.
-- The current new runner implements **rapid** processing only.
-- Both use legacy reference files; the new runner does not execute IRAF.
-- Fully IRAF-independent calibration is still pending: [inputs and status](native-calibration.md).
-- PypeIt supplies air/vacuum conversion utilities and extraction variances.
-- Our exporter propagates diagonal variance; resampling covariance is not saved.
-- Neighbours are fitted together; automatic mode exports one target, manual recipes export up to two.
-- Manual background regions set the global fit, held during extraction; automatic mode retains local fitting.
+## Interfaces
 
-## Current limits
-
-- No fresh bias/flat/arc masters or standard-star sensitivity solution.
-- No bias, flat, dark, overscan, or telluric correction in the new rapid path.
-- Fringing remains; absolute flux and red second-order contamination need validation.
-- Five demonstration targets use unverified nominal acquisition positions.
-- No native spec2d product, full legacy parity, or Phase 3 certification.
-
-## Desktop app and nightly webpage
-
-- Planned desktop app: interactive trace/aperture/background selection and extraction jobs.
-- Shared Python engine: all scientific processing and revision export.
-- Fieldnotes webpage: read-only nightly reduction log; table, per-source plots, and downloads.
-- Existing `efospec gui`: browser prototype; desktop implementation is still pending.
-- [Interface rules](../AGENTS.md) · [Desktop roadmap](roadmap/pypeit-migration/gui.md).
-
-## Read the diagnostic shading
-
-- **Blue:** input sky pixels before iterative rejection.
-- **Red:** geometric boxcar aperture, not optimal-extraction weights.
-- **Opacity:** selected fraction within each wavelength bin.
-
-## Code and next steps
-
-- `rapid.py`: reduction orchestration.
-- `extraction.py`, `products.py`: shared PypeIt engine and exporter.
-- `recipes.py`, `revisions.py`: validated edits and replay; reusable by the desktop app.
-- `workbench.py`: retained experimental browser editor.
-- `archive_calibration.py`: wavelength, sensitivity, and resampling.
-- `pypeit_adapter.py`: instrument metadata and parameters.
-- `report.py`: read-only nightly Fieldnotes log.
-- [Desktop GUI and two-source extraction](roadmap/pypeit-migration/gui.md).
-- [Legacy Python 3.11 compatibility check](legacy-compatibility.md).
-- Rebuild the diagram: `python scripts/render_pipeline_diagram.py`.
+- `efospec gui`: native PySide6 desktop; edit recipes, run/cancel and inspect revisions.
+- `efospec browser-prototype`: retained experimental browser editor.
+- `efospec report`: read-only Fieldnotes page; no extraction controls.
+- [Desktop guide](desktop.md) · [Raw-only guide](native-raw-run.md) · [Validation](native-desktop-validation.md).
+- Rebuild the SVG: `python scripts/render_pipeline_diagram.py`.

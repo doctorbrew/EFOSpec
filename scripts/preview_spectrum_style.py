@@ -51,16 +51,17 @@ def mark_sky_lines(ax):
 
 def draw_spectrum(ax, result, wave, bands, comparison=None, legacy_data=None):
     display_label = result['object'].replace('_', r'\_')
+    joint = bool(result.get('joint'))
     uncertainty = ax.fill_between(
         wave, (bands[0]-bands[3])/1e-16, (bands[0]+bands[3])/1e-16,
         color=PYPEIT_COLOUR, alpha=0.18, linewidth=0, zorder=1,
-        label=r'Propagated $\pm 1\sigma$')
+        label=(r'Conditional $\pm 1\sigma$' if joint else r'Propagated $\pm 1\sigma$'))
     if comparison:
         old_wave, old_bands = legacy_data
         legacy, = ax.plot(old_wave, old_bands[0]/1e-16, color=IRAF_COLOUR,
                          linewidth=1.1, zorder=2, label='IRAF')
     native, = ax.plot(wave, bands[0]/1e-16, color=PYPEIT_COLOUR,
-                      linewidth=1.5, zorder=3, label='PypeIt')
+                      linewidth=1.5, zorder=3, label='Joint fixed profiles' if joint else 'PypeIt')
     good = np.isfinite(wave) & np.isfinite(bands[0]) & np.isfinite(bands[3])
     if not good.any():
         raise ValueError(f"no finite spectrum to plot: {result['product']}")
@@ -295,7 +296,8 @@ def render_spectrum(result, run, *, no_legacy=False, legacy_root=None, suffix=""
         'tick_label_pt': TICK_LABEL_PT, 'legend_pt': 18,
         'major_ticks': {'direction': 'in', 'length': 9, 'width': 1.6},
         'minor_ticks': {'direction': 'in', 'length': 5, 'width': 1.0},
-        'colours': {'PypeIt': PYPEIT_COLOUR, 'legacy': to_hex(IRAF_COLOUR)},
+        'colours': {'Joint fixed profiles' if result.get('joint') else 'PypeIt': PYPEIT_COLOUR,
+                    'legacy': to_hex(IRAF_COLOUR)},
         'pastel_definition': '60 percent xkcd:red mixed with 40 percent white',
         'legacy_comparison': comparison,
         'target_association': result['target']['association'],
