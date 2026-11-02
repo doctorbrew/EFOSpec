@@ -43,7 +43,7 @@ def worker(monkeypatch, *, partial=False, crash=False, plot_failure=False):
     return calls
 
 
-def test_partial_reduction_still_presents_one_dated_report_and_qc(epoch,monkeypatch):
+def test_partial_reduction_still_presents_one_dated_report_and_qc(epoch,monkeypatch,capsys):
     root,raw=epoch;before=sha256(raw);calls=worker(monkeypatch,partial=True)
     state=nightly.run_epoch('2026-10-28',project_root=root)
     assert state['status']=='partial' and nightly.exit_code(state)==1
@@ -57,6 +57,11 @@ def test_partial_reduction_still_presents_one_dated_report_and_qc(epoch,monkeypa
     assert not (root/'runs/2026-10-29').exists()
     assert sha256(raw)==before
     assert not (output.parent/'.running').exists()
+    daily_log=root/'runs/2026-10-28/index.html'
+    assert state['daily_log']==str(daily_log)
+    assert daily_log.is_file() and 'Fieldnotes' in daily_log.read_text()
+    assert capsys.readouterr().out.splitlines()[-1].endswith(str(daily_log))
+    assert json.loads((output/'night.json').read_text())['daily_log']==str(daily_log)
 
 
 def test_separate_steps_preserve_products_and_new_log_starts_new_revision(epoch,monkeypatch):
