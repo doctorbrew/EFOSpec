@@ -1,11 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="1040" viewBox="0 0 1120 1040" role="img" aria-labelledby="title description">
 <title id="title">EFOSC2 reduction machinery: legacy IRAF and experimental native PypeIt reduction</title>
-<desc id="description">Two parallel reduction paths. Legacy uses IRAF tasks. The native pipeline uses raw bias, flats, physical arc wavelengths and observed standards. Qt desktop controls use shared Python workers. The Fieldnotes webpage is a read-only nightly log.</desc>
+<desc id="description">Two parallel reduction paths. Legacy uses IRAF tasks. The native pipeline uses raw bias, flats, physical arc wavelengths and observed standards. Qt desktop controls use shared Python workers. The webpage is a read-only nightly log.</desc>
 <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#7c857e"/></marker></defs>
 <style>text{font-family:'Avenir Next',Avenir,Arial,sans-serif;fill:#29362e}.title{font-family:Georgia,serif;font-size:29px;fill:#244d3d}.heading{font-size:21px;font-weight:600}.body{font-size:17px}.small{font-size:15px;fill:#536159}.label{font-size:13px;font-weight:600;letter-spacing:1px}.arrow{fill:none;stroke:#7c857e;stroke-width:1.5;marker-end:url(#arrow)}</style>
 <rect width="1120" height="1040" rx="12" fill="#f7f6f0"/>
 <text class="title" x="32" y="45">EFOSC2 reduction machinery</text>
-<text class="small" x="32" y="72">Legacy and experimental raw-only paths — scientific engine boundaries shown explicitly</text>
 <rect x="340" y="94" width="440" height="54" rx="9" fill="#fffef9" stroke="#cbd3c8"/>
 <text class="heading" x="560" y="128" text-anchor="middle">Science FITS + raw calibration frames</text>
 <path class="arrow" d="M420 148 V166 H288 V175"/><path class="arrow" d="M700 148 V166 H832 V175"/>
@@ -68,11 +67,10 @@
 <text class="label" x="592" y="745">PYPEIT + OUR PYTHON</text>
 <text class="heading" x="592" y="771">Delivered products</text>
 <text class="body" x="592" y="796">Native spec1d → air-grid legacy FITS / ASCII</text>
-<text class="small" x="592" y="818">Diagnostic figures + read-only nightly Fieldnotes log</text>
+<text class="small" x="592" y="818">Diagnostic figures + read-only nightly log</text>
 
-<text class="small" x="32" y="861">The archive bridge remains available as reduce-rapid. Native reduction forbids archived IRAF calibration products.</text>
 <rect x="32" y="891" width="1056" height="111" rx="9" fill="#eef2f5" stroke="#6f8797" stroke-dasharray="6 4"/>
 <text class="label" x="48" y="916">PYSIDE6 / QT DESKTOP EXTRACTION · SEPARATE READ-ONLY NIGHTLY LOG</text>
 <text class="heading" x="48" y="945">Desktop controls → saved recipe → Python / PypeIt → spectra</text>
-<text class="body" x="48" y="977">Qt controls, saved recipes and cancellable workers. Experimental joint SN/host profiles retain source covariance.</text>
+<text class="body" x="48" y="977">Qt controls, saved recipes. Experimental joint SN/host profiles retain source covariance.</text>
 </svg>

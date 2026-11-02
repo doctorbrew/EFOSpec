@@ -2,11 +2,13 @@
 from copy import deepcopy
 from datetime import datetime
 import json
+import os
 from pathlib import Path
 import sys
 import uuid
 
-from PyQt6 import QtCore, QtWidgets
+os.environ['QT_API']='pyside6'
+from PySide6 import QtCore, QtWidgets
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT
