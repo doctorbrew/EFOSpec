@@ -9,6 +9,7 @@ from astropy.time import Time
 from .archive_calibration import rebin_density
 from .inventory import sha256
 from .run_paths import resolve_result_paths
+from .figure_style import house_style
 
 
 def read_flux(path):
@@ -40,10 +41,15 @@ def compare_legacy(result, legacy_root):
             'n_bins':int(good.sum())}
 
 
+@house_style
 def make_report(run_directory, legacy_root, standards_directory=None, reference_root='trunk/src/ntt'):
-    import matplotlib
-    matplotlib.use('Agg')
+    from .figure_style import COLORS,save_qc
     import matplotlib.pyplot as plt
+    import shutil
+
+    def save(fig,kind,name):
+        stem=save_qc(fig,output,kind,name)
+        shutil.copyfile(stem.with_suffix('.pdf'),output/(kind+'.pdf'))
 
     output=Path(run_directory).resolve()
     run=json.loads((output/'run.json').read_text())
@@ -54,11 +60,9 @@ def make_report(run_directory, legacy_root, standards_directory=None, reference_
              'comparisons':{},'standards':[]}
     for r in results:
         summary['comparisons'][r['object']]=compare_legacy(r,legacy_root)
-    plt.rcParams.update({'font.size':10,'axes.spines.top':False,'axes.spines.right':False,
-                         'figure.facecolor':'white','savefig.facecolor':'white'})
-    blue,orange='#205b81','#bf613b'
+    blue,orange=COLORS[0],COLORS[2]
     nrows=int(np.ceil(len(results)/3))
-    fig,axes=plt.subplots(nrows,3,figsize=(14,2.65*nrows),layout='constrained')
+    fig,axes=plt.subplots(nrows,3,figsize=(24,6*nrows),layout='constrained')
     for ax,r in zip(axes.flat,results):
         w,b,h=read_flux(r['product'])
         ax.plot(w,b[0]/1e-16,color=blue,lw=.65)
@@ -67,31 +71,31 @@ def make_report(run_directory, legacy_root, standards_directory=None, reference_
         if old:
             ow,ob,_=read_flux(old['path']);ax.plot(ow,ob[0]/1e-16,color=orange,lw=.7,alpha=.75)
         label='aperture confirmed' if r['target']['association']=='historical_aperture' else 'target unverified'
-        ax.set_title(f"{r['object']} · {r['grism']}\nS/N {r['median_native_snr_4000_8500']:.1f} · {label}",fontsize=10,loc='left')
+        ax.set_title(f"{r['object']} · {r['grism']}\nS/N {r['median_native_snr_4000_8500']:.1f} · {label}",fontsize=20,loc='left')
         good=np.isfinite(b[0])&(w>4000)&(w<8500)
         lo,hi=np.percentile(b[0][good]/1e-16,[2,98]); span=max(hi-lo,0.01)
         ax.set_ylim(lo-.2*span,hi+.2*span);ax.set_xlim(3900,9100 if r['grism']=='Gr13' else 7450)
-        ax.axhline(0,lw=.4,color='gray');ax.grid(alpha=.12)
+        ax.axhline(0,lw=.4,color='gray')
     for ax in list(axes.flat)[len(results):]:ax.set_visible(False)
     fig.supylabel(r'$F_\lambda$ [$10^{-16}$ erg s$^{-1}$ cm$^{-2}$ $\AA^{-1}$]')
     fig.supxlabel(r'Observed air wavelength [$\AA$]')
-    fig.suptitle('EFOSC2 · 14 November 2024 · experimental rapid reduction\nBlue: PypeIt extraction + archived calibration   |   Orange: existing IRAF spectrum',fontsize=13)
-    for ext in ('png','pdf'):fig.savefig(output/('night-overview.'+ext),dpi=170)
+    fig.suptitle('EFOSC2 · 14 November 2024 · experimental rapid reduction\nBlue: PypeIt extraction + archived calibration   |   Orange: existing IRAF spectrum',fontsize=20)
+    save(fig,'night-overview','EFOSC2')
     plt.close(fig)
 
     example=next(r for r in results if r['object']=='SN2023xxj')
     w,b,h=read_flux(example['product']);old=summary['comparisons'][example['object']]
     ow,ob,_=read_flux(old['path'])
     images=np.load(output/'native'/(Path(example['product']).name[:-7]+'_images.npz'))
-    fig=plt.figure(figsize=(11,8.2),layout='constrained')
+    fig=plt.figure(figsize=(20,19),layout='constrained')
     gs=fig.add_gridspec(3,1,height_ratios=[1.35,.9,1.])
     ax=fig.add_subplot(gs[0]);ax.plot(w,b[0]/1e-16,c=blue,lw=.9,label='PypeIt + archive bridge')
     ax.fill_between(w,(b[0]-b[3])/1e-16,(b[0]+b[3])/1e-16,color=blue,alpha=.17,lw=0,label='Propagated 1σ')
     ax.plot(ow,ob[0]/1e-16,c=orange,lw=.85,alpha=.8,label='Existing IRAF reduction')
     ax.set(xlim=(3900,9100),ylim=(-.05,1.4),ylabel=r'$F_\lambda$ [$10^{-16}$ cgs / $\AA$]')
-    ax.legend(frameon=False,ncol=3,fontsize=9)
+    ax.legend(frameon=False,ncol=3,fontsize=18)
     ax.set_title(f"SN2023xxj · Gr13 · 2700 s · median S/N {example['median_native_snr_4000_8500']:.1f}/pixel\nUnscaled comparison; median new/legacy flux = {old['ratio_p16_p50_p84'][1]:.3f} in the stated continuum windows",loc='left')
-    ax.grid(alpha=.15)
+
     ax=fig.add_subplot(gs[1],sharex=ax)
     trace=np.median(images['trace']);lo=max(0,int(trace)-22);hi=min(images['data'].shape[1],int(trace)+23)
     residual=images['data']-images['sky']
@@ -100,25 +104,25 @@ def make_report(run_directory, legacy_root, standards_directory=None, reference_
     ax.imshow(residual[:,lo:hi].T,origin='lower',aspect='auto',extent=[wav[0],wav[-1],lo,hi],
               vmin=v[0],vmax=v[1],cmap='gray_r',interpolation='nearest')
     ax.plot(wav,images['trace'],lw=.7,color=orange,alpha=.9,label='PypeIt trace')
-    ax.set_ylabel('Spatial pixel\n(cropped frame)');ax.legend(loc='upper right',frameon=False,fontsize=8)
-    ax.set_title('Sky-subtracted detector strip; horizontal axis is approximate before rectification',fontsize=9,loc='left')
+    ax.set_ylabel('Spatial pixel\n(cropped frame)');ax.legend(loc='upper right',frameon=False,fontsize=18)
+    ax.set_title('Sky-subtracted detector strip; horizontal axis is approximate before rectification',fontsize=18,loc='left')
     ax=fig.add_subplot(gs[2])
     for grism,color in [('Gr13',blue),('Gr11',orange)]:
         selected=[r for r in results if r['grism']==grism and r['sky_flexure']['held_out_6363_residual_angstrom'] is not None]
         ax.scatter([float(Time(r['date_obs']).datetime.hour+Time(r['date_obs']).datetime.minute/60) for r in selected],
-                   [r['sky_flexure']['held_out_6363_residual_angstrom'] for r in selected],s=32,c=color,label=grism)
+                   [r['sky_flexure']['held_out_6363_residual_angstrom'] for r in selected],s=32,facecolors='white',edgecolors=[color],label=grism)
     ax.axhline(0,lw=.8,c='gray');ax.axhspan(-3,3,color=blue,alpha=.06)
     ax.set(xlabel='15 November 2024 · UTC hour',ylabel='[O I] 6363 residual [Å]',ylim=(-3.2,3.2))
-    ax.set_title('Independent sky-line check after correcting with 5577 and 6300 Å (11 measurable exposures)',fontsize=10,loc='left')
-    ax.legend(frameon=False,ncol=2);ax.grid(alpha=.15)
-    for ext in ('png','pdf'):fig.savefig(output/('SN2023xxj-validation.'+ext),dpi=180)
+    ax.set_title('Independent sky-line check after correcting with 5577 and 6300 Å (11 measurable exposures)',fontsize=20,loc='left')
+    ax.legend(frameon=False,ncol=2)
+    save(fig,'SN2023xxj-validation','SN2023xxj')
     plt.close(fig)
 
     if standards_directory:
         standards=json.loads((Path(standards_directory)/'run.json').read_text())
         refpath=Path(reference_root)/'standard/MAB/ml745a.dat'
         ref=np.loadtxt(refpath); reference_flux=10**(-.4*(ref[:,1]+48.6))*2.99792458e18/ref[:,0]**2
-        fig,axes=plt.subplots(2,1,figsize=(10,6),layout='constrained',sharex=True)
+        fig,axes=plt.subplots(2,1,figsize=(20,13),layout='constrained',sharex=True)
         for saved,color in zip(standards['results'],[orange,blue]):
             r=resolve_result_paths(saved, standards_directory)
             if r['object']!='L745a':continue
@@ -136,8 +140,8 @@ def make_report(run_directory, legacy_root, standards_directory=None, reference_
         axes[0].set(ylabel=r'$F_\lambda$ [$10^{-14}$ cgs / $\AA$]',title='L745a · independent reference-flux check · no renormalization')
         axes[1].set(xlim=(4000,8500),ylim=(.6,1.3),ylabel='Extracted / reference',xlabel='Observed air wavelength [Å]')
         axes[1].axhline(1,c='gray',lw=.7)
-        for ax in axes:ax.legend(frameon=False);ax.grid(alpha=.15)
-        for ext in ('png','pdf'):fig.savefig(output/('standard-validation.'+ext),dpi=170)
+        for ax in axes:ax.legend(frameon=False)
+        save(fig,'standard-validation','L745a')
         plt.close(fig)
         summary['standard_attempts']={'reduced':len(standards['results']),'failed':len(standards['errors']),
                                       'skipped':len(standards['skipped'])}

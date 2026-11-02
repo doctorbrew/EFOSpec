@@ -8,6 +8,7 @@
 - **The Fieldnotes webpage is the read-only nightly reduction log.** Keep the opening table, per-source spectrum/trace/spatial-profile plots, status, and downloads.
 - Do not put extraction controls or job execution into the nightly report. Omit the previously rejected source-selection table column.
 - `efospec gui` currently launches a **browser prototype**. Document that limitation; it does not fulfil the desktop GUI requirement.
+- `efospec background-gui` is a native PyQt6 editor for failed-exposure QC packets and experimental polynomial boxcar revisions. Native interactions have been checked on macOS only; this is a bounded first desktop feature, not the complete reduction application. See [background workflow](docs/polynomial-background.md).
 - Preserve useful prototype code/tests while reusing its Python backend for desktop development. Do not claim the desktop app is delivered until its acceptance gates pass.
 - Canonical GUI requirements and tasks: [desktop roadmap](docs/roadmap/pypeit-migration/gui.md).
 
@@ -21,6 +22,8 @@
 - Treat `trunk/` as the preserved legacy baseline; keep the original `../pessto/` checkout and scientific environments separate.
 
 ## Documentation and verification
+
+- **All new or regenerated scientific plots must use the `plot-style` skill**, including QC, detector images, profiles and diagnostic spectra. Use the existing root `plot_style.py`: SciencePlots, mandatory LaTeX, Hiroshige colours, inward ticks after setting limits, and both PDF + 300-dpi JPG. PNGs may accompany these as report previews. Do not silently use Matplotlib defaults.
 
 - Keep Markdown compact; prefer short bullets and explicit delivered/planned status.
 - Use observing-night paths such as `runs/2024-11-14` in instructions. Identify historical test-directory names as internal evidence only.

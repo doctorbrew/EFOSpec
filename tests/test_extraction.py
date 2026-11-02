@@ -101,3 +101,24 @@ class ExtractionIntegrationTests(unittest.TestCase):
             args.update(changes)
             with self.assertRaises(ValueError):
                 extract_spectra(**args)
+
+
+def test_source_failure_keeps_positions_and_diagnostic_images(tmp_path):
+    from efospec.extraction import SourceSelectionError
+    import pytest
+    data, wave, _ = synthetic_image()
+    raw = write_raw(tmp_path, 'raw.fits')
+    with fits.open(raw) as hdus:
+        detector = EFOSpecEFOSC2Spectrograph().get_detector_par(1, hdus)
+    (tmp_path/'QA/PNGs').mkdir(parents=True)
+    with pytest.raises(SourceSelectionError) as caught:
+        extract_spectra(data, wave, detector, exposure_time=600., read_noise=7.8,
+                        output=tmp_path, basename='unresolved', target_position=73.)
+    info = caught.value.diagnostics
+    assert len(info['candidates']) == 2
+    assert info['expected_spatial_pixel'] == 73.
+    with np.load(info['diagnostic_file']) as saved:
+        np.testing.assert_array_equal(saved['data'], data)
+        np.testing.assert_array_equal(saved['waveair'], wave)
+        assert len(saved['found_traces']) == 2
+    assert not list(tmp_path.glob('products/*.fits'))

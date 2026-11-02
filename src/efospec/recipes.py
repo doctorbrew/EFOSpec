@@ -54,7 +54,8 @@ def sky_mask(recipe, window):
         selected &= ~((spatial >= low) & (spatial < high))
     for obj in recipe['objects']:
         # Protect both the geometric aperture and extended profile wings.
-        selected &= abs(spatial-obj['spat']) > max(obj['radius'], 3*obj['fwhm'])
+        guard = obj['radius']+.5 if recipe['sky']['mode']=='polynomial' else max(obj['radius'], 3*obj['fwhm'])
+        selected &= abs(spatial-obj['spat']) > guard
     selected[[0, -1]] = False
     return np.broadcast_to(selected, window.shape).copy()
 
@@ -109,8 +110,10 @@ def validate_recipe(value, window, expected_inputs):
     if len(objects) == 2 and abs(objects[0]['spat']-objects[1]['spat']) < 5*max(o['fwhm'] for o in objects):
         raise ValueError('two-source mode requires separated traces: at least five FWHM')
     sky = recipe['sky']
-    _fields(sky, ('mode', 'include', 'exclude'), 'sky selection')
-    if sky['mode'] not in ('automatic', 'regions'):
+    if not isinstance(sky,dict):raise ValueError('sky selection must be an object')
+    fields=('mode','include','exclude','degree','sigma_clip') if sky.get('mode')=='polynomial' else ('mode','include','exclude')
+    _fields(sky, fields, 'sky selection')
+    if sky['mode'] not in ('automatic', 'regions', 'polynomial'):
         raise ValueError('invalid sky selection mode')
     for key in ('include', 'exclude'):
         if not isinstance(sky[key], list) or len(sky[key]) > 32:
@@ -125,8 +128,17 @@ def validate_recipe(value, window, expected_inputs):
             sky[key][index] = [low, high]
     if sky['mode'] == 'automatic' and (sky['include'] or sky['exclude']):
         raise ValueError('automatic sky selection cannot ignore edited background bands')
-    if sky['mode'] == 'regions' and mode != 'manual':
+    if sky['mode'] in ('regions','polynomial') and mode != 'manual':
         raise ValueError('selected background requires manual source anchors')
+    if sky['mode']=='polynomial':
+        if len(objects)!=1:raise ValueError('polynomial background requires one explicitly selected source')
+        if not objects[0]['spec'].is_integer():raise ValueError('polynomial background anchor must use an integer detector row')
+        if type(sky['degree']) is not int or not 0<=sky['degree']<=3:
+            raise ValueError('polynomial degree must be an integer from 0 to 3')
+        sky['sigma_clip']=_number(sky['sigma_clip'],3.,8.,'background clipping sigma')
+        mask=sky_mask(recipe,window)[0];x=np.arange(window.shape[1])+window.origin[1]
+        if min(np.sum(mask&(x<objects[0]['spat'])),np.sum(mask&(x>objects[0]['spat'])))<5:
+            raise ValueError('polynomial background needs at least five samples on each side of the aperture')
     minimum = max(8, math.ceil(.21*window.shape[1]))
     if sky['mode'] == 'regions' and np.min(sky_mask(recipe, window).sum(axis=1)) < minimum:
         raise ValueError(f'background selection needs at least {minimum} sky pixels per row (PypeIt sky-fit gate)')

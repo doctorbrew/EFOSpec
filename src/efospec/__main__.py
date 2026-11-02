@@ -15,11 +15,32 @@ def main(argv=None):
     gui.add_argument('--no-browser', action='store_true')
     revision = commands.add_parser('reextract', help='Replay a saved manual or automatic recipe')
     revision.add_argument('path')
-    revision.add_argument('--product', required=True, help='Original product filename')
+    identity = revision.add_mutually_exclusive_group(required=True)
+    identity.add_argument('--product', help='Original product filename')
+    identity.add_argument('--failed-raw', help='Raw basename of a source-selection failure')
     revision.add_argument('--recipe', required=True, help='Saved JSON recipe')
     revision.add_argument('--output', required=True, help='New revision directory')
     revision.add_argument('--reference-root')
     revision.add_argument('--skip-report', action='store_true')
+    recovery = commands.add_parser('prepare-recovery', help='Write candidate recipes for a failed exposure; no extraction')
+    recovery.add_argument('path')
+    recovery.add_argument('--raw',required=True)
+    recovery.add_argument('--output',required=True)
+    recovery.add_argument('--reference-root')
+    qc = commands.add_parser('recovery-qc', help='Create images and unverified candidate trials for a source-selection failure')
+    qc.add_argument('path', help='Run containing current failed-exposure diagnostics')
+    qc.add_argument('--raw', required=True)
+    qc.add_argument('--output', required=True, help='Fresh subfolder inside runs/YYYY-MM-DD/QC')
+    qc.add_argument('--reference-root')
+    qc.add_argument('--test-recipes', action='store_true')
+    background = commands.add_parser('background-extract', help='Experimental polynomial sky+host background and boxcar counts')
+    background.add_argument('path')
+    background.add_argument('--failed-raw',required=True)
+    background.add_argument('--recipe',required=True)
+    background.add_argument('--output',required=True)
+    background.add_argument('--reference-root')
+    editor=commands.add_parser('background-gui',help='Experimental native desktop aperture/background editor')
+    editor.add_argument('packet',help='QC exposure review.json')
     download = commands.add_parser('download', help='Download a night of raw EFOSC2 data into data/YYYY-MM-DD')
     download.add_argument('night', help='Observing night YYYY-MM-DD (noon UTC to following noon)')
     download.add_argument('--output-root', default='data')
@@ -32,6 +53,15 @@ def main(argv=None):
     scan.add_argument("paths", nargs="+")
     native = commands.add_parser('native-readiness', help='Check raw calibration availability without IRAF references or fallback')
     native.add_argument('paths', nargs='+')
+    calibrate = commands.add_parser('calibrate-native', help='Build experimental raw masters and wavelength/tilt calibrations')
+    calibrate.add_argument('paths', nargs='+')
+    calibrate.add_argument('--output', required=True, help='New calibration run directory')
+    calibrate.add_argument('--grism', action='append', choices=['Gr11','Gr13','Gr16'])
+    calibrate.add_argument('--group', action='append', help='Selected calibration group ID; repeatable')
+    calibrate.add_argument('--template-map', help='JSON mapping group IDs to successful native group directories')
+    validation = commands.add_parser('validate-native', help='Apply raw masters and measure diagnostic sky offsets; no science delivery')
+    validation.add_argument('path')
+    validation.add_argument('--output',required=True)
     rapid = commands.add_parser('reduce-rapid', help='Experimental archived-calibration/PypeIt reduction')
     rapid.add_argument('path', help='Night directory; raw inputs remain read-only')
     rapid.add_argument('--output', required=True, help='Fresh run directory')
@@ -59,14 +89,47 @@ def main(argv=None):
         command.add_argument("--arc", action="append", default=[], help="Explicit raw arc; repeatable")
     args = parser.parse_args(argv)
     try:
+        if args.command == 'background-gui':
+            from .background_gui import launch
+            return launch(args.packet)
+        if args.command == 'background-extract':
+            from pathlib import Path
+            from .polynomial_background import extract_background
+            result=extract_background(args.path,args.failed_raw,json.loads(Path(args.recipe).read_text()),
+                                      args.output,args.reference_root)
+            print(json.dumps(result,indent=2,allow_nan=False))
+            return 0
+        if args.command == 'recovery-qc':
+            from .recovery_qc import build_recovery_qc
+            result=build_recovery_qc(args.path,args.raw,args.output,args.reference_root,
+                                     test_recipes=args.test_recipes)
+            print(json.dumps(result,indent=2,allow_nan=False))
+            return int(any(c.get('trial',{}).get('execution')=='failed' for c in result['candidates']))
+        if args.command == 'validate-native':
+            from .native_validation import validate_native_run
+            result=validate_native_run(args.path,args.output)
+            print(json.dumps(result,indent=2,allow_nan=False))
+            return 0 if result['status']=='complete' else 1
+        if args.command == 'calibrate-native':
+            from .native_calibration import calibrate_night
+            from pathlib import Path
+            templates = json.loads(Path(args.template_map).read_text()) if args.template_map else None
+            result = calibrate_night(args.paths,args.output,grisms=args.grism,
+                                     templates=templates,group_ids=args.group)
+            print(json.dumps(result,indent=2,allow_nan=False))
+            return 0 if result['status'] == 'complete' else 1
         if args.command == 'gui':
             from .workbench import serve
             return serve(args.path,args.reference_root,args.port,not args.no_browser)
+        if args.command == 'prepare-recovery':
+            from .revisions import prepare_recovery
+            print(json.dumps(prepare_recovery(args.path,args.raw,args.output,args.reference_root),indent=2))
+            return 0
         if args.command == 'reextract':
             from pathlib import Path
             from .revisions import reextract
-            result = reextract(args.path,args.product,json.loads(Path(args.recipe).read_text()),
-                               args.output,args.reference_root,render_report=not args.skip_report)
+            result = reextract(args.path,args.product or args.failed_raw,json.loads(Path(args.recipe).read_text()),
+                               args.output,args.reference_root,render_report=not args.skip_report,failed=bool(args.failed_raw))
             print(json.dumps({'output_dir':result['output_dir'], 'reduced':len(result['results']),
                               'report':result.get('report')},indent=2))
             return 0
@@ -98,7 +161,7 @@ def main(argv=None):
             print(json.dumps({'output_dir':result['output_dir'], 'reduced':len(result['results']),
                               'errors':result['errors'], 'skipped':result['skipped'],
                               'report':result.get('report')},indent=2))
-            return 1 if result['errors'] or result.get('report', {}).get('status') == 'incomplete' else 0
+            return 1 if result['errors'] or result['skipped'] or result.get('report', {}).get('status') == 'incomplete' else 0
         result = inventory(args.paths + getattr(args, "arc", []))
         if args.command == 'native-readiness':
             from .native_readiness import assess_native_readiness

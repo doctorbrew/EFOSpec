@@ -38,7 +38,7 @@ def assess_native_readiness(inventory):
             blockers.append('No usable raw science or standard exposures.')
     complete = not blockers
     blockers.extend([
-        'Native Gr11/Gr13 wavelength calibration must be implemented and validated against raw arcs; no IRAF IDs or processed arcs may substitute.',
+        'Experimental native masters and wavelength fits require per-group calibration and independent science validation; run calibrate-native. No IRAF IDs or processed arcs may substitute.',
         'Standard identities and independent physical flux references must be matched; sensitivity must be derived from the supplied observations.',
         'Native calibration execution and legacy-compatible delivery are not yet implemented as an end-to-end path.',
     ])
@@ -49,5 +49,6 @@ def assess_native_readiness(inventory):
                                           if f['role'] == 'flat_test'],
             'input_errors': inventory['errors'], 'identity_conflicts': inventory['identity_conflicts'],
             'exposures': exposures, 'raw_candidates_complete': complete,
+            'native_calibration_execution_implemented': True,
             'native_execution_implemented': False, 'reduction_ready': False,
             'blockers': blockers}

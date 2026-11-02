@@ -18,6 +18,18 @@ from .inventory import inventory, sha256
 from .naming import science_stem, product_name
 
 
+class UnsupportedSetupError(ValueError):
+    code = 'unsupported_setup'
+    action = 'Validate matching arc and sensitivity calibrations before enabling this setup.'
+
+
+def save_run(output, run):
+    """Replace the manifest atomically, retaining the last checkpoint on interruption."""
+    pending = output/'run.json.tmp'
+    pending.write_text(json.dumps(run, indent=2, allow_nan=False)+'\n')
+    pending.replace(output/'run.json')
+
+
 def target_hint(frame, legacy_root):
     """Use historical aperture geometry only; never use its measured flux."""
     h, setup = frame['metadata'], frame['setup']
@@ -44,7 +56,7 @@ def select_archive(frame, reference_root):
     setup, h = frame['setup'], frame['metadata']
     if (setup['grism'] not in {'Gr11','Gr13'} or setup['filter'] != 'Free'
             or setup['binx'] != 2 or setup['biny'] != 2):
-        raise ValueError('rapid archive bridge supports only Gr11/Gr13 Free, 2x2')
+        raise UnsupportedSetupError('rapid archive bridge supports only Gr11/Gr13 Free, 2x2')
     base = Path(reference_root)/'archive/efosc'
     arcs = sorted((base/'arc'/setup['grism']/setup['filter']/setup['slit']).glob('*.fits'))
     if len(arcs) != 1:
@@ -87,9 +99,20 @@ def extract_frame(frame, reference_root, output, hint, hint_info, waveair, arc_q
     from .products import PreparedExposure, export_spectrum
     context = PreparedExposure(frame, Path(reference_root), det, data, w, xlo, ymin,
                                hint, hint_info, arc_qa, Path(sensitivity), shift, sky_qa)
-    engine = extract_spectra(data, w, det, exposure_time=h['EXPTIME'],
-                            read_noise=h['ESO DET OUT1 RON'], output=output,
-                            basename=basename, target_position=hint-xlo)
+    from .extraction import SourceSelectionError
+    try:
+        engine = extract_spectra(data, w, det, exposure_time=h['EXPTIME'],
+                                read_noise=h['ESO DET OUT1 RON'], output=output,
+                                basename=basename, target_position=hint-xlo)
+    except SourceSelectionError as exc:
+        exc.diagnostics.update(spatial_origin_in_trimmed_image=xlo,
+                               spatial_origin_in_raw_image=99+xlo,
+                               spectral_origin_in_raw_image=ymin,
+                               target_association=hint_info, sky_flexure=sky_qa,
+                               raw_sha256=frame['sha256'], arc=arc_qa,
+                               sensitivity={'path':str(sensitivity),'sha256':sha256(Path(sensitivity))},
+                               extinction_sha256=sha256(Path(reference_root)/'standard/extinction/extinction_lasilla.dat'))
+        raise
     return export_spectrum(context, engine, 'primary', output, basename)
 
 
@@ -100,7 +123,7 @@ def reduce_night(input_dir, output_dir, reference_root, *, targets=None, include
     reference_root = Path(reference_root).resolve()
     if (output/'run.json').exists():
         raise FileExistsError('run.json exists; choose a new run directory to preserve source details')
-    for sub in ('products','native','qa','QA/PNGs','source'):
+    for sub in ('products','native','qa','QA/PNGs','source','errors'):
         (output/sub).mkdir(parents=True,exist_ok=True)
     report = inventory([input_dir])
     if report['errors'] or report['identity_conflicts']:
@@ -130,32 +153,47 @@ def reduce_night(input_dir, output_dir, reference_root, *, targets=None, include
                          'Red fringing remains because rapid processing applies no flat correction.',
                          'Source positions without a historical aperture remain unverified.',
                          'Resampling covariance is not stored; output uncertainty is diagonal only.'],
-           'results':[],'errors':[],'skipped':[]}
+           'execution_status':'running', 'results':[],'errors':[],'skipped':[]}
+    save_run(output, run)
     cache = {}
     for f in sorted(frames,key=lambda f:f['metadata']['MJD-OBS']):
+        stage = 'archive_association'
         try:
-            if f['setup']['grism'] not in {'Gr11','Gr13'}:
-                run['skipped'].append({'path':f['path'],'reason':'grism outside demonstrated archive bridge'})
-                continue
             arc,sens = select_archive(f,reference_root)
+            stage = 'archive_wavelength_fit'
             if str(arc) not in cache:
                 cache[str(arc)]=fit_arc(arc)
             wave,arcqa=cache[str(arc)]
+            stage = 'raw_geometry'
             raw = fits.getdata(f['path']).astype(float)
             ymin=4 if f['setup']['grism']=='Gr11' else 0
             data=raw[ymin:1015,99:950]
             if data.shape!=wave.shape:
                 raise ValueError('archived arc and trimmed science geometry disagree')
+            stage = 'sky_flexure'
             shift,skyqa=sky_flexure(data,wave)
+            stage = 'target_association'
             hint,hintinfo=target_hint(f,input_dir)
             print(f"Reducing {f['metadata']['OBJECT']} {f['setup']['grism']}: shift {shift:.3f} A",file=sys.stderr,flush=True)
+            stage = 'extraction_and_export'
             qa=extract_frame(f,reference_root,output,hint,hintinfo,wave,arcqa,sens,shift,skyqa)
             run['results'].append(qa)
+        except UnsupportedSetupError as exc:
+            run['skipped'].append({'path':f['path'], 'object':f['metadata']['OBJECT'],
+                'reason':str(exc), 'code':exc.code, 'action':exc.action, 'setup':f['setup']})
         except Exception as exc:
             traceback.print_exc(file=sys.stderr)
-            run['errors'].append({'path':f['path'],'object':f['metadata']['OBJECT'],'error':str(exc)})
+            log = output/'errors'/(Path(f['path']).stem+'.log')
+            log.write_text(traceback.format_exc())
+            run['errors'].append({'path':f['path'],'object':f['metadata']['OBJECT'],'error':str(exc),
+                'stage':stage, 'code':getattr(exc, 'code', 'reduction_error'),
+                'exception_type':type(exc).__name__, 'traceback':str(log),
+                'action':getattr(exc, 'action', 'Inspect the saved traceback and input configuration.'),
+                'diagnostics':getattr(exc, 'diagnostics', {}), 'setup':f['setup']})
         finally:
-            (output/'run.json').write_text(json.dumps(run,indent=2,allow_nan=False)+'\n')
+            save_run(output, run)
+    run['execution_status'] = ('partial' if run['results'] else 'failed') if run['errors'] or run['skipped'] else 'complete'
+    save_run(output, run)
     if not skip_report:
         from .report import build_report
         try:
@@ -163,5 +201,5 @@ def reduce_night(input_dir, output_dir, reference_root, *, targets=None, include
         except Exception as exc:
             traceback.print_exc(file=sys.stderr)
             run['report'] = {'status': 'incomplete', 'generation_error': str(exc)}
-        (output/'run.json').write_text(json.dumps(run, indent=2, allow_nan=False)+'\n')
+        save_run(output, run)
     return run

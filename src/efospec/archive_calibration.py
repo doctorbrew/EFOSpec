@@ -67,46 +67,125 @@ def fit_arc(arc_path):
         'limitation': 'held-out archival IDs test the imported fit, not a contemporary raw arc'}
 
 
-def sky_flexure(data, waveair):
-    """Measure offset from 5577 and 6300; reserve 6363 as a check.
+class SkyFlexureError(ValueError):
+    """A failed scientific gate with machine-readable measurements."""
+    code = 'sky_flexure_unreliable'
+    action = 'Inspect sky-line fits and contemporary raw arcs; do not assume zero flexure.'
 
-    Uses spatially median sky after alignment to a common wavelength grid.
-    Bright source pixels have little influence on the median across a long slit.
+    def __init__(self, diagnostics):
+        self.diagnostics = diagnostics
+        super().__init__('cannot establish consistent sky flexure from two lines: '
+                         + str(diagnostics['lines']))
+
+
+def sky_flexure(data, waveair, *, max_shift=80.):
+    """Fit 5577 and the 6300/6363 blend with independently free centroids.
+
+    The shift uses only 5577 and 6300 (S/N > 8, agreement within 3 A).
+    6363 is a check, never a third shift anchor or a fixed-separation constraint.
+    Its fit shares a continuum with 6300, so their errors are correlated.
+    All wavelengths and the bounded search radius are in air Angstroms.
     """
-    x = data.shape[1]//2
-    wave = waveair[:,x]
+    data, waveair = np.asarray(data), np.asarray(waveair)
+    if (data.ndim != 2 or data.shape != waveair.shape or data.shape[1] < 45
+            or not np.isfinite(waveair).all() or not np.all(np.diff(waveair, axis=0) > 0)
+            or not np.isfinite(max_shift) or max_shift <= 0):
+        raise ValueError('sky flexure requires matching increasing 2D wavelengths and a positive search limit')
+    wave = waveair[:, data.shape[1]//2]
     columns = np.arange(20, data.shape[1]-20, 5)
-    sky = np.median([np.interp(wave,waveair[:,i],data[:,i]) for i in columns],axis=0)
-    def model(w,a,center,sigma,b,slope):
-        return a*np.exp(-0.5*((w-center)/sigma)**2)+b+slope*(w-center)
-    measurements = []
-    for rest in [5577.338,6300.304,6363.776]:
-        keep = abs(wave-rest) < 55
-        w, f = wave[keep], sky[keep]
-        if len(w) < 10:
-            continue
-        base = np.median(np.r_[f[:3],f[-3:]])
-        guess = [max(float(f.max()-base),1.),float(w[f.argmax()]),7.,float(base),0.]
+    sky = np.nanmedian([np.interp(wave, waveair[:, i], data[:, i]) for i in columns], axis=0)
+    measurements, failures = [], []
+    diagnostics = {'lines': measurements, 'fit_failures': failures,
+                   'max_shift_angstrom': float(max_shift),
+                   'method': 'independent_centroids_with_red_doublet_model',
+                   'anchor_snr_min': 8., 'anchor_agreement_angstrom': 3.,
+                   'check_shares_continuum_with_6300': True}
+
+    def gaussian(w, a, center, sigma):
+        return a*np.exp(-.5*((w-center)/sigma)**2)
+
+    def record(rest, p, cov, index, residual, bounds):
+        noise = max(float(1.4826*np.median(abs(residual-np.median(residual)))), 1e-6)
+        a, center, sigma = p[index:index+3]
+        errors = np.sqrt(np.maximum(np.diag(cov)[index:index+3], 0.))
+        # Reject constrained peaks and unconstrained covariance, rather than
+        # mistaking an optimizer's boundary solution for a measured line.
+        at_bound = bool(any(abs(v-lo) < .01 or abs(v-hi) < .01
+                            for v, lo, hi in zip(p[index:index+3],
+                                               bounds[0][index:index+3], bounds[1][index:index+3])))
+        measurements.append({'rest_air_angstrom': rest, 'measured_air_angstrom': float(center),
+            'offset_angstrom': float(rest-center), 'peak_snr': float(a/noise),
+            'sigma_angstrom': float(sigma),
+            'centroid_error_angstrom': float(errors[1]) if np.isfinite(errors[1]) else None,
+            'fit_valid': bool(np.isfinite(errors).all() and not at_bound), 'at_fit_bound': at_bound})
+
+    # First locate the isolated green line, then centre its fitting window.
+    rest = 5577.338
+    search = (abs(wave-rest) < max_shift) & np.isfinite(sky)
+    if search.sum() < 10:
+        failures.append({'line': rest, 'reason': 'insufficient wavelength coverage'})
+        raise SkyFlexureError(diagnostics)
+    peak = float(wave[search][np.argmax(sky[search])])
+    keep = (abs(wave-peak) < 55.) & np.isfinite(sky)
+    w, f = wave[keep], sky[keep]
+    def green(w, a, center, sigma, b, slope):
+        return gaussian(w, a, center, sigma)+b+slope*(w-peak)
+    bounds = ([0., rest-max_shift, 2., -np.inf, -np.inf],
+              [np.inf, rest+max_shift, 16., np.inf, np.inf])
+    try:
+        base = float(np.median(np.r_[f[:3], f[-3:]]))
+        p, cov = curve_fit(green, w, f, p0=[max(float(f.max()-base), 1.), peak, 7., base, 0.],
+                           bounds=bounds, maxfev=5000)
+        record(rest, p, cov, 0, f-green(w, *p), bounds)
+    except (ValueError, RuntimeError) as exc:
+        failures.append({'line': rest, 'reason': str(exc)})
+        raise SkyFlexureError(diagnostics) from exc
+    seed_shift = measurements[0]['offset_angstrom']
+    # Both red centroids vary freely within +/-20 A of the green estimate.
+    # Modelling the neighbour prevents its wings from corrupting the baseline.
+    centers = np.array([6300.304, 6363.776])-seed_shift
+    keep = (wave > centers[0]-55.) & (wave < centers[1]+55.) & np.isfinite(sky)
+    w, f = wave[keep], sky[keep]
+    def red(w, a, c, s, a2, c2, s2, b, slope):
+        return gaussian(w, a, c, s)+gaussian(w, a2, c2, s2)+b+slope*(w-centers.mean())
+    lower, upper, guess = [], [], []
+    if len(w) < 12:
+        failures.append({'line': '6300/6363', 'reason': 'insufficient wavelength coverage'})
+    else:
+        base = float(np.median(np.r_[f[:3], f[-3:]]))
+        for line, center in zip([6300.304, 6363.776], centers):
+            lower.extend([0., max(line-max_shift, center-20.), 2.])
+            upper.extend([np.inf, min(line+max_shift, center+20.), 16.])
+            guess.extend([max(float(np.interp(center, w, f)-base), 1.), center, 7.])
+        lower.extend([-np.inf, -np.inf]); upper.extend([np.inf, np.inf]); guess.extend([base, 0.])
         try:
-            p,cov=curve_fit(model,w,f,p0=guess,
-                bounds=([0,rest-50,2,-np.inf,-np.inf],[np.inf,rest+50,16,np.inf,np.inf]),maxfev=5000)
-        except (ValueError,RuntimeError):
-            continue
-        noise = max(1.4826*np.median(abs(f-model(w,*p)-np.median(f-model(w,*p)))),1e-6)
-        snr = float(p[0]/noise)
-        measurements.append({'rest_air_angstrom':rest,'measured_air_angstrom':float(p[1]),
-                             'offset_angstrom':float(rest-p[1]),'peak_snr':snr,
-                             'sigma_angstrom':float(p[2])})
-    anchors = [m for m in measurements if m['rest_air_angstrom'] != 6363.776 and m['peak_snr']>8]
-    if len(anchors)!=2 or abs(anchors[0]['offset_angstrom']-anchors[1]['offset_angstrom'])>3:
-        raise ValueError(f'cannot establish consistent sky flexure from two lines: {measurements}')
+            p, cov = curve_fit(red, w, f, p0=guess, bounds=(lower, upper), maxfev=5000)
+            for line, index in [(6300.304, 0), (6363.776, 3)]:
+                record(line, p, cov, index, f-red(w, *p), (lower, upper))
+        except (ValueError, RuntimeError) as exc:
+            failures.append({'line': '6300/6363', 'reason': str(exc)})
+    anchors = [m for m in measurements if m['rest_air_angstrom'] != 6363.776
+               and m['peak_snr'] > 8 and m['fit_valid']]
+    diagnostics['accepted_anchor_count'] = len(anchors)
+    diagnostics['anchor_difference_angstrom'] = (abs(anchors[0]['offset_angstrom']-anchors[1]['offset_angstrom'])
+                                                if len(anchors) == 2 else None)
+    diagnostics['failed_gates'] = ([f'anchor_{int(m["rest_air_angstrom"])}_snr_or_fit'
+                                  for m in measurements if m['rest_air_angstrom'] != 6363.776
+                                  and (m['peak_snr'] <= 8 or not m['fit_valid'])]
+                                 + (['missing_anchor_fit'] if len(measurements) < 2 else [])
+                                 + (['anchor_disagreement'] if len(anchors) == 2 and
+                                    diagnostics['anchor_difference_angstrom'] > 3 else []))
+    if len(anchors) != 2 or abs(anchors[0]['offset_angstrom']-anchors[1]['offset_angstrom']) > 3:
+        raise SkyFlexureError(diagnostics)
     shift = float(np.mean([m['offset_angstrom'] for m in anchors]))
     for m in measurements:
-        m['residual_after_shift_angstrom']=m['measured_air_angstrom']+shift-m['rest_air_angstrom']
-    check = next((m for m in measurements if m['rest_air_angstrom']==6363.776 and m['peak_snr']>5),None)
-    return shift, {'shift_angstrom':shift,'lines':measurements,
-                   'held_out_6363_residual_angstrom':None if check is None else check['residual_after_shift_angstrom'],
-                   'held_out_6363_pass': bool(check is not None and abs(check['residual_after_shift_angstrom'])<3)}
+        m['residual_after_shift_angstrom'] = m['measured_air_angstrom']+shift-m['rest_air_angstrom']
+    check = next((m for m in measurements if m['rest_air_angstrom'] == 6363.776
+                  and m['peak_snr'] > 5 and m['fit_valid']), None)
+    diagnostics.update(shift_angstrom=shift,
+        held_out_6363_residual_angstrom=None if check is None else check['residual_after_shift_angstrom'],
+        held_out_6363_pass=bool(check is not None and abs(check['residual_after_shift_angstrom']) < 3))
+    return shift, diagnostics
 
 
 def sensitivity_factor(waveair, sensitivity_path, extinction_path, exposure, airmass, gain):

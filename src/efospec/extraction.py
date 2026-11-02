@@ -3,17 +3,34 @@ import numpy as np
 from astropy import units as u
 
 
+class SourceSelectionError(ValueError):
+    """Keep detected positions available when target identity is unresolved."""
+    code = 'source_selection_required'
+    action = 'Verify the target against acquisition data and supply an explicit extraction recipe.'
+
+    def __init__(self, message, found, target_position):
+        super().__init__(message)
+        self.diagnostics = {'expected_spatial_pixel': target_position,
+            'coordinate_system': 'zero_based_extraction_window',
+            'candidates': [{'name': str(s.NAME), 'spatial_pixel': float(s.SPAT_PIXPOS)} for s in found],
+            'review_recommendation': {'workflow':'aperture_and_background_review',
+                'reason':'Multiple or unassociated traces may include field sources or host structure.',
+                'suggested_background':'two_sided_polynomial_preview',
+                'host_contamination_confirmed':False,'automatic_subtraction':False}}
+
+
 def select_sources(found, target_position=None, manual=None):
     """Map stable recipe IDs to found objects without silently swapping sources."""
     if len(found) == 0:
-        raise ValueError('no source detected in target window')
+        raise SourceSelectionError('no source detected in target window', found, target_position)
     if manual is None:
         if target_position is None or not np.isfinite(target_position):
             raise ValueError('automatic selection requires a finite target position')
         distance = np.array([abs(s.SPAT_PIXPOS-target_position) for s in found])
         order = np.argsort(distance)
         if distance[order[0]] > 15 or (len(order) > 1 and distance[order[1]] < 15):
-            raise ValueError(f'absent or ambiguous source at expected position {target_position}')
+            raise SourceSelectionError(f'absent or ambiguous source at expected position {target_position}',
+                                       found, target_position)
         return {'primary': str(found[order[0]].NAME)}
     selected = {}
     for obj in manual:
@@ -95,7 +112,21 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
                                      initial_skymask=sky_input_mask)
     sky, found = finder.run()
     selection = capture_sky_selection(finder, found)
-    names = select_sources(found, target_position, manual)
+    try:
+        names = select_sources(found, target_position, manual)
+    except SourceSelectionError as exc:
+        from pathlib import Path
+        from tempfile import NamedTemporaryFile
+        directory = Path(output)/'native'
+        directory.mkdir(parents=True, exist_ok=True)
+        # Repeated failed exposures do not reserve a successful product name.
+        # Allocate a distinct diagnostic even when their legacy stems coincide.
+        with NamedTemporaryFile(dir=directory, prefix=basename+'_selection_failed_',
+                                suffix='.npz', delete=False) as stream:
+            np.savez_compressed(stream, data=data, waveair=waveair, sky=sky, **selection)
+            diagnostic = Path(stream.name)
+        exc.diagnostics['diagnostic_file'] = str(diagnostic.resolve())
+        raise
     extractor = Extract.get_instance(sci, slits, found, inst, par, 'science', global_sky=sky,
                                      tilts=tilts, waveimg=airtovac(waveair*u.AA).value,
                                      show=False, basename=basename)
