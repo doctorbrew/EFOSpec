@@ -1,4 +1,0 @@
-interface:
-  display_name: "Fieldnotes Daily Log"
-  short_description: "Build portable scientific daily logs in Fieldnotes style"
-  default_prompt: "Use $fieldnotes-daily-log to produce the final daily log for the specified observing date using the approved design."

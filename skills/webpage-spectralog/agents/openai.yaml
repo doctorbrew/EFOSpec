@@ -1,0 +1,4 @@
+interface:
+  display_name: "webpage_spectralog"
+  short_description: "Build portable scientific daily logs in Fieldnotes style"
+  default_prompt: "Use $webpage-spectralog to produce the final daily log for the specified observing date using the approved design."

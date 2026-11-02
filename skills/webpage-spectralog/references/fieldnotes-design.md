@@ -31,7 +31,7 @@ Use installed font stacks rather than remote font dependencies. Scientific plot 
 | Spectra | One article per reduced exposure: target/setup/slit, UTC timestamp, association caveat where applicable, FITS/ASCII downloads, then spectrum, 2D trace and spatial profile. |
 | Issues | Recorded issue codes, exposure counts, affected targets and concise explanations. Preserve failed and unsupported categories. |
 | Source QC | Exposure identity status, candidate raw detector positions, detector/trace profiles and available acquisition previews. |
-| Background | Saved, exposure-specific recipe choices and diagnostics, with provisional identity and calibration limits stated where applicable. No automatic C3 selection. |
+| Background | Saved, exposure-specific recipe choices and diagnostics: left/right sampling bands outside the aperture, polynomial degree and valid support, with provisional identity and calibration limits where applicable. No automatic C3 selection. |
 | Calibrations | Recorded grism/filter/slit groups, construction status and wavelength QA with units; distinguish diagnostics from calibrations actually applied to the displayed spectra. |
 | Archive | Compact table of retained runs and outcomes. Do not merge old results into current totals. |
 | Run record | Stage statuses/errors, downloadable logs/provenance and a short folder guide. |

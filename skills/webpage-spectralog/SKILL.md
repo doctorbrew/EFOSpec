@@ -1,9 +1,11 @@
 ---
-name: fieldnotes-daily-log
+name: webpage-spectralog
 description: "Build or refine a self-contained scientific daily log in the approved Fieldnotes design. Use for EFOSpec final nightly reports, dated reduction logs, or an explicit request to reuse this layout. Keep plots, QC and concise outcomes on one page. Not for extraction GUIs, generic websites or unrelated daily journals."
 ---
 
-# Fieldnotes Daily Log
+# webpage_spectralog
+
+Displayed name: `webpage_spectralog`. Portable skill ID and explicit invocation: `$webpage-spectralog`.
 
 Produce one portable HTML report for one named observing date. The user approved the EFOSpec 2026-10-28 page on 2026-11-02 as the final daily-log design; preserve its layout and make requested refinements incrementally. “Final” describes the report format, not scientific acceptance of its spectra.
 
@@ -29,6 +31,8 @@ Reuse existing scientific figures. When generating or changing plots, use the av
 
 - Derive counts, statuses, captions and downloads from the chosen revision's manifests. Match spectrum plots to product hashes; show missing or stale figures explicitly.
 - Distinguish current results, retained experiments and archived runs. Calibration construction, candidate extraction and target identification are separate claims. Keep partial results, unsupported setups and failed checks visible.
+- Explain unverified target identity as uncertainty that the extracted detector trace corresponds to the named object; it does not by itself mean extraction failed. A source-selection failure is a separate recorded outcome when the pipeline cannot uniquely choose a trace.
+- For local background slope measurements, require usable bands on both sides of the aperture, outside the source wings and neighbouring contaminating traces. Fit the selected samples jointly at each spectral row; degree 1 measures a slope, higher orders allow curvature. Retain at least five valid samples per side after masking and rejection in the EFOSpec polynomial engine; mask unsupported rows rather than extrapolating from one side. Report the actual bands and model degree, not just the requested selection. A constant fit does not measure a slope.
 - Bind recovery recipes to the exposure and input hashes. The C3 selection and raw-x background bands 520–535 and 555–575 were scoped to SN2026aebl, exposure ending `2026-10-29T05:12:40.988`; they are never defaults for a new target or epoch. Its identity and host separation remain provisional unless new evidence establishes them.
 - Preserve raw data, numerical products, recipes and earlier revisions. A report-only request does not authorize another reduction or changed extraction settings.
 

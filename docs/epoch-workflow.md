@@ -2,7 +2,7 @@
 
 Always name the observing date. One invocation processes one date only. For the next epoch, change the date; there is no automatic multi-night loop.
 
-The user-approved Fieldnotes page is the **final daily-log output**, with the 2026-10-28 design as the baseline for future epochs. Keep its structure and make small requested refinements. The reusable [fieldnotes-daily-log skill](../skills/fieldnotes-daily-log/SKILL.md) records the presentation and evidence requirements.
+The user-approved Fieldnotes page is the **final daily-log output**, with the 2026-10-28 design as the baseline for future epochs. Keep its structure and make small requested refinements. The reusable [webpage_spectralog skill](../skills/webpage-spectralog/SKILL.md), invoked as `$webpage-spectralog`, records the presentation and evidence requirements.
 
 Activate the existing EFOSpec Python environment and run from the EFOSpec checkout:
 

@@ -57,7 +57,7 @@ def test_single_file_contains_evidence_downloads_and_only_internal_navigation(ep
     result = build_epoch_page('2026-10-28', project)
     html = (root/'index.html').read_text();assets = Assets(html)
     assert result['embedded_figures']==3 and result['warnings']==[]
-    assert 'SN &lt;test&gt;' in html and 'Target association unverified' in html
+    assert 'SN &lt;test&gt;' in html and 'Target identity unverified' in html
     assert 'source_selection_required' in html and 'archive/initial-reduction' in html
     assert all(url.startswith(('data:', '#')) for url in assets.links+assets.images)
     assert all(url[1:] in assets.ids for url in assets.links if url.startswith('#'))

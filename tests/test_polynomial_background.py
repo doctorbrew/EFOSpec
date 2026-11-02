@@ -50,3 +50,19 @@ def test_missing_side_and_invalid_aperture_are_not_silently_extrapolated():
                           regions=[[520,535],[555,575]],good=good)
     assert result['valid'].tolist()==[False,False,True]
     assert np.isnan(result['counts'][:2]).all()
+
+
+def test_two_sided_sampling_recovers_row_dependent_slopes_with_unequal_bands():
+    x=np.arange(141)+478
+    trace=np.full(3,548.)
+    slopes=np.array([.7,-.5,.12])
+    background=300.+slopes[:,None]*(x-548)
+    source=500.*np.exp(-.5*((x-548)/1.3)**2)
+    data=background+source
+    result=fit_background(data,np.full_like(data,25.),trace,x_origin=478,radius=7,
+                          regions=[[520,535],[563,575]],degree=1)
+    assert result['valid'].all()
+    np.testing.assert_allclose(np.diff(result['model'],axis=1),
+                               np.broadcast_to(slopes[:,None],(3,140)),atol=1e-6)
+    truth=np.sum(result['aperture_weights']*source,axis=1)
+    np.testing.assert_allclose(result['counts'],truth,atol=.001)

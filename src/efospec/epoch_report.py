@@ -86,7 +86,8 @@ class EpochPage:
                 cards.append(self.figure(images[0] if len(images) == 1 else None, title+' / '+name))
             downloads = ' · '.join(filter(None, [self.download(product, 'FITS'), self.download(product.with_suffix('.asci'), 'ASCII')]))
             association = result.get('target', {}).get('association')
-            identity = '' if association in {'historical_aperture', 'operator_selected'} else ' · Target association unverified'
+            identity = '' if association in {'historical_aperture', 'operator_selected'} else (
+                ' · <span title="The extracted detector trace has not been independently matched to the named target; extraction itself succeeded.">Target identity unverified</span>')
             sections.append(f'<article class="exposure" id="spectrum-{i}"><h3>{_text(title)}</h3>'
                 f'<p class="caption">{_text(result.get("date_obs", ""))} UTC{identity} · {downloads}</p>'
                 f'<div class="plots">{"".join(cards)}</div></article>')
