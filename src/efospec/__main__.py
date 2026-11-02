@@ -16,6 +16,8 @@ def main(argv=None):
     gui.add_argument('path', nargs='?', help='Run, dated workflow folder or review.json; omitted reopens the last night')
     gui.add_argument('--reference-root')
     gui.add_argument('--smoke-test',action='store_true',help='Open the native window, report its runtime, then exit')
+    installer=commands.add_parser('install-desktop',help='Install a macOS app or Linux launcher using this EFOSpec environment')
+    installer.add_argument('--destination',help='Parent directory; defaults to the user application location')
     browser = commands.add_parser('browser-prototype', help='Legacy local browser extraction prototype')
     browser.add_argument('path')
     browser.add_argument('--reference-root')
@@ -142,6 +144,10 @@ def main(argv=None):
             from .desktop import launch
             if args.smoke_test:return launch(args.path,args.reference_root,smoke_test=True)
             return launch(args.path,args.reference_root)
+        if args.command == 'install-desktop':
+            from .desktop_install import install_desktop
+            print(json.dumps(install_desktop(args.destination),indent=2))
+            return 0
         if args.command == 'reduce-native':
             from .native_reduction import reduce_pair
             result=reduce_pair(args.path,args.science,args.standard,args.output,
