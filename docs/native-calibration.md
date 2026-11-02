@@ -179,7 +179,7 @@ python -m efospec reextract runs/2026-10-29 \
   acquisition/finding-chart evidence, widths, and sky regions before replay.
 - Recovery now works without an existing successful product. It retains the
   archive-bridge calibration used for that exposure; it is not native calibration.
-- Requires the latest failure provenance: raw/arc/line-ID/sensitivity/extinction
+- Requires the latest failure records: raw/arc/line-ID/sensitivity/extinction
   hashes plus saved detector and wavelength arrays. Older failures need rerunning.
 - Validates raw pixels against the saved image and recomputes the recorded
   wavelength map; stale recipes and modified inputs are rejected.
@@ -202,7 +202,7 @@ MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
   --output runs/2026-10-29/QC/EFOSC.example --test-recipes
 ```
 
-- Requires a fresh exposure subfolder and current failure provenance. Creates
+- Requires a fresh exposure subfolder and current failure records. Creates
   raw/window images, saved trace overlays, spatial profiles, same-OB acquisition
   images, recipes, a read-only `index.html`, and a blank target-selection CSV.
 - All coordinates are zero-based raw image pixels; plotted images retain their

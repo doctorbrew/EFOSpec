@@ -211,7 +211,7 @@ def write_review_html(review, output):
 <p>All image axes and recipe coordinates use <strong>zero-based raw detector pixels</strong> (DS9 physical pixel coordinates are normally one greater). Images are not rotated or flipped. Saved trace curves, not nominal telescope pointing, define recipe anchors at the middle spectral row. Acquisition pixels are in their own detector images; no astrometric registration is asserted.</p>
 <div class="scroll"><table><tr><th>Candidate</th><th>Anchor x</th><th>Anchor y</th><th>Recipe</th><th>Trial execution</th><th>Fitted x − seed x (px)</th></tr>{''.join(rows)}</table></div>
 <p>Trial apertures use an initial FWHM of 4 pixels and boxcar half-width of 7 pixels; inspect these and the automatic sky regions before scientific use. Labels in trial FITS are neutral candidate names; ORIGOBJ retains the exposure label. Trials use the saved archive calibration, not the new native masters.</p>
-<p>{link(review['raw_path'],'Raw spectral FITS')} · {link(output/'review.json','Full QC / provenance JSON')} · {link(output/'target-selection.csv','Blank target-selection record')}</p>
+<p>{link(review['raw_path'],'Raw spectral FITS')} · {link(output/'review.json','Full QC / input records JSON')} · {link(output/'target-selection.csv','Blank target-selection record')}</p>
 <p>House-style PDF/JPG exports: {exports}</p>
 <p>Neighbouring traces trigger aperture and background review. Open this packet in the native desktop editor with <code>{escape(desktop_command)}</code>. Select a candidate and two background bands; quadratic interpolation is the initial preview model.</p>{background}
 <p>Associated acquisition FITS: {acquisitions}</p>{pictures}

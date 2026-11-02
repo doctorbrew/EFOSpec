@@ -49,7 +49,7 @@ The user explicitly confirmed that C3 and these background bands apply to **SN20
 
 These medians are per spectral row, not integrated/calibrated flux. Degree 2 is 25.2% below degree 1; degree 3 is 6.5% below degree 2. Lower chi² alone does not validate host removal. Fit-order sensitivity remains a material uncertainty beyond the formal errors.
 
-See `runs/2026-10-28/QC/EFOSC.2026-10-29T05:12:40.988/C3-background-review.html`. The `C3-polynomial-degree{1,2,3}-v2` directories are the compared experiments; the initial degree-2 directory is retained as superseded provenance. All new/regenerated scientific figures use the house helper, LaTeX, Hiroshige, inward ticks, PDF and 300-dpi JPG, with PNG report previews. Plot configuration is scoped so it cannot leak into PypeIt's own diagnostic rendering.
+See `runs/2026-10-28/QC/EFOSC.2026-10-29T05:12:40.988/C3-background-review.html`. The `C3-polynomial-degree{1,2,3}-v2` directories are the compared experiments; the initial degree-2 directory is retained as superseded processing history. All new/regenerated scientific figures use the house helper, LaTeX, Hiroshige, inward ticks, PDF and 300-dpi JPG, with PNG report previews. Plot configuration is scoped so it cannot leak into PypeIt's own diagnostic rendering.
 
 ## Method references
 

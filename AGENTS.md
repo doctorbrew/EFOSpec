@@ -5,10 +5,11 @@
 - **Extraction GUI means a desktop application.** It must provide desktop controls for trace selection, apertures, background regions, and extraction jobs.
 - Use PySide6/Qt for macOS and Linux, as selected by the user. Verify platform claims with native Qt interactions.
 - Do not substitute a browser editor, localhost service, or WebView wrapper for the requested desktop application.
-- **The Fieldnotes webpage is the read-only nightly reduction log.** Keep the opening table, per-source spectrum/trace/spatial-profile plots, status, and downloads.
+- **The webpage is the read-only nightly reduction log.** Keep the opening table, per-source spectrum/trace/spatial-profile plots, status, and downloads.
 - Do not put extraction controls or job execution into the nightly report. Omit the previously rejected source-selection table column.
 - `efospec gui` launches the native PySide6 desktop application; `efospec browser-prototype` retains the earlier browser editor.
-- `efospec background-gui` uses the same PySide6 binding for failed-exposure QC packets and experimental polynomial boxcar revisions. Keep both editors on one Qt binding so Matplotlib canvases and application instances remain compatible. See [background workflow](docs/polynomial-background.md).
+- `efospec gui` contains Spectra and Source review tabs. `background-gui` is a compatibility entry point into that same application. Failed-exposure polynomial revisions remain count-level boxcar experiments; see [background workflow](docs/polynomial-background.md).
+- Desktop launchers use the dedicated EFOSpec environment. Do not bundle a separate scientific runtime without a new explicit decision.
 - Preserve useful prototype code/tests while reusing its Python backend for desktop development. Do not claim the desktop app is delivered until its acceptance gates pass.
 - Canonical GUI requirements and tasks: [desktop roadmap](docs/roadmap/pypeit-migration/gui.md).
 

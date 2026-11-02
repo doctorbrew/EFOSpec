@@ -57,9 +57,9 @@ def load_native_template(directory, setup):
     method = json.loads(wave.strpar).get('method')
     if method not in {'bounded_physical_line_consensus', 'native_template_reidentify'}:
         raise ValueError('template is not a supported native physical-line solution')
-    provenance = {'directory':str(directory), 'calibration_manifest_sha256':sha256(status_path),
+    input_record = {'directory':str(directory), 'calibration_manifest_sha256':sha256(status_path),
         'association_sha256':sha256(association_path), 'wavecalib_sha256':sha256(candidates[0])}
-    return wave, provenance
+    return wave, input_record
 
 
 def build_group(exposure, output, *, template=None):
@@ -113,11 +113,11 @@ def build_group(exposure, output, *, template=None):
         if template is None:
             fit, qa = fit_raw_arc_spectrum(spectra[:,0],setup['grism'],**kwargs)
         else:
-            reference, provenance = load_native_template(template, setup)
-            status['template'] = provenance
+            reference, input_record = load_native_template(template, setup)
+            status['template'] = input_record
             fit, qa = reidentify_raw_arc(spectra[:,0],setup['grism'],reference.wv_fits[0],
                                          reference.arc_spectra[:,0],**kwargs)
-            qa['template'] = provenance
+            qa['template'] = input_record
         fit.spat_id = cal.slits.spat_id[0]
         fit.fwhm = 4.*float(setup['slit'].replace('slit',''))
         status['wave_qa'] = [qa]
