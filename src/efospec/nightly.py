@@ -186,6 +186,7 @@ def run_epoch(night, *, stage='all', project_root='.', plot_python=None):
             if state['night']!=night or state['input_dir']!=str(input_dir):raise ValueError('revision belongs to a different date or input directory')
             if plot_python:state['plot_python']=plot_python
         steps=['log','reduce','report'] if stage=='all' else [stage]
+        state['daily_log']=str(root.parent/'index.html')
         _save(output/'night.json',state)
         for step in steps:
             _progress(night,output,f'{step}: {output}')
@@ -201,7 +202,7 @@ def run_epoch(night, *, stage='all', project_root='.', plot_python=None):
             statuses=[v['status'] for v in state['stages'].values()]
             state['status']='failed' if 'failed' in statuses else 'partial' if 'partial' in statuses else 'complete' if all(s in state['stages'] for s in ['log','reduce','report']) else 'prepared'
             _save(output/'night.json',state);_index(state,output)
-        _progress(night,output,f'{state["status"]}: {output / "index.html"}')
+        _progress(night,output,f'{state["status"]}: {state["daily_log"]}')
         return state
     finally:lock.unlink()
 
