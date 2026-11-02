@@ -177,7 +177,7 @@ class FailedExposure(Exposure):
             raise ValueError('unknown or ambiguous failed exposure')
         error = errors[0]; info = error['diagnostics']
         if not {'raw_sha256','arc','sensitivity','extinction_sha256'} <= info.keys():
-            raise ValueError('failed exposure lacks calibration provenance; rerun with the current reducer')
+            raise ValueError('failed exposure lacks calibration records; rerun with the current reducer')
         raw = Path(error['path'])
         if sha256(raw) != info['raw_sha256']: raise ValueError('raw input changed since source failure')
         self.frame = inspect_file(raw)

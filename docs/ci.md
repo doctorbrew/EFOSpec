@@ -33,7 +33,13 @@ QT_API=pyside6 QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBL
 - Real Chromium tests separately exercise browser-prototype clicks, sky drags, recipe reload, two-source extraction, downloads, and replay.
 - CI installs Chromium; local existing Chrome: set `EFOSPEC_TEST_CHROME` to its executable.
 - Browser testing belongs to the `test` extra; observer environments need no Playwright.
-- Separate pytest-qt tests exercise the desktop controls and real subprocess lifecycle. Linux CI uses Qt/XCB under Xvfb; macOS Cocoa is checked locally.
+- Separate pytest-qt tests exercise both desktop panels, recipes, extraction, cancellation and replay.
+- Linux CI uses Qt/XCB under Xvfb; macOS Cocoa is checked locally.
+- CI installs the environment-backed launcher, validates its desktop entry and opens the native window.
+- Conditional two-source tests retain deliberate profile/background mismatches; [scientific limits](validation-desktop-2026-11.md).
+- Launcher checks require a clean process exit, not just a ready window. A Linux shutdown crash exposed delayed widget cleanup; the regression test requires the window to be destroyed before returning from the event loop.
+- Cleanup uses Qt's [`aboutToQuit` / deferred deletion contract](https://doc.qt.io/qt-6/qcoreapplication.html#aboutToQuit).
+- Standalone shutdown tests run in subprocesses; quitting pytest-qt's shared application can prevent later worker callbacks. The shutdown-then-recovery sequence is checked without extending its timeout.
 - Injected-source tests run actual PypeIt, with three noise/brightness cases and a 2% median-flux target.
 - Both archived grism fits, whole-line holdouts, full-run sky shifts, sky-mask replay, and reference-flux checks are tested.
 - Passing tests establish software contracts, not scientific calibration accuracy.

@@ -133,7 +133,7 @@ def _report(state, output):
 def _index(state, output):
     """A dated entry point; the existing Fieldnotes page keeps its full plots."""
     links=[]
-    for path,label in [(output/'observing-log.csv','Observing log (CSV)'),(output/'observing-log.json','Input provenance (JSON)'),
+    for path,label in [(output/'observing-log.csv','Observing log (CSV)'),(output/'observing-log.json','Input records (JSON)'),
                        (output/'reduction/index.html','Spectra, traces and spatial profiles'),(output/'night.json','Workflow record')]:
         if path.is_file():links.append(f'<a href="{quote(str(path.relative_to(output)))}">{label}</a>')
     for path in sorted((output/'logs').glob('*.log')):

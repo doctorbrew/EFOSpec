@@ -42,7 +42,7 @@ jobs:
       - name: Install LaTeX for scientific plots
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends texlive-latex-extra texlive-fonts-recommended cm-super dvipng xvfb libegl1 libopengl0 libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0
+          sudo apt-get install -y --no-install-recommends texlive-latex-extra texlive-fonts-recommended cm-super dvipng xvfb libegl1 libopengl0 libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 desktop-file-utils
       - name: Install project dependencies
         run: |
           python -m pip install --upgrade pip
@@ -60,6 +60,11 @@ jobs:
           QT_DEBUG_PLUGINS=1 xvfb-run -a python -c "from PySide6.QtWidgets import QApplication; app=QApplication([]); print('Qt platform:', app.platformName()); app.processEvents()"
       - name: Build package
         run: python -m build --wheel --no-isolation
+      - name: Verify the installed Linux launcher
+        run: |
+          python -m efospec install-desktop --destination outputs/desktop-package
+          desktop-file-validate outputs/desktop-package/EFOSpec/org.efospec.Desktop.desktop
+          xvfb-run -a outputs/desktop-package/EFOSpec/efospec-desktop --smoke-test
       - name: Run all tests with coverage
         id: tests
         continue-on-error: true

@@ -13,7 +13,7 @@ from test_pypeit_adapter import write_raw
 REFERENCE=Path(__file__).resolve().parents[1]/'trunk/src/ntt'
 
 
-def test_ambiguous_raw_can_be_recovered_with_hash_bound_manual_recipe(tmp_path,monkeypatch):
+def test_ambiguous_raw_can_be_recovered_with_hash_bound_manual_recipe(tmp_path,monkeypatch,qtbot):
     inputs=tmp_path/'raw';inputs.mkdir()
     raw=write_raw(inputs,'ambiguous.fits',**{'ESO OBS ID':42})
     frame=inspect_file(raw);arc,_=select_archive(frame,REFERENCE);wave,_=fit_arc(arc)
@@ -83,11 +83,15 @@ def test_ambiguous_raw_can_be_recovered_with_hash_bound_manual_recipe(tmp_path,m
     assert all(sha256(p)==digest for p,digest in before.items())
     # Exercise the real editor against this saved exposure and the shared
     # scientific engine. Offscreen CI is separate from the native macOS check.
-    monkeypatch.setenv('QT_QPA_PLATFORM','offscreen')
-    from PySide6 import QtWidgets
-    from efospec.background_gui import BackgroundEditor
+    from PySide6 import QtCore,QtWidgets
+    from efospec.desktop import ExtractionWindow
     app=QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    editor=BackgroundEditor(packet/'review.json')
+    shell=ExtractionWindow(packet/'review.json',REFERENCE)
+    qtbot.addWidget(shell);shell.show()
+    editor=shell.review_editor
+    assert editor is not None and editor.parentWidget() is shell.review_page
+    assert shell.backend is None  # All exposures failed; source review still opens.
+    assert shell.tabs.currentIndex()==1 and editor.candidate.currentIndex()==0
     try:
         assert editor.preview() is None  # no automatic target selection
         editor.candidate.setCurrentIndex(1)
@@ -105,6 +109,30 @@ def test_ambiguous_raw_can_be_recovered_with_hash_bound_manual_recipe(tmp_path,m
         np.testing.assert_allclose(editor.last_result['counts'],first[1]['counts'],equal_nan=True)
         editor.panel.setCurrentIndex(1)
         assert editor.last_result['valid'].any()
+        # The embedded review launches the same Python engine, forwards its
+        # reference root and produces the previewed counts without touching inputs.
+        destination=tmp_path/'desktop-output';destination.mkdir()
+        monkeypatch.setattr(QtWidgets.QFileDialog,'getExistingDirectory',lambda *a,**kw:str(destination))
+        editor.extract()
+        assert editor.is_running()
+        shell.poll_job()
+        assert not shell.open_button.isEnabled()
+        qtbot.waitUntil(lambda:not editor.is_running(),timeout=90000)
+        assert editor.worker.exitCode()==0
+        products=list(destination.glob('background-*/boxcar-background.fits'))
+        assert len(products)==1
+        with fits.open(products[0]) as hdus:
+            np.testing.assert_allclose(hdus['SPECTRUM'].data['COUNTS'],first[1]['counts'],equal_nan=True)
+        assert all(sha256(p)==digest for p,digest in before.items())
+        # A live worker can be cancelled without closing the shared shell.
+        import sys
+        editor.worker=QtCore.QProcess(editor)
+        editor.worker.start(sys.executable,['-c','import time; time.sleep(60)'])
+        assert editor.worker.waitForStarted(5000)
+        editor.cancel()
+        qtbot.waitUntil(lambda:not editor.is_running(),timeout=5000)
+        assert shell.isVisible()
+        editor.worker=None
         # A malformed selection cannot start an extraction or replace the
         # previously saved recipe.
         editor.bands.setText('not a band')
@@ -119,8 +147,10 @@ def test_ambiguous_raw_can_be_recovered_with_hash_bound_manual_recipe(tmp_path,m
         editor.extract()
         assert editor.worker is None
         assert 'Cannot save extraction recipe' in editor.message.text()
+        shell.reviews.setCurrentIndex(0)
+        assert shell.review_editor is None
     finally:
-        editor.close();app.processEvents()
+        shell.close();app.processEvents()
     with pytest.raises(FileExistsError):
         build_recovery_qc(run,raw.name,packet,REFERENCE)
     recipe['input_sha256']['images']='0'*64

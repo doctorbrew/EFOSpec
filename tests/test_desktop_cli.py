@@ -24,3 +24,43 @@ def test_raw_cli_passes_explicit_positions_and_cache(monkeypatch,capsys):
         '--output','new','--science-position','530','--standard-position','550','--reuse-calibrations','prior','--skip-report'])==0
     assert calls[0][1]==dict(science_position=530.,standard_position=550.,render_report=False,reuse_calibrations='prior')
     assert json.loads(capsys.readouterr().out)['reduced']==1
+
+
+def test_joint_validation_cli_requires_explicit_input_and_loads_recipe(tmp_path,monkeypatch):
+    from efospec.__main__ import main
+    from efospec import joint_validation
+    calls=[]
+    monkeypatch.setattr(joint_validation,'save_validation',lambda *a,**k:calls.append((a,k)) or
+                        {'conditional_tests_passed':True,'science_validated':False})
+    with pytest.raises(SystemExit) as missing_product:
+        main(['validate-joint','--output',str(tmp_path/'unused'),'--run','night'])
+    with pytest.raises(SystemExit) as missing_run:
+        main(['validate-joint','--output',str(tmp_path/'unused'),'--product','spectrum.fits'])
+    assert missing_product.value.code==missing_run.value.code==2
+    assert calls==[] and not (tmp_path/'unused').exists()
+    recipe=tmp_path/'recipe.json';recipe.write_text(json.dumps({'objects':[{'id':'primary'},{'id':'companion'}]}))
+    assert main(['validate-joint','--output',str(tmp_path/'result'),'--run','night',
+                 '--product','spectrum.fits','--recipe',str(recipe)])==0
+    assert calls[0][1]['recipe']==json.loads(recipe.read_text())
+
+
+def test_gui_disposes_window_before_application_shutdown():
+    import subprocess
+    import sys
+    # A standalone application's quit sequence must not run inside pytest-qt's
+    # shared QApplication: its quit state can prevent later QProcess callbacks.
+    script='''
+from efospec import desktop
+from shiboken6 import isValid
+windows=[]
+original=desktop.ExtractionWindow
+class ObservedWindow(original):
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs);windows.append(self)
+desktop.ExtractionWindow=ObservedWindow
+assert desktop.launch(smoke_test=True)==0
+assert len(windows)==1
+assert not isValid(windows[0])
+'''
+    result=subprocess.run([sys.executable,'-c',script],capture_output=True,text=True,timeout=30)
+    assert result.returncode==0,result.stdout+result.stderr

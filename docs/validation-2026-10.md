@@ -263,7 +263,7 @@ Local reports and machine-readable evidence (generated data remain outside Git):
 - `runs/batch-20261102/index.html`, `summary.json`, `exposures.csv`, `verification.log`.
 - `runs/2026-10-28/reduction-20261102/index.html` and `runs/2026-10-29/reduction-20261102/index.html`; each run contains `QC/`, `products/`, saved errors and source snapshots.
 - `runs/2026-10-28/native-validation-20261102/validation.json` and `runs/2026-10-29/native-validation-20261102/validation.json`.
-- Batch orchestration, selected-master provenance and recovery comparisons are retained under `runs/batch-20261102/`.
+- Batch orchestration, selected-master records and recovery comparisons are retained under `runs/batch-20261102/`.
 
 Reproduction uses the current checkout and existing pinned environment:
 
@@ -278,7 +278,7 @@ Each output directory must be fresh. The batch is completed with explicit failur
 ## 2 November: organize the 2026-10-28 artifacts
 
 - Consolidated 23 older entries into the date's `archive/` and `calibrations/`; the current `nightly/` revision and reviewed `QC/` products stayed in place. `runs/2026-10-28/index.html` and its README now provide one starting point. The original reduction is under `archive/initial-reduction/`.
-- Preserved all 1,825 pre-existing files. Scientific data and all saved manifests/recipes are byte-for-byte unchanged. Repaired external links in two moved HTML pages and retained hash-verified copies of their originals. Eight compatibility links preserve older paths used by saved provenance; no files were deleted and raw data were not moved.
+- Preserved all 1,825 pre-existing files. Scientific data and all saved manifests/recipes are byte-for-byte unchanged. Repaired external links in two moved HTML pages and retained hash-verified copies of their originals. Eight compatibility links preserve older paths used by saved records; no files were deleted and raw data were not moved.
 - Verified all 193 raw hashes for this epoch, all 19 native calibration groups referenced by the shared audit, 619 local report links, loading the archived initial reduction, and exact numerical replay of both retained C3 recipes. The current nightly revision is unchanged; no broken report links remain in the checked date tree.
 - Relocation map, before/after hashes, original HTML backups and verification: `runs/2026-10-28/archive/cleanup-20261102/`. The folder-layout policy lives in [the epoch workflow](epoch-workflow.md).
 

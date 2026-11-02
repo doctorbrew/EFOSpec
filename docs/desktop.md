@@ -2,7 +2,7 @@
 
 - **Toolkit:** PySide6/Qt; real desktop windows, no web server.
 - **Engine:** the active Python 3.11 / PypeIt 1.14 environment.
-- **Fieldnotes:** separate, read-only nightly report.
+- **Nightly log:** separate, read-only webpage.
 - **Validation:** macOS Cocoa interactions tested locally; Linux XCB/Xvfb interactions pass [CI](https://github.com/sPaMFouR/EFOSpec/actions/runs/41262157980).
 
 ```sh
@@ -20,7 +20,7 @@ sudo apt-get install libegl1 libopengl0 libxcb-cursor0 libxkbcommon-x11-0 \
   libxcb-icccm4 libxcb-keysyms1 libxcb-shape0
 ```
 
-1. **Open night:** select a directory containing `run.json`; later launches reopen the last valid night.
+1. **Open night:** select a dated workflow folder or reduction containing `run.json`; later launches reopen it.
 2. Select an exposure; inspect the spectrum, detector image and spatial profiles.
 3. Use the source selector and labelled centre/FWHM/radius fields; click the 2D image to move an anchor.
 4. Drag across the spatial profile to add background bands; edit exclusions if needed.
@@ -36,9 +36,20 @@ sudo apt-get install libegl1 libopengl0 libxcb-cursor0 libxkbcommon-x11-0 \
 - Invalid controls disable extraction; **Inspect / Pan / Zoom** separate editing from navigation.
 - Night preferences stay in local Qt settings; no user paths or observing data are shipped.
 - Original raw files and accepted products remain unchanged.
-- Cancellation stops the worker process group; partial revisions remain for diagnosis.
+- Cancellation stops extraction workers; partial revisions remain for diagnosis.
 - Recipes bind to input hashes; CLI replay uses the same worker.
 - Archived runs still require their archived references; native runs use their recorded raw calibration and response.
+
+## Source review
+
+- The second tab lists QC packets bound to the opened reduction.
+- Open `review.json` directly for a failed exposure, including nights with no completed spectra.
+- Select the trace explicitly; the application never chooses a target by brightness.
+- Edit aperture/background bands, preview the polynomial fit, then save or extract a new revision.
+- Choose a fresh output parent under that observing date.
+- Current recovery output: count-level boxcar spectrum; no flux-calibration or host-subtraction claim.
+- `background-gui review.json` remains an alias into this same application.
+- [Polynomial background controls and limits](polynomial-background.md).
 
 ## Extraction choices
 
@@ -57,10 +68,10 @@ sudo apt-get install libegl1 libopengl0 libxcb-cursor0 libxkbcommon-x11-0 \
 
 ## Limits
 
-- Completed detector windows only; no crop widening or arbitrary trace drawing.
+- Saved completed/failed detector windows only; no crop widening or arbitrary trace drawing.
 - No automatic host identification or general extended-galaxy reconstruction.
 - GUI plots support inspection; Fieldnotes exports retain the publication plot theme.
-- No packaged `.app`, installer or desktop shortcut yet.
+- Environment-backed macOS `.app` and Linux launchers: [installation](desktop-installation.md).
 - Historical browser prototype: `efospec browser-prototype runs/2024-11-14`.
 
-[Scientific validation](native-desktop-validation.md) · [Roadmap](roadmap/pypeit-migration/gui.md)
+[Current acceptance results](validation-desktop-2026-11.md) · [Engine validation](native-desktop-validation.md) · [Roadmap](roadmap/pypeit-migration/gui.md)

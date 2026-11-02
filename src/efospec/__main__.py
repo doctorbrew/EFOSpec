@@ -13,8 +13,17 @@ def main(argv=None):
     add_arguments(epoch)
     epoch.add_argument('--stage',choices=['all','log','reduce','report'],default='all')
     gui = commands.add_parser('gui', help='Open the PySide6 desktop extraction application')
-    gui.add_argument('path', nargs='?', help='Completed run directory; omitted opens a file picker')
+    gui.add_argument('path', nargs='?', help='Run, dated workflow folder or review.json; omitted reopens the last night')
     gui.add_argument('--reference-root')
+    gui.add_argument('--smoke-test',action='store_true',help='Open the native window, report its runtime, then exit')
+    installer=commands.add_parser('install-desktop',help='Install a macOS app or Linux launcher using this EFOSpec environment')
+    installer.add_argument('--destination',help='Parent directory; defaults to the user application location')
+    joint_check=commands.add_parser('validate-joint',help='Run conditional two-source recovery and uncertainty experiments')
+    joint_check.add_argument('--output',required=True)
+    joint_check.add_argument('--run',help='Optional saved exposure for injections into its off-source background')
+    joint_check.add_argument('--product',help='Product filename within --run')
+    joint_check.add_argument('--reference-root')
+    joint_check.add_argument('--recipe',help='Explicit two-source joint recipe for real-exposure sensitivity checks')
     browser = commands.add_parser('browser-prototype', help='Legacy local browser extraction prototype')
     browser.add_argument('path')
     browser.add_argument('--reference-root')
@@ -139,7 +148,22 @@ def main(argv=None):
             return 0 if result['status'] == 'complete' else 1
         if args.command == 'gui':
             from .desktop import launch
+            if args.smoke_test:return launch(args.path,args.reference_root,smoke_test=True)
             return launch(args.path,args.reference_root)
+        if args.command == 'install-desktop':
+            from .desktop_install import install_desktop
+            print(json.dumps(install_desktop(args.destination),indent=2))
+            return 0
+        if args.command == 'validate-joint':
+            from pathlib import Path
+            from .joint_validation import save_validation
+            if args.run and not args.product:raise ValueError('--run requires an explicit --product')
+            if (args.product or args.recipe) and not args.run:raise ValueError('--product and --recipe require --run')
+            recipe=json.loads(Path(args.recipe).read_text()) if args.recipe else None
+            result=save_validation(args.output,run=args.run,product=args.product,reference_root=args.reference_root,recipe=recipe)
+            print(json.dumps({'conditional_tests_passed':result['conditional_tests_passed'],
+                              'science_validated':result['science_validated'],'output':args.output}))
+            return 0 if result['conditional_tests_passed'] else 1
         if args.command == 'reduce-native':
             from .native_reduction import reduce_pair
             result=reduce_pair(args.path,args.science,args.standard,args.output,

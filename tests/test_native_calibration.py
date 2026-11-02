@@ -146,8 +146,8 @@ def test_native_masters_and_wave_map_from_synthetic_raw_frames(tmp_path):
     from efospec.native_calibration import load_native_template
     import pytest
     template=out/group['id']
-    wave,provenance=load_native_template(template,group['setup'])
-    assert provenance['wavecalib_sha256']
+    wave,input_record=load_native_template(template,group['setup'])
+    assert input_record['wavecalib_sha256']
     with pytest.raises(ValueError,match='identical setup'):
         load_native_template(template,dict(group['setup'],filter='GG495'))
     master=next((template/'Calibrations').glob('WaveCalib_*.fits'))

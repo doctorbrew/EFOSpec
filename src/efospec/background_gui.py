@@ -17,23 +17,34 @@ from .revisions import FailedExposure
 from .polynomial_background import calculate
 from .recipes import validate_recipe
 from .background_qc import draw_background,draw_candidates
+from .desktop_ui import card,label
+from .figure_style import house_style,style
 
 
-class BackgroundEditor(QtWidgets.QMainWindow):
-    def __init__(self, packet):
-        super().__init__()
+class BackgroundEditor(QtWidgets.QWidget):
+    """Reusable source-review panel; also usable as a standalone window."""
+    runningChanged = QtCore.Signal(bool)
+
+    def __init__(self, packet, reference_root=None, parent=None):
+        super().__init__(parent)
         self.packet=Path(packet).resolve()
         self.review=json.loads(self.packet.read_text())
-        self.exposure=FailedExposure(self.review['parent_run'],self.review['raw_name'])
+        self.exposure=FailedExposure(self.review['parent_run'],self.review['raw_name'],reference_root)
         self.worker=None;self.last_result=None;self.loaded_object=None
         self.setWindowTitle('EFOSpec — aperture and local background review')
         self.resize(1500,1050)
-        container=QtWidgets.QWidget();self.setCentralWidget(container)
-        layout=QtWidgets.QVBoxLayout(container)
-        note=QtWidgets.QLabel(self.review['object']+' · neighbouring traces: review possible host / field-source contamination.\n'
-            'No target is selected automatically. Polynomial interpolation is experimental; no flux or host-deblending claim.')
-        note.setWordWrap(True);layout.addWidget(note)
-        form=QtWidgets.QFormLayout();form.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow);layout.addLayout(form)
+        layout=QtWidgets.QVBoxLayout(self);layout.setContentsMargins(0,0,0,0)
+        layout.addWidget(label(self.review['object'],'targetTitle'))
+        layout.addWidget(label('Select a trace using the acquisition image and observing records. '
+            'This experimental background fit produces count-level boxcar spectra.','notice',True))
+        split=QtWidgets.QSplitter();layout.addWidget(split,1)
+        scroll=QtWidgets.QScrollArea();scroll.setWidgetResizable(True);scroll.setMinimumWidth(300)
+        scroll.setMaximumWidth(400);split.addWidget(scroll)
+        inspector=QtWidgets.QWidget();inspector.setObjectName('inspector');scroll.setWidget(inspector)
+        controls=QtWidgets.QVBoxLayout(inspector);controls.setContentsMargins(0,0,10,0);controls.setSpacing(14)
+        source,source_layout=card('01 Trace and aperture');controls.addWidget(source)
+        form=QtWidgets.QFormLayout();form.setRowWrapPolicy(QtWidgets.QFormLayout.RowWrapPolicy.WrapAllRows)
+        form.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow);source_layout.addLayout(form)
         self.candidate=QtWidgets.QComboBox();self.candidate.addItem('Choose a candidate…')
         for c in self.review['candidates']:self.candidate.addItem(f"C{c['number']}: x={c['anchor_raw_x']:.3f}")
         form.addRow('Trace candidate',self.candidate)
@@ -45,8 +56,11 @@ class BackgroundEditor(QtWidgets.QMainWindow):
         form.addRow('Trace anchor y (raw detector row)',self.spectral_anchor)
         self.radius=QtWidgets.QDoubleSpinBox();self.radius.setRange(.5,30);self.radius.setValue(7.)
         form.addRow('Boxcar half-width (pixels)',self.radius)
-        self.bands=QtWidgets.QLineEdit();self.bands.setPlaceholderText('e.g. 520:535, 555:575 — upper endpoints excluded')
-        self.bands.setMinimumWidth(420)
+        background,background_layout=card('02 Background');controls.addWidget(background)
+        form=QtWidgets.QFormLayout();form.setRowWrapPolicy(QtWidgets.QFormLayout.RowWrapPolicy.WrapAllRows)
+        form.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow);background_layout.addLayout(form)
+        self.bands=QtWidgets.QLineEdit();self.bands.setPlaceholderText('520:535, 555:575')
+        self.bands.setToolTip('Raw detector columns; upper endpoints excluded.')
         form.addRow('Background bands x (lo:hi, …)',self.bands)
         self.degree=QtWidgets.QSpinBox();self.degree.setRange(0,3);self.degree.setValue(2)
         form.addRow('Polynomial degree',self.degree)
@@ -56,21 +70,44 @@ class BackgroundEditor(QtWidgets.QMainWindow):
         form.addRow('Plot mouse action',self.mouse_mode)
         self.panel=QtWidgets.QComboBox();self.panel.addItems(['Data and background fit','Background-subtracted profile'])
         form.addRow('Plot view',self.panel)
-        buttons=QtWidgets.QHBoxLayout();layout.addLayout(buttons)
-        for title,slot in [('Preview background',self.preview),('Load recipe',self.load_recipe),('Save recipe',self.save_recipe),
-                           ('Extract to new revision',self.extract),('Cancel worker',self.cancel)]:
-            button=QtWidgets.QPushButton(title);button.clicked.connect(slot);buttons.addWidget(button)
+        buttons=QtWidgets.QGridLayout();controls.addLayout(buttons)
+        for column,(title,slot) in enumerate([('Load recipe',self.load_recipe),('Save recipe',self.save_recipe)]):
+            button=QtWidgets.QPushButton(title);button.clicked.connect(slot);buttons.addWidget(button,0,column)
+        button=QtWidgets.QPushButton('Preview background');button.clicked.connect(self.preview);buttons.addWidget(button,1,0,1,2)
+        self.extract_button=QtWidgets.QPushButton('Extract new revision');self.extract_button.setObjectName('primary')
+        self.extract_button.clicked.connect(self.extract);controls.addWidget(self.extract_button)
+        self.cancel_button=QtWidgets.QPushButton('Cancel extraction');self.cancel_button.clicked.connect(self.cancel)
+        self.cancel_button.setEnabled(False);controls.addWidget(self.cancel_button);controls.addStretch()
+        diagnostics,plots=card('Source and background diagnostics');split.addWidget(diagnostics);split.setStretchFactor(1,1)
         # Native screen density is separate from 300-dpi JPG/PDF export. Keep
         # house font point sizes; a 300-dpi screen canvas triples their size.
         self.figure=Figure(figsize=(18,11),dpi=100);self.canvas=FigureCanvasQTAgg(self.figure)
-        layout.addWidget(NavigationToolbar2QT(self.canvas,self));layout.addWidget(self.canvas,1)
+        plots.addWidget(NavigationToolbar2QT(self.canvas,self));plots.addWidget(self.canvas,1)
         self.message=QtWidgets.QLabel('Select the trace and two background bands before fitting.');self.message.setWordWrap(True)
-        layout.addWidget(self.message)
+        self.message.setObjectName('notice');layout.addWidget(self.message)
+        self.runningChanged.connect(self.update_worker_controls)
         self.candidate.currentIndexChanged.connect(self.choose_candidate)
         self.canvas.mpl_connect('button_press_event',self.click_position)
         self.mouse_mode.currentIndexChanged.connect(self.configure_selector)
         self.panel.currentIndexChanged.connect(lambda _:self.preview())
-        draw_candidates(self.figure,self.exposure);self.configure_selector();self.canvas.draw()
+        for field in (self.position,self.radius,self.clipping,self.spectral_anchor,self.degree):
+            field.setLocale(QtCore.QLocale.c())
+        for field in (self.position,self.radius,self.spectral_anchor):field.setEnabled(False)
+        draw_candidates(self.figure,self.exposure);self.screen_layout();self.configure_selector();self.canvas.draw()
+
+    @house_style
+    def screen_layout(self):
+        # Retain the house font/LaTeX/colours, with point sizes suited to a Qt
+        # canvas. Publication exports use the unchanged background_qc helper.
+        for ax in self.figure.axes:
+            ax.tick_params(which='both',labelsize=11)
+            ax.xaxis.label.set_fontsize(13);ax.yaxis.label.set_fontsize(13);ax.title.set_fontsize(14)
+            legend=ax.get_legend()
+            if legend:
+                handles,labels=ax.get_legend_handles_labels();legend.remove()
+                style.styled_legend(ax,handles=handles,labels=labels,loc='upper right',ncol=1,fontsize=10)
+        if self.figure._suptitle:self.figure._suptitle.set_fontsize(14)
+        self.figure.subplots_adjust(left=.12,right=.97,bottom=.17,top=.88)
 
     def configure_selector(self):
         from matplotlib.widgets import SpanSelector
@@ -91,6 +128,7 @@ class BackgroundEditor(QtWidgets.QMainWindow):
 
     def choose_candidate(self,index):
         self.loaded_object=None
+        for field in (self.position,self.radius,self.spectral_anchor):field.setEnabled(index>0)
         if index>0:self.position.setValue(self.review['candidates'][index-1]['anchor_raw_x'])
 
     def recipe(self):
@@ -110,7 +148,7 @@ class BackgroundEditor(QtWidgets.QMainWindow):
     def preview(self):
         try:
             recipe,result=calculate(self.exposure,self.recipe())
-            draw_background(self.figure,self.exposure,recipe,result,panel=self.panel.currentIndex());self.canvas.draw()
+            draw_background(self.figure,self.exposure,recipe,result,panel=self.panel.currentIndex());self.screen_layout();self.canvas.draw()
             self.configure_selector()
             self.last_result=result
             self.message.setText(f"Background fit valid for {result['valid'].mean():.1%} of rows. "
@@ -162,14 +200,35 @@ class BackgroundEditor(QtWidgets.QMainWindow):
         output=Path(parent)/('background-'+token)
         self.worker=QtCore.QProcess(self)
         self.worker.setStandardOutputFile(str(output)+'.log');self.worker.setStandardErrorFile(str(output)+'-error.log')
-        self.worker.finished.connect(lambda code,status:self.message.setText(f'Worker exit {code}; new revision: {output}'))
-        self.worker.errorOccurred.connect(lambda error:self.message.setText(self.worker.errorString()))
+        self.worker.finished.connect(lambda code,status:self.worker_finished(code,output))
+        self.worker.errorOccurred.connect(self.worker_error)
         self.worker.start(sys.executable,['-m','efospec','background-extract',str(self.exposure.run),
-            '--failed-raw',self.review['raw_name'],'--recipe',str(recipe_file),'--output',str(output)])
+            '--failed-raw',self.review['raw_name'],'--recipe',str(recipe_file),'--output',str(output),
+            '--reference-root',str(self.exposure.context.reference_root)])
         self.message.setText('Extracting to a new revision: '+str(output))
+        self.runningChanged.emit(True)
+
+    def is_running(self):
+        return self.worker is not None and self.worker.state()!=QtCore.QProcess.ProcessState.NotRunning
+
+    def update_worker_controls(self,running):
+        self.extract_button.setEnabled(not running);self.cancel_button.setEnabled(running)
+
+    def worker_finished(self,code,output):
+        self.message.setText(f'Worker exit {code}; new revision: {output}')
+        self.runningChanged.emit(False)
+
+    def worker_error(self,error):
+        self.message.setText(self.worker.errorString())
+        self.runningChanged.emit(self.is_running())
 
     def cancel(self):
-        if self.worker is not None:self.worker.terminate()
+        if self.is_running():
+            worker=self.worker;worker.terminate()
+            self.message.setText('Cancelling extraction; earlier products remain unchanged.')
+            timer=QtCore.QTimer(worker);timer.setSingleShot(True)
+            timer.timeout.connect(lambda:worker.kill() if worker.state()!=QtCore.QProcess.ProcessState.NotRunning else None)
+            timer.start(1000)
 
     def closeEvent(self,event):
         if self.worker is not None and self.worker.state()!=QtCore.QProcess.ProcessState.NotRunning:
@@ -179,6 +238,5 @@ class BackgroundEditor(QtWidgets.QMainWindow):
 
 
 def launch(packet):
-    app=QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
-    window=BackgroundEditor(packet);window.show()
-    return app.exec()
+    from .desktop import launch as launch_desktop
+    return launch_desktop(packet)

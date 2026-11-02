@@ -179,7 +179,7 @@ def fit_raw_arc_spectrum(spectrum, grism, *, filter_name='Free', fwhm=4., nonlin
 
 def reidentify_raw_arc(spectrum, grism, template_fit, template_spectrum, *,
                       filter_name='Free', fwhm=4., nonlinear_counts=47709.):
-    """Refit measured peaks using a provenance-checked native arc as an ID seed.
+    """Refit measured peaks using a hash-checked native arc as an ID seed.
 
     The caller verifies the template's setup, files and raw inputs. Only its
     accepted line positions seed PypeIt's cross-correlation/reidentification;
