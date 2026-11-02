@@ -28,8 +28,8 @@ QPushButton#primary { background: #3469cc; color: #ffffff; border: 1px solid #34
 QPushButton#primary:hover { background: #285ab9; }
 QPushButton:disabled, QToolButton:disabled { color: #a1acbd; background: #f3f5f8; border-color: #e7ebf1; }
 QPushButton#primary:disabled { background: #dce5f4; color: #8c9db8; border-color: #dce5f4; }
-QComboBox, QLineEdit, QDoubleSpinBox { background: #f8faff; border: 1px solid #dde5f0; border-radius: 6px; padding: 7px 9px; min-height: 18px; selection-background-color: #3469cc; }
-QComboBox:focus, QLineEdit:focus, QDoubleSpinBox:focus { border: 1px solid #7f9ed2; background: #ffffff; }
+QComboBox, QLineEdit, QDoubleSpinBox, QSpinBox { background: #f8faff; border: 1px solid #dde5f0; border-radius: 6px; padding: 7px 9px; min-height: 18px; selection-background-color: #3469cc; }
+QComboBox:focus, QLineEdit:focus, QDoubleSpinBox:focus, QSpinBox:focus { border: 1px solid #7f9ed2; background: #ffffff; }
 QLineEdit:read-only { color: #687c98; background: #f0f4fa; }
 QComboBox:disabled, QDoubleSpinBox:disabled { color: #94a1b4; background: #f3f5f8; }
 QDoubleSpinBox QLineEdit { border: 0; background: transparent; padding: 0; min-height: 0; }
@@ -46,6 +46,10 @@ QScrollBar:vertical { width: 6px; background: transparent; }
 QScrollBar::handle:vertical { background: #cdd6e3; border-radius: 3px; min-height: 24px; }
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
 QStatusBar { background: #f2f4f8; color: #728099; font-size: 11px; }
+QTabWidget::pane { border: 0; }
+QTabBar::tab { background: transparent; color: #63718a; padding: 12px 22px; border-bottom: 2px solid transparent; }
+QTabBar::tab:selected { color: #295aac; border-bottom: 2px solid #3469cc; }
+QTabBar::tab:disabled { color: #a1acbd; }
 '''.replace('CHEVRON', (Path(__file__).parent/'assets/chevron-down.svg').as_posix())
 
 

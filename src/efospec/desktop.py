@@ -15,6 +15,7 @@ from astropy.io import fits
 from .jobs import Workbench
 from .recipes import sky_mask
 from .desktop_ui import STYLE, SourceEditor, card, label
+from .desktop_session import resolve_session
 
 RED='#f47777';BLUE='#9fc6d1';NAVY='#24384b'
 
@@ -37,6 +38,7 @@ class ExtractionWindow(Q.QMainWindow):
     def __init__(self, run=None, reference_root=None, *, settings=None):
         super().__init__()
         self.backend=None;self.exposure=None;self.reference_root=reference_root;self.settings=settings
+        self.session=None;self.review_editor=None
         self.loading=False;self.last_completed=None;self.selector=None;self.saved_bands=[]
         app=Q.QApplication.instance();app.setStyle('Fusion')
         app.styleHints().setColorScheme(QtCore.Qt.ColorScheme.Light)
@@ -60,7 +62,9 @@ class ExtractionWindow(Q.QMainWindow):
         self.path_label=label('No night loaded','brandDetail');bar.addWidget(self.path_label);bar.addSpacing(16)
         self.open_button=Q.QPushButton('Open night…');self.open_button.clicked.connect(self.choose_run);bar.addWidget(self.open_button)
         layout.addWidget(top)
-        body=Q.QWidget();body_layout=Q.QHBoxLayout(body);body_layout.setContentsMargins(20,20,20,10);body_layout.setSpacing(16);layout.addWidget(body,1)
+        self.tabs=Q.QTabWidget();layout.addWidget(self.tabs,1)
+        body=Q.QWidget();body_layout=Q.QHBoxLayout(body);body_layout.setContentsMargins(20,20,20,10);body_layout.setSpacing(16)
+        self.tabs.addTab(body,'Spectra')
         sidebar=Q.QWidget();sidebar.setFixedWidth(342);side=Q.QVBoxLayout(sidebar);side.setContentsMargins(0,0,0,0);side.setSpacing(12)
         body_layout.addWidget(sidebar)
         self.exposures=Q.QComboBox();self.exposures.setAccessibleName('Exposure');self.exposures.currentIndexChanged.connect(self.change_exposure)
@@ -125,6 +129,18 @@ class ExtractionWindow(Q.QMainWindow):
         self.open_revision=Q.QPushButton('Open revision');historybar.addWidget(self.open_revision);self.open_revision.clicked.connect(self.show_revision);details_layout.addLayout(historybar)
         self.log=Q.QPlainTextEdit();self.log.setReadOnly(True);self.log.setMaximumHeight(100);details_layout.addWidget(self.log)
         self.details_button.toggled.connect(self.toggle_details)
+        self.review_page=Q.QWidget();self.review_layout=Q.QVBoxLayout(self.review_page)
+        self.review_layout.setContentsMargins(20,20,20,10)
+        review_bar=Q.QHBoxLayout();self.reviews=Q.QComboBox();self.reviews.setAccessibleName('Source-review exposure')
+        self.reviews.addItem('Open a night or a source-review packet',None)
+        self.reviews.currentIndexChanged.connect(self.change_review);review_bar.addWidget(self.reviews,1)
+        self.review_open=Q.QPushButton('Open review packet…');self.review_open.clicked.connect(self.choose_review);review_bar.addWidget(self.review_open)
+        self.review_layout.addLayout(review_bar)
+        self.review_notice=label('Select a failed-exposure QC packet to choose its source and local background.','notice',True)
+        self.review_layout.addWidget(self.review_notice)
+        self.review_placeholder=label('Source identity is selected by the observer. Original raw files and products are preserved.',wrap=True)
+        self.review_layout.addWidget(self.review_placeholder,1)
+        self.tabs.addTab(self.review_page,'Source review')
         self.timer=QtCore.QTimer(self);self.timer.setInterval(350);self.timer.timeout.connect(self.poll_job);self.timer.start()
         self.cancel_button.setEnabled(False);self.run_button.setEnabled(False);self.open_revision.setEnabled(False);self.editor.setEnabled(False)
         for combo in self.findChildren(Q.QComboBox):
@@ -156,25 +172,70 @@ class ExtractionWindow(Q.QMainWindow):
 
     def error(self,exc):
         self.notice.setText(str(exc));self.notice.setProperty('invalid',True);self.notice.style().unpolish(self.notice);self.notice.style().polish(self.notice)
+        self.statusBar().showMessage(str(exc))
 
     def choose_run(self):
-        path=Q.QFileDialog.getExistingDirectory(self,'Open a night with run.json')
+        path=Q.QFileDialog.getExistingDirectory(self,'Open an observing night or reduction folder')
         if path:self.open_run(path)
 
     def open_run(self,path):
         try:
-            new=Workbench(path,self.reference_root)
+            if self.is_running() or (self.review_editor and self.review_editor.is_running()):
+                raise ValueError('Finish or cancel the extraction before changing nights.')
+            session=resolve_session(path)
+            new=Workbench(session.run,self.reference_root) if session.manifest['results'] else None
             if self.backend:self.backend.close()
-            self.backend=new
-            night=Path(json.loads((new.run/'run.json').read_text()).get('input_dir','')).name or new.run.name
-            self.path_label.setText(night);self.path_label.setToolTip(str(new.run))
-            previous=(self.settings.value('last_product','') if self.settings and self.settings.value('last_run')==str(new.run) else '')
+            self.backend=new;self.session=session;self.exposure=None
+            self.path_label.setText(session.night);self.path_label.setToolTip(str(session.run))
+            previous=(self.settings.value('last_product','') if self.settings and self.settings.value('last_run')==str(session.selected) else '')
             self.exposures.blockSignals(True);self.exposures.clear()
-            for e in new.exposures:self.exposures.addItem(f'{e["object"]} · {e["grism"]} · {e["exptime"]:g} s',e['id'])
+            for e in new.exposures if new else []:self.exposures.addItem(f'{e["object"]} · {e["grism"]} · {e["exptime"]:g} s',e['id'])
             index=self.exposures.findData(previous)
             if index>=0:self.exposures.setCurrentIndex(index)
             self.exposures.blockSignals(False);self.change_exposure();self.refresh_history()
+            self.clear_review()
+            self.reviews.blockSignals(True);self.reviews.clear();self.reviews.addItem('Select a source-review exposure…',None)
+            for packet in session.reviews:
+                info=json.loads(packet.read_text())
+                self.reviews.addItem(f'{info.get("object", "Unverified source")} · {info["raw_name"]}',str(packet))
+            self.reviews.blockSignals(False)
+            self.tabs.setTabText(1,f'Source review ({len(session.reviews)})')
+            self.review_notice.setText('Choose the source explicitly; polynomial background extraction remains experimental.' if session.reviews
+                                      else 'No matching QC packets found. Open a review.json packet or prepare one with recovery-qc.')
+            if session.warnings:self.review_notice.setText(self.review_notice.text()+'\n'+'\n'.join(session.warnings))
+            self.tabs.setCurrentIndex(0 if new else 1)
+            if not new:
+                self.editor.setEnabled(False);self.run_button.setEnabled(False)
+                self.target_title.setText('No extracted spectra');self.context_label.setText('Review failed exposures in the Source review tab.')
+                self.snr_label.setText('—')
+                for ax in (self.spectrum_ax,self.image_ax,self.profile_ax):ax.clear()
+                self.canvas.draw_idle()
+            if session.reviews and (not new or session.selected.name=='review.json'):
+                self.reviews.setCurrentIndex(1);self.tabs.setCurrentIndex(1)
+            if self.settings:self.settings.setValue('last_run',str(session.selected));self.settings.sync()
         except (OSError,ValueError,KeyError,ImportError) as exc:self.error(exc)
+
+    def choose_review(self):
+        path,_=Q.QFileDialog.getOpenFileName(self,'Open source-review packet','','Review packet (review.json)')
+        if path:self.open_run(path)
+
+    def clear_review(self):
+        if self.review_editor:
+            self.review_editor.close();self.review_layout.removeWidget(self.review_editor);self.review_editor.deleteLater()
+            self.review_editor=None
+        self.review_placeholder.show()
+        self.review_notice.show()
+
+    def change_review(self,*_):
+        path=self.reviews.currentData()
+        if not path:self.clear_review();return
+        try:
+            from .background_gui import BackgroundEditor
+            panel=BackgroundEditor(path,self.reference_root,parent=self.review_page)
+            self.clear_review();self.review_editor=panel;self.review_placeholder.hide()
+            self.review_layout.addWidget(panel,1);panel.runningChanged.connect(self.poll_job)
+            self.review_notice.setVisible(bool(self.session and self.session.warnings))
+        except (OSError,ValueError,KeyError,ImportError) as exc:self.review_notice.setText(str(exc))
 
     def change_exposure(self,*_):
         if not self.backend or not self.exposures.currentData():return
@@ -187,7 +248,7 @@ class ExtractionWindow(Q.QMainWindow):
             self.context_label.setText(f'{r["grism"]}  /  {r["slit"]}  ·  {r["exptime_s"]:g} s  ·  {mode}\nAssociation: {association.replace("_"," ")}')
             self.snr_label.setText(f'S/N  {r["median_native_snr_4000_8500"]:.1f} / pixel')
             if self.settings:
-                self.settings.setValue('last_run',str(self.backend.run));self.settings.setValue('last_product',self.exposures.currentData())
+                self.settings.setValue('last_run',str(self.session.selected));self.settings.setValue('last_product',self.exposures.currentData())
                 self.settings.sync()
             self.editor.setEnabled(True)
             self.loading=True
@@ -371,14 +432,19 @@ class ExtractionWindow(Q.QMainWindow):
     def cancel_job(self):
         if self.backend:self.backend.cancel();self.poll_job()
 
-    def poll_job(self):
+    def poll_job(self,*_):
+        review_running=bool(self.review_editor and self.review_editor.is_running())
+        running=self.is_running()
+        self.tabs.setTabEnabled(0,not review_running);self.tabs.setTabEnabled(1,not running)
+        self.open_button.setEnabled(not (running or review_running))
+        self.review_open.setEnabled(not (running or review_running));self.reviews.setEnabled(not review_running)
         if not self.backend:return
         status=self.backend.job_status()
         if not status:return
         running=status['status']=='running'
         self.cancel_button.setEnabled(running);self.cancel_button.setVisible(running);self.progress.setVisible(running)
         if running:self.run_button.setEnabled(False)
-        self.open_button.setEnabled(not running);self.exposures.setEnabled(not running);self.editor.setEnabled(not running)
+        self.exposures.setEnabled(not running);self.editor.setEnabled(not running)
         self.progress.setRange(0,0 if running else 1);self.progress.setValue(0 if running else 1)
         self.log.setPlainText(status.get('log',''));self.statusBar().showMessage(f'Revision {status["id"]} · {status["status"]}')
         if not running and self.last_completed!=status['id']:
@@ -386,7 +452,7 @@ class ExtractionWindow(Q.QMainWindow):
 
     def refresh_history(self):
         self.history.clear()
-        for record in self.backend.history():self.history.addItem(record['id'],record['directory'])
+        for record in self.backend.history() if self.backend else []:self.history.addItem(record['id'],record['directory'])
         self.open_revision.setEnabled(self.history.count()>0)
 
     def show_revision(self):
@@ -394,14 +460,25 @@ class ExtractionWindow(Q.QMainWindow):
 
     def closeEvent(self,event):
         if self.backend:self.backend.close()
+        if self.review_editor:self.review_editor.close()
         self.timer.stop();event.accept()
 
 
-def launch(run=None,reference_root=None):
+def launch(run=None,reference_root=None,*,smoke_test=False):
     app=Q.QApplication.instance() or Q.QApplication(sys.argv[:1]);app.setApplicationName('EFOSpec')
-    settings=QtCore.QSettings('EFOSpec','Desktop');run=initial_run(run,settings)
+    settings=None if smoke_test else QtCore.QSettings('EFOSpec','Desktop')
+    if not smoke_test:run=initial_run(run,settings)
     window=ExtractionWindow(run,reference_root,settings=settings);window.show()
-    if run is None:QtCore.QTimer.singleShot(0,window.choose_run)
+    if smoke_test:
+        def finish():
+            ready=run is None or (window.session is not None and (
+                window.exposure is not None or window.review_editor is not None))
+            print(json.dumps({'application':'EFOSpec','qt_platform':app.platformName(),
+                'tabs':window.tabs.count(),'ready':ready,
+                'run':str(window.session.run) if window.session else None}),flush=True)
+            window.close();app.exit(0 if ready else 1)
+        QtCore.QTimer.singleShot(600,finish)
+    elif run is None:QtCore.QTimer.singleShot(0,window.choose_run)
     return app.exec()
 
 
@@ -409,7 +486,10 @@ def initial_run(explicit, settings):
     """Remember a local night without shipping anyone's data paths in the package."""
     if explicit is not None:return explicit
     saved=settings.value('last_run','')
-    return saved if saved and (Path(saved)/'run.json').is_file() else None
+    if saved:
+        try:resolve_session(saved);return saved
+        except (OSError,ValueError,KeyError):pass
+    return None
 
 
 def common_sky_bands(mask, origin):

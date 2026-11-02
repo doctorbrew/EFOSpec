@@ -13,8 +13,9 @@ def main(argv=None):
     add_arguments(epoch)
     epoch.add_argument('--stage',choices=['all','log','reduce','report'],default='all')
     gui = commands.add_parser('gui', help='Open the PySide6 desktop extraction application')
-    gui.add_argument('path', nargs='?', help='Completed run directory; omitted opens a file picker')
+    gui.add_argument('path', nargs='?', help='Run, dated workflow folder or review.json; omitted reopens the last night')
     gui.add_argument('--reference-root')
+    gui.add_argument('--smoke-test',action='store_true',help='Open the native window, report its runtime, then exit')
     browser = commands.add_parser('browser-prototype', help='Legacy local browser extraction prototype')
     browser.add_argument('path')
     browser.add_argument('--reference-root')
@@ -139,6 +140,7 @@ def main(argv=None):
             return 0 if result['status'] == 'complete' else 1
         if args.command == 'gui':
             from .desktop import launch
+            if args.smoke_test:return launch(args.path,args.reference_root,smoke_test=True)
             return launch(args.path,args.reference_root)
         if args.command == 'reduce-native':
             from .native_reduction import reduce_pair
