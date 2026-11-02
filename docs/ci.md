@@ -49,6 +49,14 @@ QT_API=pyside6 QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBL
 - Pull requests receive read-only permissions and never publish metrics.
 - Badge errors cannot turn passing tests into a failed build.
 
+## Merge repair — 2 November 2026
+
+- Duplicate `desktop` extras made TOML parsing fail before installation or tests.
+- Keep one PySide6 desktop extra and validate TOML before system dependency installation.
+- Both editors use PySide6; mixing PyQt6 widgets with a PySide6 Matplotlib canvas raises `TypeError`.
+- Native execution is implemented; preflight still reports `reduction_ready=False` until scientific validation.
+- Coverage marked **unavailable** after the failed installation was correct. Fresh default-branch CI must pass before the badge republishes a percentage.
+
 ## Setup verification
 
 - [First verified run](https://github.com/sPaMFouR/EFOSpec/actions/runs/41220735230): 31 October 2026, source `51a230e`.

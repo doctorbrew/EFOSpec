@@ -2,7 +2,7 @@
 
 **Requirement clarified: desktop extraction app; webpage for the nightly reduction log.**
 
-- **First desktop feature implemented:** `background-gui` opens a failed-exposure QC packet in PyQt6, edits a single aperture and two-sided polynomial background, saves/reloads recipes and runs/cancels a worker. Native macOS interactions are checked. The full desktop reduction application remains incomplete; see [workflow and limits](../../polynomial-background.md).
+- **Desktop tools implemented:** `gui` opens completed nights with extraction controls; `background-gui` edits failed-exposure QC packets and polynomial backgrounds. Both use PySide6, saved recipes and cancellable workers. Full end-to-end desktop reduction remains incomplete; see [desktop guide](../../desktop.md) and [background limits](../../polynomial-background.md).
 - **Reusable backend: implemented.** Shared PypeIt extraction, validated recipes, immutable revisions, and CLI replay.
 - **Nightly webpage: implemented.** Read-only Fieldnotes report with an opening table and per-source diagnostic plots.
 - Project rules: [AGENTS.md](../../../AGENTS.md). Prototype instructions: [browser editor](../../gui.md).
@@ -21,7 +21,7 @@
 
 ## Platform decision — first bounded implementation
 
-- PyQt6 is used for the first background editor: it embeds the shared Matplotlib diagnostics and starts the current Python environment as a subprocess.
+- Both editors use PySide6: they embed Matplotlib diagnostics and start the current Python environment as a subprocess.
 - Native macOS launch, canvas band dragging, recipe replay, extraction and cancellation are tested. Linux support and packaged distribution remain unverified.
 - Do not promise Linux support for a macOS-only implementation.
 - Reuse the `efospec` Python environment; do not rewrite scientific algorithms in Swift or UI code.
@@ -39,7 +39,7 @@
 | D5 — nightly log and delivery | Refresh the read-only Fieldnotes report from saved results; document app launch/install | Opening table and three plots per source remain; the report has no extraction controls; desktop smoke tests pass |
 
 - Dependencies: D1 → D2 → D3 → D4 → D5.
-- First bounded milestone achieved for failed-exposure polynomial boxcar experiments. General night/run browsing, PypeIt optimal extraction controls, progress reporting, FWHM/two-source editing and complete desktop delivery remain open.
+- Completed-night browsing, PypeIt extraction controls, progress, FWHM/two-source editing and failed-exposure polynomial experiments are implemented. Full raw-night orchestration and packaged desktop delivery remain open.
 - Raw-night reduction controls must expose the actual supported calibration mode; they cannot imply native calibration is finished.
 - Desktop delivery requires desktop UI tests. Existing Chromium tests validate only the browser prototype.
 

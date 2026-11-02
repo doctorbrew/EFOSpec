@@ -17,7 +17,7 @@ class NativeReadinessTests(unittest.TestCase):
         self.assertFalse(result['iraf_calibration_products_allowed'])
         self.assertFalse(result['raw_candidates_complete'])
 
-    def test_complete_candidates_do_not_claim_native_execution_or_flux_validation(self):
+    def test_complete_candidates_do_not_claim_validated_reduction(self):
         frames = [frame(), frame('arc', 'arc'), frame('std', 'standard_candidate')]
         for role in ['bias', 'flat']:
             for n in range(3):

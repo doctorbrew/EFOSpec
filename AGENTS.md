@@ -7,8 +7,8 @@
 - Do not substitute a browser editor, localhost service, or WebView wrapper for the requested desktop application.
 - **The Fieldnotes webpage is the read-only nightly reduction log.** Keep the opening table, per-source spectrum/trace/spatial-profile plots, status, and downloads.
 - Do not put extraction controls or job execution into the nightly report. Omit the previously rejected source-selection table column.
-- `efospec gui` currently launches a **browser prototype**. Document that limitation; it does not fulfil the desktop GUI requirement.
-- `efospec background-gui` is a native PyQt6 editor for failed-exposure QC packets and experimental polynomial boxcar revisions. Native interactions have been checked on macOS only; this is a bounded first desktop feature, not the complete reduction application. See [background workflow](docs/polynomial-background.md).
+- `efospec gui` launches the native PySide6 desktop application; `efospec browser-prototype` retains the earlier browser editor.
+- `efospec background-gui` uses the same PySide6 binding for failed-exposure QC packets and experimental polynomial boxcar revisions. Keep both editors on one Qt binding so Matplotlib canvases and application instances remain compatible. See [background workflow](docs/polynomial-background.md).
 - Preserve useful prototype code/tests while reusing its Python backend for desktop development. Do not claim the desktop app is delivered until its acceptance gates pass.
 - Canonical GUI requirements and tasks: [desktop roadmap](docs/roadmap/pypeit-migration/gui.md).
 

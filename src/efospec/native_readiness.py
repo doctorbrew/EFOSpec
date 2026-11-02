@@ -50,5 +50,5 @@ def assess_native_readiness(inventory):
             'input_errors': inventory['errors'], 'identity_conflicts': inventory['identity_conflicts'],
             'exposures': exposures, 'raw_candidates_complete': complete,
             'native_calibration_execution_implemented': True,
-            'native_execution_implemented': False, 'reduction_ready': False,
+            'native_execution_implemented': True, 'reduction_ready': False,
             'blockers': blockers}

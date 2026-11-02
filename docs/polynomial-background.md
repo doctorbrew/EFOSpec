@@ -1,6 +1,6 @@
 # Local background review and native editor
 
-Delivered 2026-11-01: house-style QC for the four ambiguous October exposures, a native PyQt6 aperture/background editor, and an experimental covariance-aware polynomial boxcar engine. Full native-calibrated, flux-calibrated host subtraction remains unfinished.
+Delivered 2026-11-01: house-style QC for the four ambiguous October exposures, a native aperture/background editor, and an experimental covariance-aware polynomial boxcar engine. Both desktop editors now use PySide6. Full native-calibrated, flux-calibrated host subtraction remains unfinished.
 
 ## Inspect and edit
 
@@ -16,7 +16,7 @@ efospec background-gui 'runs/2026-10-28/QC/EFOSC.2026-10-29T05:12:40.988/review.
 - Save a new recipe, or extract to a new revision directory. Cancel terminates the subprocess; partial outputs may remain in that new directory. Raw data and parent products are unchanged.
 - Qt is declared in the `desktop` optional dependency group; PypeIt 1.14 and the existing rapid/plot dependencies and LaTeX are also needed. This feature runs from the source checkout and uses its canonical `plot_style.py`.
 - Native macOS evidence: `runs/background-gui-check/interactions-final/result.json`, logs and window screenshot. Actual canvas drags, saved-recipe replay, a successful extraction worker with arrays equal to the preview, cancellation and unchanged raw hash were checked. Offscreen tests are additional regression checks, not Linux desktop certification.
-- This editor handles failed-exposure QC packets and one-source polynomial experiments. The broader desktop night browser, optimal-extraction UI and full reduction workflow remain open. `efospec gui` still names the earlier browser prototype.
+- This editor handles failed-exposure QC packets and one-source polynomial experiments. `efospec gui` opens the native completed-night browser and extraction controls; `efospec browser-prototype` retains the earlier browser editor.
 
 ## Reproducible science contract
 

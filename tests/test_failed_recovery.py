@@ -84,7 +84,7 @@ def test_ambiguous_raw_can_be_recovered_with_hash_bound_manual_recipe(tmp_path,m
     # Exercise the real editor against this saved exposure and the shared
     # scientific engine. Offscreen CI is separate from the native macOS check.
     monkeypatch.setenv('QT_QPA_PLATFORM','offscreen')
-    from PyQt6 import QtWidgets
+    from PySide6 import QtWidgets
     from efospec.background_gui import BackgroundEditor
     app=QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     editor=BackgroundEditor(packet/'review.json')
