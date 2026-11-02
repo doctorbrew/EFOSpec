@@ -54,7 +54,6 @@ def render():
             if row < 4:
                 parts.append(f'<path class="arrow" d="M{x+256} {y+108} V{y+122}"/>')
     parts.extend(['''
-<text class="small" x="32" y="861">The archive bridge remains available as reduce-rapid. Native reduction forbids archived IRAF calibration products.</text>
 <rect x="32" y="891" width="1056" height="111" rx="9" fill="#eef2f5" stroke="#6f8797" stroke-dasharray="6 4"/>
 <text class="label" x="48" y="916">PYSIDE6 / QT DESKTOP EXTRACTION · SEPARATE READ-ONLY NIGHTLY LOG</text>
 <text class="heading" x="48" y="945">Desktop controls → saved recipe → Python / PypeIt → spectra</text>
