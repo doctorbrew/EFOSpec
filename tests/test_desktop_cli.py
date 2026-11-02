@@ -24,3 +24,21 @@ def test_raw_cli_passes_explicit_positions_and_cache(monkeypatch,capsys):
         '--output','new','--science-position','530','--standard-position','550','--reuse-calibrations','prior','--skip-report'])==0
     assert calls[0][1]==dict(science_position=530.,standard_position=550.,render_report=False,reuse_calibrations='prior')
     assert json.loads(capsys.readouterr().out)['reduced']==1
+
+
+def test_joint_validation_cli_requires_explicit_input_and_loads_recipe(tmp_path,monkeypatch):
+    from efospec.__main__ import main
+    from efospec import joint_validation
+    calls=[]
+    monkeypatch.setattr(joint_validation,'save_validation',lambda *a,**k:calls.append((a,k)) or
+                        {'conditional_tests_passed':True,'science_validated':False})
+    with pytest.raises(SystemExit) as missing_product:
+        main(['validate-joint','--output',str(tmp_path/'unused'),'--run','night'])
+    with pytest.raises(SystemExit) as missing_run:
+        main(['validate-joint','--output',str(tmp_path/'unused'),'--product','spectrum.fits'])
+    assert missing_product.value.code==missing_run.value.code==2
+    assert calls==[] and not (tmp_path/'unused').exists()
+    recipe=tmp_path/'recipe.json';recipe.write_text(json.dumps({'objects':[{'id':'primary'},{'id':'companion'}]}))
+    assert main(['validate-joint','--output',str(tmp_path/'result'),'--run','night',
+                 '--product','spectrum.fits','--recipe',str(recipe)])==0
+    assert calls[0][1]['recipe']==json.loads(recipe.read_text())
