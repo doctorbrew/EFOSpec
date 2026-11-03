@@ -30,6 +30,7 @@ def atlas():
 
 
 def check_physical_range(wave, grism):
+    from .native_wavelength import GRISMS, ENDPOINT_TOLERANCE
     if grism not in BOUNDS:
         raise ValueError('native wavelength identification enables only grism Gr11 or Gr13')
     wave=np.asarray(wave,float)
@@ -39,6 +40,9 @@ def check_physical_range(wave, grism):
     step=np.diff(wave)
     if not (center[0]<np.median(wave)<center[1] and np.all((step>dispersion[0])&(step<dispersion[1]))):
         raise ValueError('wavelength solution falls outside physical grism bounds')
+    low, high, _ = GRISMS[grism]
+    if abs(wave[0]-low)>ENDPOINT_TOLERANCE or abs(wave[-1]-high)>ENDPOINT_TOLERANCE:
+        raise ValueError('wavelength solution falls outside the shared detector range gate')
 
 
 def _patterns(centroids, references, length, grism):
@@ -81,7 +85,7 @@ def _patterns(centroids, references, length, grism):
     return sorted(candidates.values(),key=lambda item:(-item[0],item[1]))
 
 
-def identify_spectrum(spectrum, grism, *, fwhm=4.2, nonlinear_counts=1e10):
+def identify_spectrum(spectrum, grism, *, filter_name='Free', fwhm=4.2, nonlinear_counts=1e10):
     """Use PypeIt centroids/fitting with an independently constrained ID seed.
 
     Returns a native PypeIt WaveFit in vacuum Angstroms and explicit QA. The
@@ -91,6 +95,7 @@ def identify_spectrum(spectrum, grism, *, fwhm=4.2, nonlinear_counts=1e10):
     """
     from pypeit.core.arc import detect_lines
     from pypeit.core.wavecal.wv_fitting import iterative_fitting
+    from .native_wavelength import validate_solution
     if grism not in BOUNDS:
         raise ValueError('unsupported native wavelength grism')
     spectrum=np.asarray(spectrum,float)
@@ -145,6 +150,10 @@ def identify_spectrum(spectrum, grism, *, fwhm=4.2, nonlinear_counts=1e10):
         held_rms=float(np.sqrt(np.mean(held_residual**2)))
         if rms>1. or held_rms>1.5 or np.max(abs(held_residual))>2.5:
             continue
+        try:
+            acceptance=validate_solution(fit,grism,filter_name=filter_name)
+        except ValueError:
+            continue
         qa=dict(source='ESO_EFOSC2_manual_4.2_table_17_physical_wavelengths',
             medium='vacuum',unit='Angstrom',grism=grism,n_lines=len(ids),
             reference_lines_vacuum=ids.tolist(),pixel_centroids=pixels.tolist(),
@@ -154,6 +163,7 @@ def identify_spectrum(spectrum, grism, *, fwhm=4.2, nonlinear_counts=1e10):
             nonlinear_counts=float(nonlinear_counts),line_fwhm_pixels=float(fwhm),
             physical_bounds={'center_vacuum_angstrom':BOUNDS[grism][0],
                              'dispersion_angstrom_per_binned_pixel':BOUNDS[grism][1]})
+        qa['shared_acceptance']=acceptance
         solutions.append((fit,qa,wave))
     if not solutions:
         raise ValueError('raw arc lines do not establish a physically validated wavelength solution')

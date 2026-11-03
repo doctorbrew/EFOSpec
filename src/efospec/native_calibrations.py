@@ -98,6 +98,7 @@ def build_calibrations(frame, associations, output):
                           builder.slitmask,nsample=10,slit_bpm=builder.wvc_bpm,specord=1,spatord=1)
         fwhm=float(fwhm_map[0].eval(cal.msarc.image.shape[0]//2,.5))
         fit,qa=identify_spectrum(spectra[:,0],frame['setup']['grism'],fwhm=fwhm,
+                                 filter_name=frame['setup']['filter'],
                                  nonlinear_counts=float(builder.nonlinear_counts))
         fit.spat_id=int(cal.slits.spat_id[0]);fit.fwhm=fwhm
         wavecal=WaveCalib(wv_fits=np.array([fit],dtype=object),fwhm_map=fwhm_map,
@@ -152,6 +153,8 @@ def load_calibrations(directory):
     from pypeit.images.buildimage import BiasImage
     from pypeit.slittrace import SlitTraceSet
     from pypeit.flatfield import FlatImages
+    from pypeit.wavecalib import WaveCalib
+    from .native_wavelength import validate_solution
     from .pypeit_adapter import EFOSpecEFOSC2Spectrograph
     directory=Path(directory).resolve();record=json.loads((directory/'calibration.json').read_text())
     if record.get('status')!='experimental_complete' or record.get('mode')!='native_raw_only':
@@ -169,6 +172,10 @@ def load_calibrations(directory):
         if len(matches)!=1:raise ValueError('ambiguous native calibration file')
         return matches[0]
     instrument=EFOSpecEFOSC2Spectrograph()
+    wavecal=WaveCalib.from_file(one('WaveCalib_*fits'))
+    # Hashes establish identity, not scientific validity under current gates.
+    for fit in wavecal.wv_fits:
+        validate_solution(fit,record['setup']['grism'],filter_name=record['setup']['filter'])
     bias=BiasImage.from_file(one('Bias_*fits'))
     slit=SlitTraceSet.from_file(one('Slits_*fits*'))
     flat=FlatImages.from_file(one('Flat_*fits'))
