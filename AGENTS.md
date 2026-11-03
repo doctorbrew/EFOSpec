@@ -24,7 +24,8 @@
 
 ## Epoch workflow
 
-- **The approved Fieldnotes design is the final daily-log format.** Deliver `runs/YYYY-MM-DD/index.html` with the observing log, spectra, issues, source QC, background, calibrations, archive and run record in consecutive sections. Preserve this design for future epochs; make requested refinements incrementally. Apply [webpage_spectralog](skills/webpage-spectralog/SKILL.md) when producing or editing daily logs.
+- **The approved Fieldnotes design is the final daily-log format.** Deliver `runs/YYYY-MM-DD/index.html` with the observing log, spectra, issues, source QC, background, calibrations, archive and run record in consecutive sections. Preserve this design for future epochs; make requested refinements incrementally. Use the agent-installed `webpage-spectralog` skill when available.
+- Coding-agent skills belong in the user's agent configuration, never in this repository. Keep skill definitions, copies and downloadable skill bundles outside the checkout; the report generator and project documentation remain here.
 - Run and report one explicitly named observing date at a time. Prefer `python scripts/reduce_epoch.py YYYY-MM-DD`, or its separate log/reduction/report scripts. The next epoch is a new invocation with a new date; do not introduce an automatic multi-night loop.
 - Keep generated epoch files inside the dated revision; group retained calibration sets and older diagnostics under that date's `calibrations/` and `archive/`. Treat legacy compatibility links as read-only paths, not new output destinations.
 - Keep the observing date in logs, report titles and parent output paths. Preserve earlier processing revisions. Canonical workflow: [dated scripts](docs/epoch-workflow.md).
