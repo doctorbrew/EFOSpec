@@ -103,7 +103,7 @@ def extract_frame(frame, reference_root, output, hint, hint_info, waveair, arc_q
     try:
         engine = extract_spectra(data, w, det, exposure_time=h['EXPTIME'],
                                 read_noise=h['ESO DET OUT1 RON'], output=output,
-                                basename=basename, target_position=hint-xlo)
+                                basename=basename, target_position=hint-xlo,bounded_background=True)
     except SourceSelectionError as exc:
         exc.diagnostics.update(spatial_origin_in_trimmed_image=xlo,
                                spatial_origin_in_raw_image=99+xlo,

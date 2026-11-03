@@ -79,7 +79,12 @@ class ExtractionWindow(Q.QMainWindow):
         row.addWidget(self.add);row.addWidget(self.remove);source_layout.addLayout(row)
         self.add.clicked.connect(self.add_source);self.remove.clicked.connect(self.remove_source)
         sky,sky_layout=card('02  Background');form.addWidget(sky)
-        self.sky_auto=Q.QCheckBox('Automatic sky selection');self.sky_auto.setChecked(True);sky_layout.addWidget(self.sky_auto)
+        self.sky_auto=Q.QCheckBox('Nearest clean bands on both sides');self.sky_auto.setChecked(True);sky_layout.addWidget(self.sky_auto)
+        self.sky_width=Q.QSpinBox();self.sky_width.setRange(15,50);self.sky_width.setValue(30)
+        sky_layout.addWidget(label('Preferred width per side · pixels (minimum 15)'));sky_layout.addWidget(self.sky_width)
+        self.sky_degree=Q.QSpinBox();self.sky_degree.setRange(1,3);self.sky_degree.setValue(2)
+        sky_layout.addWidget(label('Spatial degree · 1 slope, 2 curved, 3 cubic'));sky_layout.addWidget(self.sky_degree)
+        self.sky_width.valueChanged.connect(self.edited);self.sky_degree.valueChanged.connect(self.edited)
         self.include=Q.QLineEdit();self.exclude=Q.QLineEdit()
         self.include.setAccessibleName('Included background bands');self.exclude.setAccessibleName('Excluded background bands')
         sky_layout.addWidget(label('Include · lower:upper'));sky_layout.addWidget(self.include)
@@ -88,7 +93,7 @@ class ExtractionWindow(Q.QMainWindow):
         self.sky_auto.toggled.connect(self.background_changed)
         self.include.editingFinished.connect(self.edited);self.exclude.editingFinished.connect(self.edited)
         engine,engine_layout=card('03  Extraction');form.addWidget(engine)
-        self.engine=Q.QComboBox();self.engine.addItems(['PypeIt · optimal + boxcar','Joint profiles · experimental']);engine_layout.addWidget(self.engine)
+        self.engine=Q.QComboBox();self.engine.addItems(['PypeIt · bounded background','Joint profiles · experimental','Legacy PypeIt · recipe replay']);engine_layout.addWidget(self.engine)
         self.manual=Q.QCheckBox('Use selected source anchors');self.manual.setChecked(True);engine_layout.addWidget(self.manual)
         self.degree=Q.QComboBox();self.degree.addItems(['Select from held-out sky','Constant','Linear','Quadratic']);engine_layout.addWidget(self.degree);self.degree.setVisible(False)
         self.manual.toggled.connect(self.source_mode_changed);self.engine.currentIndexChanged.connect(self.engine_changed);self.degree.currentIndexChanged.connect(self.edited)
@@ -165,8 +170,18 @@ class ExtractionWindow(Q.QMainWindow):
         automatic=self.sky_auto.isChecked()
         self.include.setReadOnly(automatic);self.exclude.setReadOnly(automatic)
         if automatic:
-            self.include.setText(band_text(self.saved_bands));self.exclude.clear()
-        self.background_hint.setText('Common bands in the saved sky mask. Turn off automatic selection to edit these regions.' if automatic
+            self.include.setText(band_text(self.saved_bands) if self.engine.currentIndex()==2 else '');self.exclude.clear()
+        elif self.engine.currentIndex()==0 and self.exposure and not self.include.text().strip() and self.manual.isChecked():
+            from .local_sky import exposure_sky_inputs
+            try:
+                proposed=self.exposure.default_recipe()
+                proposed.update(source_mode='manual',objects=self.source_values())
+                proposed['sky']=dict(mode='pypeit_local',include=[],exclude=[],degree=self.sky_degree.value(),
+                    sigma_clip=4.,width_pixels=self.sky_width.value(),minimum_width_pixels=15)
+                mask,_,_=exposure_sky_inputs(self.exposure,proposed)
+                self.include.setText(band_text(common_sky_bands(mask,self.exposure.window.origin[1])))
+            except (ValueError,IndexError):pass
+        self.background_hint.setText('Nearest clean bands; may narrow to 15 pixels. Both sides are required. Inspect the overlay.' if automatic
                                     else 'Drag the spatial profile or edit bands. Source wings are excluded.')
         self.edited()
 
@@ -287,11 +302,11 @@ class ExtractionWindow(Q.QMainWindow):
 
     def engine_changed(self,*_):
         joint=self.engine.currentIndex()==1;self.degree.setEnabled(joint);self.degree.setVisible(joint)
+        self.sky_width.setVisible(self.engine.currentIndex()==0);self.sky_degree.setVisible(self.engine.currentIndex()==0)
         if joint:
             self.manual.setChecked(True);self.sky_auto.setChecked(False)
             if self.exposure and not self.include.text().strip():
-                lo=self.exposure.window.origin[1];hi=lo+self.exposure.window.shape[1]
-                self.include.setText(f'{lo+1}:{lo+30}, {hi-30}:{hi-1}')
+                self.background_hint.setText('Select nearby background on both sides of the sources.')
         self.manual.setEnabled(not joint);self.sky_auto.setEnabled(not joint);self.edited()
 
     def recipe(self):
@@ -304,6 +319,13 @@ class ExtractionWindow(Q.QMainWindow):
                   'exclude':[] if self.sky_auto.isChecked() else bands(self.exclude.text())}
         if self.engine.currentIndex()==1:
             r.update(schema_version=2,engine_version='efospec-joint-1',background_degree=['auto',0,1,2][self.degree.currentIndex()])
+        elif self.engine.currentIndex()==0:
+            if r['source_mode']=='automatic':
+                if not self.sky_auto.isChecked():raise ValueError('Select a source anchor to edit background bands')
+                r['sky']={'mode':'bounded','include':[],'exclude':[]}
+            else:
+                r['sky'].update(mode='pypeit_local',degree=self.sky_degree.value(),sigma_clip=4.)
+                if self.sky_auto.isChecked():r['sky'].update(width_pixels=self.sky_width.value(),minimum_width_pixels=15)
         return r
 
     def edited(self,*_):
@@ -356,7 +378,10 @@ class ExtractionWindow(Q.QMainWindow):
         self.profile_ax.legend(fontsize=8,frameon=False)
         try:
             recipe=self.recipe();mask=sky_mask(recipe,e.window)
-            if mask is None:mask=images.get('sky_input_mask')
+            if recipe['sky']['mode']=='pypeit_local':
+                from .local_sky import exposure_sky_inputs
+                mask,_,_=exposure_sky_inputs(e,recipe)
+            elif mask is None and self.engine.currentIndex()!=0:mask=images.get('sky_input_mask')
             if mask is not None:
                 self.image_ax.imshow(np.where(mask.T,1.,np.nan),origin='lower',aspect='auto',
                     cmap=ListedColormap([BLUE]),alpha=.2,vmin=0,vmax=1,
@@ -406,9 +431,11 @@ class ExtractionWindow(Q.QMainWindow):
 
     def load_recipe(self,path):
         recipe=json.loads(Path(path).read_text());recipe=self.backend.validate(self.exposures.currentData(),recipe)['recipe']
-        self.loading=True;self.engine.setCurrentIndex(1 if recipe['schema_version']==2 else 0)
+        self.loading=True;self.engine.setCurrentIndex(1 if recipe['schema_version']==2 else (0 if recipe['sky']['mode'] in ('pypeit_local','bounded') else 2))
         self.manual.setChecked(recipe['source_mode']=='manual');self.set_sources(recipe['objects'] or [self.exposure.primary_object()])
-        self.sky_auto.setChecked(recipe['sky']['mode']=='automatic');self.include.setText(band_text(recipe['sky']['include']));self.exclude.setText(band_text(recipe['sky']['exclude']))
+        self.sky_auto.setChecked(recipe['sky']['mode'] in ('automatic','bounded') or (recipe['sky']['mode']=='pypeit_local' and not recipe['sky']['include']))
+        self.sky_width.setValue(recipe['sky'].get('width_pixels',30));self.sky_degree.setValue(recipe['sky'].get('degree',2))
+        self.include.setText(band_text(recipe['sky']['include']));self.exclude.setText(band_text(recipe['sky']['exclude']))
         self.degree.setCurrentIndex(['auto',0,1,2].index(recipe.get('background_degree','auto')))
         self.loading=False;self.background_changed()
 

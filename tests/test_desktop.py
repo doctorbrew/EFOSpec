@@ -89,7 +89,7 @@ def test_file_picker_opens_run(window,qtbot,monkeypatch):
     assert window.exposures.count()==1
 
 
-def test_loaded_fields_and_saved_background_are_readable_without_changing_automatic_recipe(window,qtbot):
+def test_loaded_fields_and_bounded_background_are_readable(window,qtbot):
     w=window
     from efospec.desktop import common_sky_bands
     assert w.source_values()[0]==w.exposure.primary_object()
@@ -101,11 +101,14 @@ def test_loaded_fields_and_saved_background_are_readable_without_changing_automa
     assert w.recipe()['objects']==[]
     w.manual.setChecked(True)
     assert w.sources.isEnabled() and w.add.isEnabled()
-    assert w.include.isReadOnly() and w.include.text()
-    assert w.recipe()['sky']=={'mode':'automatic','include':[],'exclude':[]}
+    assert w.include.isReadOnly()
+    assert w.recipe()['sky']=={'mode':'pypeit_local','include':[],'exclude':[],
+                              'degree':2,'sigma_clip':4.,'width_pixels':30,'minimum_width_pixels':15}
+    from efospec.local_sky import exposure_sky_inputs
+    selected,_,_=exposure_sky_inputs(w.exposure,w.recipe())
     w.sky_auto.setChecked(False)
     assert not w.include.isReadOnly()
-    assert w.recipe()['sky']['include']==common_sky_bands(w.exposure.images['sky_input_mask'],w.exposure.window.origin[1])
+    assert w.recipe()['sky']['include']==common_sky_bands(selected,w.exposure.window.origin[1])
     w.set_view_mode('Pan');assert w.toolbar.mode and not w.selector.active
     w.set_view_mode('Inspect');assert not w.toolbar.mode and w.selector.active
 

@@ -59,7 +59,7 @@ def prepare(frame, associations, directory, position, cached=None):
     basename=product_name(science_stem(h['OBJECT'],h['DATE-OBS'],setup['grism'],setup['filter'],setup['slit']),h['DATE-OBS'],{},'_f')[:-7]
     engine=extract_spectra(data,waveair,image.detector,exposure_time=h['EXPTIME'],
         read_noise=h['ESO DET OUT1 RON'],output=directory,basename=basename,
-        target_position=position-xlo,processed=planes)
+        target_position=position-xlo,processed=planes,bounded_background=True)
     return dict(bundle=bundle,engine=engine,frame=frame,basename=basename,data=data,
                 waveair=waveair,detector=image.detector,processed=planes,xlo=xlo,position=position,
                 arc=arc,shift=shift,sky=sky)

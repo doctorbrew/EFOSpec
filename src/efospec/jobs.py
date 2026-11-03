@@ -58,6 +58,9 @@ class Workbench:
         else:
             recipe = validate_recipe(recipe,exposure.window,exposure.hashes)
         mask = sky_mask(recipe,exposure.window)
+        if recipe['sky']['mode']=='pypeit_local':
+            from .local_sky import exposure_sky_inputs
+            mask,_,_=exposure_sky_inputs(exposure,recipe)
         return {'recipe':recipe,'sky_fraction':None if mask is None else vector(mask.mean(axis=0))}
 
     def history(self):
