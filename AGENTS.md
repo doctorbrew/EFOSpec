@@ -16,6 +16,7 @@
 ## Scientific and implementation boundaries
 
 - Keep reduction, calibration, units, masks, and export in the shared Python/PypeIt engine. The desktop frontend edits validated recipes and manages workers.
+- New background fits use finite bands on both spatial sides: prefer 30 detector pixels per side, permit narrowing to 15, and expose widths up to 50. Never fall back to the remaining CCD or a one-sided fit. Use the bounded PypeIt path and record the spatial polynomial degree; preserve explicit legacy recipe replay. See [background policy](docs/local-pypeit-background.md).
 - Preserve legacy primary filenames, calibration associations, wavelength conventions, and source identifiers.
 - Save manual changes in new revisions; never overwrite raw data or accepted products.
 - Keep GUI work separate from native calibration validation. Only the experimental raw-only path may claim independence from archived IRAF calibrations.

@@ -186,7 +186,69 @@ class EpochPage:
                     + _table(['Candidate', 'Raw x', 'Degree', 'Background x bands', 'Valid spectrum'], rows)
                     + '<div class="qc-plots">'+''.join(background_cards)+'</div></article>')
         return (''.join(sections) or '<p>No source-review packets for this revision.</p>',
-                ''.join(backgrounds) or '<p>No retained polynomial background experiments for these exposures.</p>')
+                (''.join(backgrounds)+self.local_background_checks(revision,run))
+                or '<p>No retained polynomial background experiments for these exposures.</p>')
+
+    def local_background_checks(self, revision, run):
+        """Keep geometry-only checks separate from extraction/identity claims."""
+        manifest=revision/'reduction/run.json'
+        if not manifest.is_file():return ''
+        digest=sha256(manifest)
+        raw_hashes={Path(r.get('raw',r.get('path',''))).name:
+                    r.get('raw_sha256',r.get('diagnostics',{}).get('raw_sha256'))
+                    for r in run.get('results',[])+run.get('errors',[])}
+        sections=[];seen=set()
+        for path in sorted((self.root/'QC').glob('local-background-*/local-background.json'),reverse=True):
+            record=self.read(path)
+            if record.get('night')!=self.root.name or record.get('parent_manifest_sha256')!=digest:continue
+            for target in record.get('targets',[]):
+                expected_raw=raw_hashes.get(target.get('raw_name'))
+                if not expected_raw or target.get('input_sha256',{}).get('raw')!=expected_raw:continue
+                if target['raw_name'] in seen:continue
+                seen.add(target['raw_name'])
+                name=target['object'];directory=path.parent/name
+                directory.resolve().relative_to(self.root)
+                rows=[]
+                for case in target.get('cases',[]):
+                    bands=', '.join(f'[{a}, {b})' for a,b in case.get('midrow_bands',[])) or 'Unavailable'
+                    status=(('Fits expanded window' if case.get('expanded_window') else 'Fits saved window') if case['status']=='geometry_pass' else 'Insufficient two-sided space')
+                    rows.append([f'C{case["candidate"]}',f'{case["raw_x"]:.2f}',case.get('selection',{}).get('actual_width_spatial_pixels',case['width_pixels']),
+                                 _text(bands),status])
+                figures=[];extractions=[];downloads=[]
+                for case in target.get('cases',[]):
+                    for trial in case.get('extractions',[]):
+                        if trial['status']=='extracted_unverified':
+                            result=trial['results'][0];fit=result['processing']['background_fit']
+                            extractions.append([f'C{case["candidate"]}',trial['degree'],'Extracted · identity unverified',
+                                f'{100*result["valid_flux_fraction"]:.1f}%',str(fit['minimum_side_samples'])])
+                            recipe_path=path.parent/trial['recipe'];trial_dir=recipe_path.with_suffix('')
+                            sidecar=self.read(trial_dir/'qa/local-background-figure.json')
+                            saved=list((trial_dir/'native').glob('*_images.npz'))
+                            if len(saved)==1 and sidecar.get('images_sha256')==sha256(saved[0]):
+                                for filename,digest_image in sidecar.get('figures',{}).items():
+                                    image=trial_dir/'qa'/Path(filename).name
+                                    if image.is_file() and sha256(image)==digest_image:
+                                        figures.append(self.figure(image,f'{name} / C{case["candidate"]}, degree {trial["degree"]}'))
+                            product=trial_dir/'products'/Path(result['product']).name
+                            downloads.append(self.download(product,f'C{case["candidate"]} degree {trial["degree"]} FITS'))
+                        else:
+                            extractions.append([f'C{case["candidate"]}',trial['degree'],_text(trial.get('error','Failed')),'—','—'])
+                for filename,expected in target.get('figures',{}).items():
+                    image=directory/Path(filename).name
+                    if not image.is_file() or sha256(image)!=expected:
+                        self.warnings.append(f'{name}: local-background figure is missing or changed')
+                        continue
+                    figures.append(self.figure(image,name+' / Local background geometry'))
+                note=('Geometry checks only; test widths are spatial pixels. No new extraction or default change.'
+                      if record.get('mode')=='geometry_preflight' else
+                      'PypeIt extraction trials; source identities remain unverified. See trial record for failures.')
+                sections.append(f'<article class="exposure"><h3>{_text(name)} · Bounded background</h3>'
+                    f'<p class="note">{note} Neighbour exclusions use the saved candidates and requested source guard.</p>'
+                    +_table(['Candidate','Raw x','Pixels per side','Bands at middle row','Geometry'],rows)
+                    +(_table(['Candidate','Degree','Extraction','Valid flux bins','Minimum accepted / side'],extractions) if extractions else '')
+                    +'<div class="qc-plots">'+''.join(figures)+'</div>'
+                    +'<p>'+' · '.join(filter(None,downloads+[self.download(path,'Trial record')]))+'</p></article>')
+        return ''.join(sections)
 
     def calibrations(self):
         rows, seen = [], set()

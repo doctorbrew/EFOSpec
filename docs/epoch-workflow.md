@@ -74,6 +74,10 @@ runs/2026-10-28/nightly/<processing-UTC>-<unique-id>/
 python scripts/build_epoch_fieldnotes.py 2026-10-28
 ```
 
+For explicitly selected targets, [bounded PypeIt background trials](local-pypeit-background.md)
+save their geometry checks, candidate recipes and new extraction revisions inside
+the date's `QC/` folder. These trials do not replace `nightly/current.json`.
+
 ## Retained results
 
 | Folder under `runs/DATE/` | Contents |

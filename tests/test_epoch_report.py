@@ -124,3 +124,29 @@ def test_copied_page_works_offline_with_zoom_navigation_and_download(epoch_page,
         page.set_viewport_size({'width':390, 'height':844})
         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
         context.close();browser.close()
+
+
+def test_local_background_geometry_is_not_reported_as_a_successful_reduction(epoch_page):
+    project,root,_=epoch_page
+    manifest=root/'nightly/revision-1/reduction/run.json'
+    run=json.loads(manifest.read_text());run['results'][0]['raw_sha256']='a'*64
+    save(manifest,run)
+    directory=root/'QC/local-background-test/Target';directory.mkdir(parents=True)
+    image=directory/'FitQC_target.jpg';Image.new('RGB',(32,24),'white').save(image)
+    record={'night':'2026-10-28','parent_manifest_sha256':sha256(manifest),'mode':'geometry_preflight',
+        'targets':[{'object':'Target','raw_name':'science.fits','input_sha256':{'raw':'a'*64},
+          'figures':{image.name:sha256(image)},'cases':[{'candidate':1,'raw_x':548.,'width_pixels':40,
+          'status':'insufficient_two_sided_space'}]}]}
+    save(directory.parent/'local-background.json',record)
+    result=build_epoch_page('2026-10-28',project)
+    html=(root/'index.html').read_text()
+    assert result['embedded_figures']==4
+    assert 'Geometry checks only' in html and 'Insufficient two-sided space' in html
+    image.write_bytes(b'changed')
+    result=build_epoch_page('2026-10-28',project)
+    assert result['embedded_figures']==3
+    assert any('figure is missing or changed' in warning for warning in result['warnings'])
+    record['parent_manifest_sha256']='b'*64
+    save(directory.parent/'local-background.json',record)
+    build_epoch_page('2026-10-28',project)
+    assert 'Bounded background' not in (root/'index.html').read_text()
