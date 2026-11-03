@@ -44,7 +44,7 @@ def sky_mask(recipe, window):
     Spatial bands span the saved spectral window. Bounds are half-open, in
     native detector pixels. None delegates mask construction to PypeIt.
     """
-    if recipe['sky']['mode'] == 'automatic':
+    if recipe['sky']['mode'] in ('automatic','bounded') or (recipe['sky']['mode']=='pypeit_local' and not recipe['sky']['include']):
         return None
     spatial = np.arange(window.shape[1])+window.origin[1]
     selected = np.zeros(window.shape[1], dtype=bool)
@@ -55,6 +55,8 @@ def sky_mask(recipe, window):
     for obj in recipe['objects']:
         # Protect both the geometric aperture and extended profile wings.
         guard = obj['radius']+.5 if recipe['sky']['mode']=='polynomial' else max(obj['radius'], 3*obj['fwhm'])
+        if recipe['sky']['mode']=='pypeit_local':
+            guard=max(obj['radius']+.5, 1.5*obj['fwhm'])
         selected &= abs(spatial-obj['spat']) > guard
     selected[[0, -1]] = False
     return np.broadcast_to(selected, window.shape).copy()
@@ -62,8 +64,12 @@ def sky_mask(recipe, window):
 
 def validate_recipe(value, window, expected_inputs):
     """Validate and copy a recipe without silently ignoring edited controls."""
-    _fields(value, ('schema_version', 'engine_version', 'coordinates', 'input_sha256',
-                    'source_mode', 'objects', 'sky'), 'recipe')
+    top_fields=('schema_version', 'engine_version', 'coordinates', 'input_sha256','source_mode','objects','sky')
+    if isinstance(value,dict) and 'spatial_padding_pixels' in value:
+        top_fields+=('spatial_padding_pixels',)
+        if type(value['spatial_padding_pixels']) is not int or not 0<=value['spatial_padding_pixels']<=100:
+            raise ValueError('spatial padding must be an integer from 0 to 100 pixels')
+    _fields(value, top_fields, 'recipe')
     recipe = deepcopy(value)
     if type(recipe['schema_version']) is not int or recipe['schema_version'] != 1:
         raise ValueError('unsupported recipe schema version')
@@ -111,9 +117,12 @@ def validate_recipe(value, window, expected_inputs):
         raise ValueError('two-source mode requires separated traces: at least five FWHM')
     sky = recipe['sky']
     if not isinstance(sky,dict):raise ValueError('sky selection must be an object')
-    fields=('mode','include','exclude','degree','sigma_clip') if sky.get('mode')=='polynomial' else ('mode','include','exclude')
+    fields=('mode','include','exclude','degree','sigma_clip') if sky.get('mode') in ('polynomial','pypeit_local') else ('mode','include','exclude')
+    if sky.get('mode')=='pypeit_local' and not sky.get('include'):
+        fields += ('width_pixels',)
+        if 'minimum_width_pixels' in sky:fields+=('minimum_width_pixels',)
     _fields(sky, fields, 'sky selection')
-    if sky['mode'] not in ('automatic', 'regions', 'polynomial'):
+    if sky['mode'] not in ('automatic', 'bounded', 'regions', 'polynomial', 'pypeit_local'):
         raise ValueError('invalid sky selection mode')
     for key in ('include', 'exclude'):
         if not isinstance(sky[key], list) or len(sky[key]) > 32:
@@ -126,9 +135,11 @@ def validate_recipe(value, window, expected_inputs):
             if low >= high:
                 raise ValueError('sky band bounds must increase')
             sky[key][index] = [low, high]
-    if sky['mode'] == 'automatic' and (sky['include'] or sky['exclude']):
+    if sky['mode'] in ('automatic','bounded') and (sky['include'] or sky['exclude']):
         raise ValueError('automatic sky selection cannot ignore edited background bands')
-    if sky['mode'] in ('regions','polynomial') and mode != 'manual':
+    if sky['mode']=='bounded' and mode!='automatic':
+        raise ValueError('automatic bounded background requires automatic source selection')
+    if sky['mode'] in ('regions','polynomial','pypeit_local') and mode != 'manual':
         raise ValueError('selected background requires manual source anchors')
     if sky['mode']=='polynomial':
         if len(objects)!=1:raise ValueError('polynomial background requires one explicitly selected source')
@@ -139,6 +150,21 @@ def validate_recipe(value, window, expected_inputs):
         mask=sky_mask(recipe,window)[0];x=np.arange(window.shape[1])+window.origin[1]
         if min(np.sum(mask&(x<objects[0]['spat'])),np.sum(mask&(x>objects[0]['spat'])))<5:
             raise ValueError('polynomial background needs at least five samples on each side of the aperture')
+    if sky['mode']=='pypeit_local':
+        if len(objects)!=1:
+            raise ValueError('bounded PypeIt background requires one explicit source')
+        if type(sky['degree']) is not int or not 1<=sky['degree']<=3:
+            raise ValueError('bounded PypeIt background degree must be 1, 2 or 3')
+        sky['sigma_clip']=_number(sky['sigma_clip'],3.,8.,'background clipping sigma')
+        if sky['include']:
+            from .local_sky import validate_bounded_mask
+            validate_bounded_mask(sky_mask(recipe,window),
+                np.full(window.shape[0],objects[0]['spat']-window.origin[1]),objects[0]['radius'])
+        elif type(sky['width_pixels']) is not int or not 5<=sky['width_pixels']<=50:
+            raise ValueError('background width must be 5–50 spatial detector pixels per side')
+        if 'minimum_width_pixels' in sky and (type(sky['minimum_width_pixels']) is not int
+                or not 15<=sky['minimum_width_pixels']<=sky['width_pixels']):
+            raise ValueError('adaptive background minimum must be 15 pixels or more, no larger than the requested width')
     minimum = max(8, math.ceil(.21*window.shape[1]))
     if sky['mode'] == 'regions' and np.min(sky_mask(recipe, window).sum(axis=1)) < minimum:
         raise ValueError(f'background selection needs at least {minimum} sky pixels per row (PypeIt sky-fit gate)')

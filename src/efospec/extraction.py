@@ -46,7 +46,8 @@ def select_sources(found, target_position=None, manual=None):
 
 
 def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
-                    output, basename, target_position=None, manual=None, sky_input_mask=None, processed=None):
+                    output, basename, target_position=None, manual=None, sky_input_mask=None, processed=None,
+                    sky_model=None, sky_trace=None, bounded_background=False):
     """Jointly model neighbouring objects and return requested spectra and images.
 
     Data and read noise are electrons. Coordinates, manual FWHM and boxcar
@@ -77,6 +78,10 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
         sky_input_mask = np.asarray(sky_input_mask, dtype=bool)
         if sky_input_mask.shape != data.shape or np.any(sky_input_mask.sum(axis=1) < 8):
             raise ValueError('sky mask must match the image and retain eight pixels per row')
+    if bounded_background and (sky_model is not None or sky_input_mask is not None or manual is not None):
+        raise ValueError('automatic bounded background cannot ignore an explicit recipe')
+    if sky_model is not None and (sky_input_mask is None or manual is None or len(manual) != 1):
+        raise ValueError('bounded PypeIt background needs one explicit source and two selected bands')
     inst = EFOSpecEFOSC2Spectrograph()
     par = inst.profile_parameters('rapid')
     par['flexure']['spec_method'] = 'skip'
@@ -85,7 +90,7 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
     par['reduce']['findobj']['skip_second_find'] = True
     par['reduce']['skysub']['bspline_spacing'] = 1.0
     par['rdx']['redux_path'] = str(output)
-    if sky_input_mask is not None:
+    if sky_input_mask is not None or bounded_background:
         par['reduce']['skysub']['no_local_sky'] = True
     ny, nx = data.shape
     tilts = (waveair-waveair.min())/(waveair.max()-waveair.min())
@@ -122,8 +127,65 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
     finder = FindObjects.get_instance(sci, slits, inst, par, 'science', tilts=tilts,
                                      show=False, basename=basename, manual=instruction,
                                      initial_skymask=sky_input_mask)
-    sky, found = finder.run()
+    fitted_background = None
+    background_radius=manual[0]['radius'] if sky_model is not None else None
+    auto_info=None
+    unresolved=False
+    if bounded_background:
+        from .local_sky import nearby_mask, BackgroundSupportError
+        # Find traces without making a full-slit sky model. Ambiguity is still
+        # handled by the diagnostic-writing selection gate below.
+        found,finder.nobj=finder.find_objects(data,sci.ivar)
+        try:
+            first_names=select_sources(found,target_position)
+        except SourceSelectionError:
+            unresolved=True;sky=np.zeros_like(data)
+        if not unresolved:
+            primary=next(s for s in found if s.NAME==first_names['primary'])
+            sky_trace=primary.TRACE_SPAT
+            fwhm=float(np.nanmedian(primary.FWHM))
+            background_radius=float(par['reduce']['extraction']['boxcar_radius'])/(float(detector['platescale'])*2)
+            neighbours=[(s.TRACE_SPAT,float(np.nanmedian(s.FWHM)),background_radius)
+                        for s in found if s.NAME!=primary.NAME]
+            for width in range(30,14,-1):
+                try:
+                    sky_input_mask,_=nearby_mask(data.shape,sky_trace,radius=background_radius,
+                        fwhm=fwhm,width_pixels=width,neighbours=neighbours,max_gap_pixels=60)
+                    break
+                except BackgroundSupportError:
+                    if width==15:raise
+            finder.initial_skymask=sky_input_mask
+            sky_model={'degree':2,'sigma_clip':4.}
+            auto_info={'requested_width_spatial_pixels':30,'minimum_width_spatial_pixels':15,
+                       'actual_width_spatial_pixels':width,'selection':'nearest_clean_two_sided_bands',
+                       'host_identity_inferred':False}
+    if sky_model is None and not unresolved:
+        sky, found = finder.run()
+    elif sky_model is not None:
+        from .local_sky import fit_background
+        if set(sky_model) != {'degree', 'sigma_clip'}:
+            raise ValueError('bounded PypeIt background requires degree and sigma_clip')
+        trace = (np.full(ny, manual[0]['spat']) if sky_trace is None else np.asarray(sky_trace, float))
+        fitted_background = fit_background(data, sci.ivar, tilts,
+            sky_input_mask & sci.select_flag(invert=True), trace,
+            radius=background_radius, **sky_model)
+        if auto_info is not None:fitted_background['summary']['selection']=auto_info
+        sky = fitted_background['sky']
+        sci.update_mask('BPM', indx=np.broadcast_to(~fitted_background['valid_rows'][:, None], data.shape))
+        # FindObjects.run would fit the sky again. Use its public object-finding
+        # stage with our audited PypeIt model, then hold it during extraction.
+        found, finder.nobj = finder.find_objects(data-sky, sci.ivar)
     selection = capture_sky_selection(finder, found)
+    if unresolved:
+        selection.update(sky_input_mask=np.zeros_like(data,dtype=bool),
+                         sky_mask_stage=np.array('source_finding_only_no_background_fit'))
+    if fitted_background is not None:
+        selection.update(sky_input_mask=fitted_background['input_mask'],
+                         sky_accepted_mask=fitted_background['accepted_mask'],
+                         sky_valid_rows=fitted_background['valid_rows'],
+                         sky_side_counts=fitted_background['side_counts'],
+                         sky_mask_stage=np.array('bounded_input_and_post_rejection_masks'),
+                         sky_spatial_degree=np.array(sky_model['degree']))
     try:
         names = select_sources(found, target_position, manual)
     except SourceSelectionError as exc:
@@ -143,6 +205,21 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
                                      tilts=tilts, waveimg=airtovac(waveair*u.AA).value,
                                      show=False, basename=basename)
     arrays = extractor.run()
+    if fitted_background is not None:
+        from .local_sky import BackgroundSupportError, side_counts
+        for obj in arrays[4]:
+            if obj.NAME not in names.values():
+                continue
+            supported = np.all(side_counts(fitted_background['accepted_mask'],
+                                          obj.TRACE_SPAT, background_radius) >= 5, axis=0)
+            # A drifting fitted trace must not silently cross a sampling band.
+            x = np.arange(nx)[None, :]
+            overlap = np.any(fitted_background['input_mask'] &
+                             (abs(x-obj.TRACE_SPAT[:, None]) <= background_radius), axis=1)
+            if np.any((~supported | overlap) & fitted_background['valid_rows']):
+                raise BackgroundSupportError('Fitted source trace moved outside the two-sided background support; review bands.',
+                    initial_trace_median=float(np.median(trace)),fitted_trace_median=float(np.median(obj.TRACE_SPAT)),
+                    unsupported_rows=np.flatnonzero((~supported|overlap)&fitted_background['valid_rows']).tolist())
     extracted = arrays[4]
     objects = {}
     for identity, name in names.items():
@@ -150,5 +227,8 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
         if len(selected) != 1:
             raise ValueError(f'target {identity} lost during extraction')
         objects[identity] = extracted[selected]
-    return {'objects': objects, 'found': found, 'arrays': arrays, 'selection': selection,
-            'sky_policy': 'selected_global_sky' if sky_input_mask is not None else 'automatic_global_and_local'}
+    result = {'objects': objects, 'found': found, 'arrays': arrays, 'selection': selection,
+              'sky_policy': 'selected_global_sky' if sky_input_mask is not None else 'automatic_global_and_local'}
+    if fitted_background is not None:
+        result.update(sky_policy='bounded_two_sided_pypeit', background_fit=fitted_background['summary'])
+    return result

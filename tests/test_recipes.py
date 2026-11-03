@@ -84,3 +84,19 @@ class RecipeTests(unittest.TestCase):
             recipe['sky']=invalid
             with self.assertRaisesRegex(ValueError,'sky selection'):
                 validate_recipe(recipe,self.window,self.inputs)
+
+    def test_bounded_pypeit_recipe_is_distinct_from_boxcar_and_forbids_whole_slit(self):
+        recipe=deepcopy(self.recipe)
+        recipe['sky']=dict(mode='pypeit_local',include=[],exclude=[],width_pixels=30,degree=2,sigma_clip=4.)
+        checked=validate_recipe(recipe,self.window,self.inputs)
+        self.assertIsNone(sky_mask(checked,self.window))
+        del recipe['sky']['width_pixels']
+        recipe['sky']['include']=[[100.,130.],[160.,230.]]
+        with self.assertRaisesRegex(ValueError,'at most 50'):
+            validate_recipe(recipe,self.window,self.inputs)
+        recipe['sky']['include']=[[105.,130.],[160.,195.]]
+        checked=validate_recipe(recipe,self.window,self.inputs)
+        self.assertEqual(checked['sky']['mode'],'pypeit_local')
+        recipe['sky']['include']=[[105.,130.]]
+        with self.assertRaisesRegex(ValueError,'each side'):
+            validate_recipe(recipe,self.window,self.inputs)

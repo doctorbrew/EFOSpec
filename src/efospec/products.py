@@ -166,6 +166,8 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None):
             variance='PypeIt raw processing propagated variance',
             spectral_flexure=sky_qa.get('policy','unmeasured'))
     qa['processing']['sky_policy'] = engine['sky_policy']
+    if 'background_fit' in engine:
+        qa['processing']['background_fit'] = engine['background_fit']
     if not qa['raw_unchanged']:
         raise ValueError('raw input changed during processing')
     (output/'qa'/(basename+'.json')).write_text(json.dumps(qa,indent=2,allow_nan=False)+'\n')
