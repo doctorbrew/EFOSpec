@@ -82,3 +82,27 @@ def test_full_raw_reduction_without_legacy_access(synthetic_raw_night,tmp_path,m
     np.testing.assert_array_equal(fits.getdata(row['product']),fits.getdata(replay['results'][0]['product']))
     bundle=load_calibrations(out/'science-calibration/calibration')
     assert bundle['wavevac'].shape==(1024,1024)
+    from efospec.native_acceptance import assess_run,plot_acceptance
+    report=assess_run(out)
+    assert report['raw_hashes_unchanged'] and report['valid_flux_and_sigma_finite']
+    assert report['delivery_conventions_preserved'] and not report['science_validated']
+    assert len(report['coverage'])==9 and len(report['arc_groups'])==2
+    assert report['residual_noise']['samples']>1000
+    plot_acceptance(report,[],tmp_path/'diagnostics')
+    assert len(list((tmp_path/'diagnostics').glob('*.pdf')))==1
+    assert len(list((tmp_path/'diagnostics').glob('*.jpg')))==1
+    # A self-consistent manifest is not enough after calibration bytes change.
+    wavefile=next((out/'science-calibration/calibration/Calibrations').glob('WaveCalib_*.fits'))
+    with wavefile.open('ab') as stream:stream.write(b'changed')
+    with pytest.raises(ValueError,match='calibration product changed'):assess_run(out)
+    from pypeit.wavecalib import WaveCalib
+    from efospec.inventory import sha256
+    cached=out/'standard/calibration'
+    wavefile=next((cached/'Calibrations').glob('WaveCalib_*.fits'))
+    calibration=WaveCalib.from_file(wavefile)
+    calibration.wv_fits[0].wave_soln+=200.
+    calibration.to_file(str(wavefile),overwrite=True)
+    record=json.loads((cached/'calibration.json').read_text())
+    record['processed_files'][str(wavefile.relative_to(cached))]=sha256(wavefile)
+    (cached/'calibration.json').write_text(json.dumps(record))
+    with pytest.raises(ValueError,match='instrument range'):load_calibrations(cached)

@@ -37,3 +37,10 @@ def test_small_rms_never_accepts_nonphysical_wavelengths():
         check_physical_range(np.linspace(-4000,3500,1024),'Gr13')
     with pytest.raises(ValueError,match='increasing'):
         check_physical_range(np.linspace(9300,3650,1024),'Gr13')
+
+
+def test_pair_runner_rejects_endpoint_error_allowed_by_old_center_gate():
+    from efospec.native_wave import check_physical_range
+    # Plausible central wavelength and dispersion, but shifted detector endpoints.
+    with pytest.raises(ValueError, match='range'):
+        check_physical_range(np.linspace(3885.,9515.,1024),'Gr13')

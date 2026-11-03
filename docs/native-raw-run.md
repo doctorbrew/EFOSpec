@@ -1,8 +1,8 @@
 # Experimental raw-only reduction
 
 - Gr11/Gr13, Free/GG495, 2×2; centered slit1.0/slit1.5.
-- Real end-to-end demonstration: one Gr13/Free exposure; broader setup validation remains pending.
-- That example has flux support only around **5655–6958 Å** (≈25% of output bins); full-range response validation is unfinished.
+- Real end-to-end experiments: one Gr13/Free exposure on each of two October nights; broader setup validation remains pending.
+- Both have flux support only around **5650–6960 Å** (≈25% of output bins); full-range response validation is unfinished.
 - Requires raw science, ≥3 biases, ≥3 flats, an arc, and a compatible raw standard.
 - Uses existing association/naming policies; no IRAF/PyRAF execution or archived calibration fallback.
 
@@ -48,4 +48,23 @@ efospec reduce-native data/YYYY-MM-DD \
 - Statistical errors omit response-fit and calibration systematics.
 - Standard exposures may lack measurable sky lines; their arc-only wavelength status is explicit.
 - Products remain experimental, without ESO Phase 3 certification.
-- This branch's raw builder overlaps work in the separate debugging thread; reconcile implementations before merging.
+- Both native wavelength routes now enforce the shared endpoint, line-coverage and held-out residual gates. Their identification searches remain distinct.
+- Cached paired-run calibrations are hash-checked and revalidated against current wavelength gates.
+
+## Validate a delivery
+
+```sh
+python scripts/validate_native_delivery.py data/YYYY-MM-DD \
+  --science SCIENCE.fits --standard STANDARD.fits \
+  --science-position 548 --standard-position 548 \
+  --output runs/YYYY-MM-DD/validation/native-check
+```
+
+- Replace filenames and positions after inspecting the exposures; positions are not target identifications.
+- Fresh raw masters, response and science extraction; Python audit hooks block legacy calibration-file reads and IRAF/PyRAF imports.
+- Optional `--check-standard OTHER.fits --check-position PIXEL`: separately reduced same-night standard, excluded from response fitting.
+- Saves `validation.json`, execution logs, native products and PDF/JPG diagnostics. Existing runs remain unchanged.
+- Exit codes: `0` completes with broad support; `1` execution failure; `2` completes with insufficient broad support.
+- Broad-support diagnostic target: ≥80% valid samples in **every** 500 Å interval from 4000–8500 Å. It is not a scientific-accuracy certification.
+- Training-standard agreement and in-sample noise residuals are labelled explicitly; neither proves independent accuracy.
+- [Measured acceptance results](validation-native-2026-11.md).

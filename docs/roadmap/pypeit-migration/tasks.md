@@ -7,8 +7,8 @@ been published. Status describes actual work, not promised scientific support.
 
 - First priority: [native calibration without IRAF-derived inputs](../../native-calibration.md).
 - [D1–D5: desktop extraction app, worker integration, and nightly log](gui.md).
-- Shared extraction/recipe backend and browser prototype exist. A native macOS-tested polynomial background editor is delivered; complete desktop reduction delivery remains pending. See [workflow](../../polynomial-background.md).
-- Desktop tasks remain planned; CLI reduction and the read-only nightly report are available.
+- Unified PySide6 desktop, environment-backed launchers, extraction/replay and cancellation are delivered. See [desktop validation](../../validation-desktop-2026-11.md).
+- Native calibration acceptance remains open; [current experiments and blockers](../../validation-native-2026-11.md).
 
 ## Completed rapid demonstration (2024-11-14 data)
 
