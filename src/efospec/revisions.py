@@ -78,9 +78,10 @@ class Exposure:
             {k.removeprefix('processed_'):v for k,v in self.images.items() if k.startswith('processed_')} or None)
 
     def default_recipe(self):
+        mode='bounded' if self.result.get('processing',{}).get('sky_policy')=='bounded_two_sided_pypeit' else 'automatic'
         return dict(schema_version=1, engine_version='1.14.0',
             coordinates='raw_detector_pixels_zero_based', input_sha256=dict(self.hashes),
-            source_mode='automatic', objects=[], sky={'mode':'automatic','include':[],'exclude':[]})
+            source_mode='automatic', objects=[], sky={'mode':mode,'include':[],'exclude':[]})
 
     def primary_object(self):
         row = self.window.shape[0]//2
@@ -89,12 +90,56 @@ class Exposure:
                     fwhm=float(np.nanmedian(self.native.FWHM)), radius=float(self.native.BOX_RADIUS))
 
 
+def expand_archive_window(exposure, padding):
+    """Explicit, hash-bound expansion using the same archived wavelength map.
+
+    Existing calibrated pixels must reproduce exactly. Processed/raw-only runs
+    require their own calibrated window preparation and cannot use this bridge.
+    """
+    import hashlib
+    from .archive_calibration import fit_arc
+    if type(padding) is not int or not 0<=padding<=100:
+        raise ValueError('spatial padding must be an integer from 0 to 100 pixels')
+    if not padding:return exposure
+    c=exposure.context
+    if c.calibration or c.processed:
+        raise ValueError('expanding a processed exposure requires recalibration of the larger window')
+    setup=c.frame['setup']
+    arc=Path(c.reference_root)/'archive/efosc/arc'/setup['grism']/setup['filter']/setup['slit']/Path(c.arc_qa['arc']).name
+    if sha256(arc)!=c.arc_qa['arc_sha256']:raise ValueError('archive arc changed before crop expansion')
+    wave,qa=fit_arc(arc)
+    if qa['identifications_sha256']!=c.arc_qa['identifications_sha256']:
+        raise ValueError('archive line identifications changed before crop expansion')
+    old=c.spatial_origin;nx=c.data.shape[1]
+    lo=max(0,old-padding);hi=min(wave.shape[1],old+nx+padding)
+    with fits.open(c.frame['path']) as hdus:
+        data=hdus[0].data[c.raw_y_origin:c.raw_y_origin+c.data.shape[0],99+lo:99+hi].astype(float)*c.frame['metadata']['ESO DET OUT1 GAIN']
+    wave=wave[:,lo:hi]+c.shift
+    sl=slice(old-lo,old-lo+nx)
+    if not np.array_equal(data[:,sl],c.data,equal_nan=True) or not np.array_equal(wave[:,sl],c.waveair):
+        raise ValueError('expanded pixels do not reproduce the saved calibrated window')
+    exposure.context=replace(c,data=data,waveair=wave,spatial_origin=lo)
+    exposure.window=DetectorWindow(tuple(data.shape),(c.raw_y_origin,99+lo))
+    exposure.images=dict(exposure.images,data=data,waveair=wave)
+    # Outside the original crop there is no previous model. Preserve that fact.
+    previous=np.full(data.shape,np.nan);previous[:,sl]=exposure.images['sky']
+    exposure.images['sky']=previous
+    for key in ('trace','found_traces'):
+        if key in exposure.images:exposure.images[key]=exposure.images[key]+old-lo
+    exposure.hashes=dict(exposure.hashes,expanded_window=hashlib.sha256(
+        data.tobytes()+wave.tobytes()+str(exposure.window).encode()).hexdigest())
+    # Native trace coordinates belong to the parent window; primary_object is
+    # obtained by callers before expansion. Candidate images are shifted above.
+    return exposure
+
+
 def reextract(run, product, recipe, output, reference_root=None, *, render_report=True, failed=False):
     """Run the same PypeIt engine as rapid reduction; never reuse an output folder."""
     import pypeit
     from .extraction import extract_spectra
     exposure_type = FailedExposure if failed else Exposure
     exposure = exposure_type(run, product, reference_root)
+    exposure=expand_archive_window(exposure,recipe.get('spatial_padding_pixels',0))
     recipe = validate_recipe(recipe, exposure.window, exposure.hashes)
     if recipe['sky']['mode']=='polynomial':
         raise ValueError('Use background-extract for polynomial boxcar extraction; it is not a PypeIt optimal-extraction recipe.')
@@ -114,9 +159,12 @@ def reextract(run, product, recipe, output, reference_root=None, *, render_repor
         input_dir=exposure.manifest['input_dir'], output_dir=str(output),
         parent_run=str(exposure.run), parent_product=product, input_sha256=exposure.hashes,
         recipe_sha256=sha256(output/'recipe.json'), pypeit_version=pypeit.__version__,
+        detector_window={'shape':list(exposure.window.shape),'origin':list(exposure.window.origin),
+                         'padding_pixels':recipe.get('spatial_padding_pixels',0)},
         python=sys.executable, python_version=sys.version.split()[0], numpy_version=np.__version__,
         source_sha256=hashes, limitations=exposure.manifest.get('limitations', [])+[
-            'Reuses the saved detector window and calibration; no new raw calibration fit.',
+            ('Explicitly expands the archive-calibrated window; original pixels reproduce exactly.'
+             if recipe.get('spatial_padding_pixels',0) else 'Reuses the saved detector window and calibration; no new raw calibration fit.'),
             'Manual anchors seed PypeIt tracing; the fitted trace/profile may move.',
             'Separated sources only; no host subtraction or validated extended-source optimal model.',
             'Shared sky fitting may correlate source errors.'], results=[], errors=[], skipped=[])
@@ -128,11 +176,21 @@ def reextract(run, product, recipe, output, reference_root=None, *, render_repor
         if recipe['source_mode'] == 'manual':
             manual = [dict(obj, spec=exposure.window.to_local(obj['spec'],obj['spat'])[0],
                            spat=exposure.window.to_local(obj['spec'],obj['spat'])[1]) for obj in recipe['objects']]
+        selected_sky = sky_mask(recipe, exposure.window)
+        sky_model = sky_trace = None
+        background_selection = None
+        if recipe['sky']['mode']=='pypeit_local':
+            from .local_sky import exposure_sky_inputs
+            selected_sky,sky_trace,background_selection=exposure_sky_inputs(exposure,recipe)
+            sky_model={key:recipe['sky'][key] for key in ('degree','sigma_clip')}
         engine = extract_spectra(context.data, context.waveair, context.detector,
             exposure_time=context.frame['metadata']['EXPTIME'],
             read_noise=context.frame['metadata']['ESO DET OUT1 RON'], output=output,
             basename=exposure.basename, target_position=context.hint-context.spatial_origin,
-            manual=manual, sky_input_mask=sky_mask(recipe, exposure.window), processed=context.processed)
+            manual=manual, sky_input_mask=selected_sky, processed=context.processed,
+            sky_model=sky_model, sky_trace=sky_trace,bounded_background=recipe['sky']['mode']=='bounded')
+        if background_selection is not None:
+            engine['background_fit']['selection']=background_selection
         sources = recipe['objects'] if manual else [dict(id='primary',label=exposure.result['object'])]
         for obj in sources:
             identity = obj['id']
@@ -140,7 +198,7 @@ def reextract(run, product, recipe, output, reference_root=None, *, render_repor
             selected = context
             if manual:
                 selected = replace(context, hint=obj['spat']-99,
-                    hint_info={'association':'operator_selected', 'object_id':identity,
+                    hint_info={'association':('recipe_selected_unverified' if recipe['sky']['mode']=='pypeit_local' else 'operator_selected'), 'object_id':identity,
                                'requested':obj, 'recipe_sha256':manifest['recipe_sha256']})
             result = export_spectrum(selected, engine, identity, output, basename,
                                      label=obj['label'] if manual else None)
@@ -148,10 +206,12 @@ def reextract(run, product, recipe, output, reference_root=None, *, render_repor
             manifest['results'].append(result)
         # Detect edits made to any immutable input during extraction.
         refreshed = exposure_type(run, product, reference_root)
+        refreshed=expand_archive_window(refreshed,recipe.get('spatial_padding_pixels',0))
         if refreshed.hashes != exposure.hashes:
             raise ValueError('input files changed during extraction')
     except Exception as exc:
-        manifest['errors'].append({'object':exposure.result['object'], 'error':str(exc)})
+        manifest['errors'].append({'object':exposure.result['object'], 'error':str(exc),
+            'code':getattr(exc,'code',type(exc).__name__), 'diagnostics':getattr(exc,'diagnostics',{})})
         raise
     finally:
         (output/'run.json').write_text(json.dumps(manifest, indent=2, allow_nan=False)+'\n')

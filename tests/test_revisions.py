@@ -107,6 +107,48 @@ def test_manual_revision_exports_two_sources_and_actual_background(saved_exposur
     assert result['recipe_sha256'] == sha256(output/'recipe.json')
 
 
+def test_local_pypeit_revision_preserves_fit_order_masks_and_identity_status(saved_exposure,tmp_path):
+    from efospec.revisions import Exposure,reextract
+    run,reference,_=saved_exposure
+    exposure=Exposure(run,'test_f.fits',reference)
+    recipe=exposure.default_recipe()
+    recipe.update(source_mode='manual',objects=[exposure.primary_object()])
+    recipe['sky']=dict(mode='pypeit_local',include=[],exclude=[],width_pixels=30,degree=1,sigma_clip=4.)
+    output=tmp_path/'local'
+    result=reextract(run,'test_f.fits',recipe,output,reference,render_report=False)
+    qa=result['results'][0]
+    assert qa['target']['association']=='recipe_selected_unverified'
+    assert qa['processing']['background_fit']['spatial_degree']==1
+    assert qa['processing']['background_fit']['selection']['width_spatial_pixels']==30
+    with np.load(output/'native/test_images.npz') as images:
+        assert images['sky_spatial_degree']==1
+        assert np.all(images['sky_input_mask'].sum(axis=1)==60)
+        assert not images['sky_accepted_mask'][~images['sky_input_mask']].any()
+
+
+def test_expanded_archive_window_is_explicit_and_reproduces_original_pixels(saved_exposure,tmp_path,monkeypatch):
+    from dataclasses import replace
+    from efospec.revisions import Exposure,expand_archive_window
+    from efospec import archive_calibration
+    run,reference,_=saved_exposure
+    exposure=Exposure(run,'test_f.fits',reference)
+    original=exposure.context;data=original.data.copy();wave=original.waveair.copy()
+    setup=original.frame['setup']
+    arc=reference/'archive/efosc/arc'/setup['grism']/setup['filter']/setup['slit']/'reference.fits'
+    arc.parent.mkdir(parents=True);arc.write_bytes(b'pinned arc fixture')
+    record=dict(original.arc_qa,arc_sha256=sha256(arc),identifications_sha256='a'*64)
+    exposure.context=replace(original,arc_qa=record)
+    y,x=np.indices((160,851));fullwave=5000.+5.*y+.02*(x-200)
+    monkeypatch.setattr(archive_calibration,'fit_arc',lambda p:(fullwave,{'identifications_sha256':'a'*64}))
+    expanded=expand_archive_window(exposure,50)
+    np.testing.assert_array_equal(expanded.context.data[:,50:-50],data)
+    np.testing.assert_array_equal(expanded.context.waveair[:,50:-50],wave)
+    assert expanded.window.shape==(160,241) and expanded.window.origin==(0,249)
+    assert 'expanded_window' in expanded.hashes
+    assert np.isnan(expanded.images['sky'][:,:50]).all()
+    assert sha256(Path(original.frame['path']))==original.frame['sha256']
+
+
 def test_changed_raw_and_unknown_exposure_are_rejected(saved_exposure):
     from efospec.revisions import Exposure
     run, reference, _ = saved_exposure
