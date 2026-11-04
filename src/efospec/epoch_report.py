@@ -9,6 +9,7 @@ from io import BytesIO
 from pathlib import Path
 
 from .inventory import sha256
+from .naming import source_order
 from .report import CSS
 
 
@@ -51,7 +52,7 @@ class EpochPage:
                 '.log':'text/plain', '.pdf':'application/pdf'}.get(path.suffix, 'application/octet-stream')
         return f'<a download="{_text(path.name)}" href="{self.data(path, mime)}">{_text(label)}</a>'
 
-    def figure(self, path, title):
+    def figure(self, path, title, *, full_width=False):
         if not path or not path.is_file():
             return '<p class="note">'+_text(title)+': figure unavailable.</p>'
         self.images += 1
@@ -65,14 +66,15 @@ class EpochPage:
             encoded = BytesIO()
             preview.save(encoded, format='JPEG', quality=85, optimize=True)
         url = 'data:image/jpeg;base64,'+base64.b64encode(encoded.getvalue()).decode('ascii')
-        return (f'<figure class="plot"><figcaption>{_text(title)}</figcaption>'
+        css_class = 'plot full-width' if full_width else 'plot'
+        return (f'<figure class="{css_class}"><figcaption>{_text(title)}</figcaption>'
                 f'<button class="enlarge" type="button" aria-label="Enlarge {_text(title)}">'
                 f'<img loading="lazy" src="{url}" alt="{_text(title)}"></button></figure>')
 
     def spectra(self, run_dir, run):
         records = [self.read(p) for p in sorted((run_dir/'style-preview').glob('FitSpectrum_*.json'))]
         sections = []
-        for i, result in enumerate(run.get('results', [])):
+        for i, result in sorted(enumerate(run.get('results', [])), key=lambda item: source_order(item[1])):
             product = run_dir/'products'/Path(result.get('product', '')).name
             digest = sha256(product) if product.is_file() else None
             matches = [r for r in records if digest and any(
@@ -88,21 +90,25 @@ class EpochPage:
             association = result.get('target', {}).get('association')
             identity = '' if association in {'historical_aperture', 'operator_selected'} else (
                 ' · <span title="The extracted detector trace has not been independently matched to the named target; extraction itself succeeded.">Target identity unverified</span>')
+            if result.get('target',{}).get('identity',{}).get('method') == 'operator_visual':
+                identity = ' · C'+str(result['target']['identity']['candidate'])+' identified visually by operator'
             sections.append(f'<article class="exposure" id="spectrum-{i}"><h3>{_text(title)}</h3>'
                 f'<p class="caption">{_text(result.get("date_obs", ""))} UTC{identity} · {downloads}</p>'
                 f'<div class="plots">{"".join(cards)}</div></article>')
         return ''.join(sections) or '<p>No spectra recorded in this revision.</p>'
 
     def observations(self, revision, run):
+        targets = self.read(revision/'night.json').get('targets')
         outcomes = {}
         for group, label in [('results', 'Spectrum'), ('errors', 'Failed'), ('skipped', 'Unsupported')]:
             for i, result in enumerate(run.get(group, [])):
                 raw = Path(result.get('raw', result.get('path', ''))).name
                 reason = {'sky_flexure_unreliable':'Sky-line check', 'source_selection_required':'Choose source',
+                          'background_support_required':'Review background',
                           'unsupported_setup':'Unsupported setup'}.get(result.get('code'), label)
                 outcomes[raw] = f'<a href="#spectrum-{i}">Spectrum ↓</a>' if group == 'results' else _text(reason)
         rows = []
-        for frame in self.read(revision/'observing-log.json').get('frames', []):
+        for frame in sorted(self.read(revision/'observing-log.json').get('frames', []), key=source_order):
             if frame.get('role') not in {'science', 'standard_candidate'} or 'duplicate_of' in frame:
                 continue
             h, setup = frame['metadata'], frame['setup']
@@ -116,23 +122,45 @@ class EpochPage:
                 'Standard' if frame['role'] == 'standard_candidate' else 'Science',
                 _text(setup.get('grism', ''))+' / '+_text(setup.get('filter', '')),
                 _text(setup.get('slit', '')), _text(seconds),
-                outcomes.get(raw, 'Not reduced')])
+                outcomes.get(raw, 'Outside selected targets' if targets and h.get('OBJECT') not in targets else 'Not reduced')])
         return _table(['Target', 'UTC start', 'Role', 'Setup', 'Slit', 'Seconds', 'Result'], rows)
 
-    def problems(self, run):
+    def problems(self, run, run_dir=None):
         groups = {}
         for item in run.get('errors', [])+run.get('skipped', []):
             code = item.get('code', 'unknown')
             groups.setdefault(code, []).append(item)
         rows = []
         for code, items in groups.items():
-            names = Counter(x.get('object', 'Unknown') for x in items)
+            names = Counter(x.get('object', 'Unknown') for x in sorted(items, key=source_order))
             targets = ', '.join(k+(f' ×{v}' if v > 1 else '') for k, v in names.items())
             detail = {'sky_flexure_unreliable':'Sky lines did not pass the flexure checks.',
                 'source_selection_required':'Multiple traces; target selection needs review.',
+                'background_support_required':'Insufficient clean two-sided background; inspect the saved trace geometry.',
                 'unsupported_setup':'This archive reduction does not support the recorded setup.'}.get(code, items[0].get('reason', items[0].get('error', code)))
             rows.append([_text(code), len(items), _text(targets), _text(detail)])
-        return _table(['Issue', 'Exposures', 'Targets', 'Meaning'], rows) if rows else '<p>No recorded reduction failures.</p>'
+        content=_table(['Issue', 'Exposures', 'Targets', 'Meaning'], rows) if rows else '<p>No recorded reduction failures.</p>'
+        if run_dir is not None:
+            content+=self.wavelength_checks(run_dir)
+            readiness=run_dir/'setup-checks.json'
+            if readiness.exists():
+                content+='<p>'+self.download(readiness,'Raw calibration readiness by exposure')+'</p>'
+        return content
+
+    def wavelength_checks(self, run_dir):
+        content=''
+        for path in sorted((run_dir/'checks').glob('*/check.json')):
+            check=self.read(path)
+            title=check.get('metadata',{}).get('object',path.parent.name)+' / '+path.parent.name
+            reason=', '.join(check.get('line_check',{}).get('failed_gates',[])) or 'Anchor checks passed'
+            comparison=check.get('correlation',{})
+            description=('PypeIt correlation: '+str(comparison.get('status','not recorded'))
+                +'; comparison only, not an applied correction.')
+            content+='<details><summary>'+_text(title)+' — '+_text(check.get('status','unknown'))+'</summary>'
+            content+='<p>'+_text(reason)+'. '+_text(description)+'</p>'
+            content+=self.figure(path.parent/'wavelength.png',title+' / wavelength checks')
+            content+='<p>'+self.download(path,'Fit measurements and provenance')+'</p></details>'
+        return content
 
     def qc(self, revision, run):
         packets = {}
@@ -143,24 +171,46 @@ class EpochPage:
                 if review.get('raw_name'):
                     packets[review['raw_name']] = (path.parent, review)
         current = {Path(e.get('path', '')).name for e in run.get('errors', [])}
+        current.update(Path(r['raw']).name for r in run.get('results', []) if r.get('target',{}).get('reviewed_source'))
         sections, backgrounds = [], []
-        for raw, (folder, review) in packets.items():
+        for raw, (folder, review) in sorted(packets.items(), key=lambda item: source_order(item[1][1])):
             if raw not in current:
                 continue
             title = review.get('object', raw)
             original = self.root/'QC'/Path(raw).stem
             cards = []
-            for suffix, label in [('science', 'Detector and candidates'), ('traces', 'Traces and profiles'),
+            for suffix, label in [('science', '2D Spectrum'), ('traces', 'Sky-subtracted 2D spectrum'),
+                                  ('profiles', 'Spatial Profile and Trace Identification'),
                                   ('acquisition-1', 'Acquisition 1'), ('acquisition-2', 'Acquisition 2')]:
                 matches = sorted(folder.glob(f'FitQC_*_{suffix}.jpg'))
                 if matches:
-                    cards.append(self.figure(matches[0], title+' / '+label))
+                    cards.append(self.figure(matches[0], title+' / '+label, full_width=suffix=='profiles'))
             candidates = ', '.join(f'C{c.get("number", i+1)}: x={c.get("anchor_raw_x", c.get("raw_spatial_pixel", 0)):.2f}'
                                    for i, c in enumerate(review.get('candidates', [])))
+            profile_info = self.read(folder/'profile-display.json')
+            summed = profile_info.get('profile_statistic', '').startswith('sum ')
+            profile_description = (
+                'The spatial profiles sum background-subtracted electrons over the stated y rows at each fixed x. '
+                'Background subtraction uses a saved fit; the zero level is not imposed on the curves. '
+                if summed else
+                'A fitted background is unavailable for these profiles; they show median electrons including sky across the stated y rows at each fixed x. ')
+            if profile_info.get('background_source'):
+                profile_description += 'The profiles use a retained two-sided PypeIt fit; the 2D panels above retain the parent reduction state. '
             sections.append(f'<article class="exposure"><h3>{_text(title)}</h3>'
                 f'<p class="caption">{_text(raw)} · Identity {_text(review.get("identity", "unverified").lower())}</p>'
                 f'<p>{_text(candidates)} <span class="caption">(raw detector pixels)</span></p>'
-                f'<div class="qc-plots">{"".join(cards)}</div></article>')
+                '<p class="caption">Raw detector: full frame and extraction window. Candidate traces: saved source paths. '
+                'Sky residual: background-subtracted window, shown without and with those paths. '
+                'Where no sky fit exists, the plots are labeled as counts including sky. '
+                + profile_description +
+                'Q2 and Q3 are the second and third quarters of the extraction window along y; '
+                'the legend gives inclusive raw-pixel ranges. '
+                'Colored markers locate candidates at the middle row.</p>'
+                f'<div class="qc-plots">{"".join(cards)}</div>'
+                + ('<p class="caption">Trace colors follow decreasing median signal: red, blue, green, brown. '
+                   'Candidate IDs remain fixed. '
+                   + self.download(folder/'profile-display.json', 'Profile display details')+'</p>'
+                   if (folder/'profile-display.json').is_file() else '')+'</article>')
             # Discover saved polynomial experiments; never invent a global C3 recipe.
             rows, background_cards, experiments = [], [], {}
             for path in sorted(set(original.glob('*/background.json')) | set(folder.glob('*/background.json'))):
@@ -320,29 +370,40 @@ def build_epoch_page(night, project_root='.'):
     downloads = [page.download(revision/'observing-log.csv', 'Observing log CSV'),
                  page.download(revision/'night.json', 'Workflow JSON'), page.download(revision/'reduction/run.json', 'Reduction JSON')]
     downloads += [page.download(p, p.name) for p in sorted((revision/'logs').glob('*.log'))]
+    downloads += [page.download(revision/'reviewed-sources.json','Reviewed source identifications')]
     records = _table(['Stage', 'Status', 'Error'], stage_rows)
     records += '<details><summary>Download logs and provenance</summary><ul>'+''.join('<li>'+d+'</li>' for d in downloads if d)+'</ul></details>'
     records += _table(['Folder', 'Contents'], [['nightly/', 'Current and previous processing revisions'],
         ['QC/', 'Retained source and background experiments'], ['calibrations/', 'Native masters and group selections'],
         ['archive/', 'Earlier reductions, diagnostics and logs']])
-    content = [page.observations(revision, run), page.spectra(revision/'reduction', run), page.problems(run), qc,
-               background, page.calibrations(), page.archive(revision), records]
+    calibration_content=page.calibrations()
+    native=revision/'native-validation'
+    if (native/'validation.json').exists():
+        calibration_content+='<h3>Contemporary raw-calibration checks</h3><p>These checks use the selected native masters. They do not change the archive-calibrated spectra above.</p>'
+        calibration_content+=page.download(native/'validation.json','Native validation record')
+        calibration_content+=page.wavelength_checks(native)
+    content = [page.observations(revision, run), page.spectra(revision/'reduction', run), page.problems(run,revision/'reduction'), qc,
+               background, calibration_content, page.archive(revision), records]
     sections = ''.join(f'<section class="target" id="{anchor}"><h2>{title}</h2>{body}</section>'
                        for (anchor, title), body in zip(titles, content))
     stats = ' · '.join(f'{len(run.get(k, []))} {label}' for k, label in [('results','spectra'), ('errors','failed'), ('skipped','unsupported')])
     extra_css = """
     main{max-width:1480px}.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0}.tabs a{padding:7px 12px;border:1px solid var(--line);border-radius:5px;text-decoration:none;background:var(--panel)}
     .target>h2{margin-bottom:18px}.exposure{margin:24px 0 32px}.qc-plots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .qc-plots>.full-width{grid-column:1 / -1}
     .enlarge{display:block;padding:0;border:0;background:transparent;width:100%;cursor:zoom-in}.enlarge:focus-visible{outline:3px solid var(--forest)}
     .plots .plot-image{aspect-ratio:auto}td{white-space:normal}dialog{max-width:95vw;max-height:95vh;padding:10px;border:1px solid var(--line);border-radius:8px}dialog img{display:block;max-width:100%;height:auto}dialog button{position:sticky;top:0;padding:10px 18px;cursor:pointer}dialog::backdrop{background:#172c43bb}
     @media(max-width:800px){.plots{grid-template-columns:1fr;overflow:visible}.qc-plots{grid-template-columns:1fr}.plot{min-width:0}h1{font-size:30px}.intro{display:block}}
     """
     warning = '<p class="note">'+_text('; '.join(page.warnings))+'</p>' if page.warnings else ''
+    scope = ('<p class="caption">Selected targets: '+_text(', '.join(state['targets']))
+             +'. Other exposures are listed for context; earlier results remain in Archive.</p>') if state.get('targets') else ''
     html = f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Fieldnotes · {night} · EFOSpec</title><style>{CSS}{extra_css}</style></head><body><main>
 <header class="masthead"><span class="brand">Fieldnotes. / EFOSpec</span><span class="eyebrow">EFOSC2 · {night}</span></header>
 <div class="intro"><div><span class="eyebrow">Observing night</span><h1>{night}</h1></div><p>{stats}</p></div>
 <p class="caption">Archive-calibration reduction · {_text(state.get('status', 'unknown'))} · revision {_text(revision.name)}</p>
+{scope}
 <nav class="tabs" aria-label="Report sections">{''.join(f'<a href="#{a}">{t}</a>' for a,t in titles)}</nav>
 {warning}{sections}<footer>EFOSpec · {night} · Saved figures and measurements</footer></main>
 <dialog aria-label="Enlarged figure"><button type="button">Close</button><img alt=""></dialog><script>{SCRIPT}</script></body></html>'''

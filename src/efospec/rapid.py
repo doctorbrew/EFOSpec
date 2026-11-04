@@ -9,11 +9,13 @@ import sys
 import traceback
 from pathlib import Path
 import shutil
+from dataclasses import replace
 
 import numpy as np
 from astropy.io import fits
 
-from .archive_calibration import fit_arc, sky_flexure
+from .archive_calibration import fit_arc
+from .reduction_checks import check_flexure, setup_checks
 from .inventory import inventory, sha256
 from .naming import science_stem, product_name
 
@@ -73,7 +75,7 @@ def select_archive(frame, reference_root):
 
 
 def extract_frame(frame, reference_root, output, hint, hint_info, waveair, arc_qa,
-                  sensitivity, shift, sky_qa):
+                  sensitivity, shift, sky_qa, *, reviewed_source=None):
     import pypeit
     from .pypeit_adapter import EFOSpecEFOSC2Spectrograph
 
@@ -100,11 +102,19 @@ def extract_frame(frame, reference_root, output, hint, hint_info, waveair, arc_q
     context = PreparedExposure(frame, Path(reference_root), det, data, w, xlo, ymin,
                                hint, hint_info, arc_qa, Path(sensitivity), shift, sky_qa)
     from .extraction import SourceSelectionError
+    from .local_sky import BackgroundSupportError
+    arguments = {'bounded_background': True}
+    background_selection = None
+    if reviewed_source:
+        from .reviewed_sources import prepare_reviewed_extraction
+        arguments, identity, background_selection = prepare_reviewed_extraction(
+            reviewed_source, frame, data, w, (ymin,99+xlo), output)
+        context = replace(context, hint=identity['requested']['spat']-99, hint_info=identity)
     try:
         engine = extract_spectra(data, w, det, exposure_time=h['EXPTIME'],
                                 read_noise=h['ESO DET OUT1 RON'], output=output,
-                                basename=basename, target_position=hint-xlo,bounded_background=True)
-    except SourceSelectionError as exc:
+                                basename=basename, target_position=hint-xlo, **arguments)
+    except (SourceSelectionError,BackgroundSupportError) as exc:
         exc.diagnostics.update(spatial_origin_in_trimmed_image=xlo,
                                spatial_origin_in_raw_image=99+xlo,
                                spectral_origin_in_raw_image=ymin,
@@ -113,11 +123,13 @@ def extract_frame(frame, reference_root, output, hint, hint_info, waveair, arc_q
                                sensitivity={'path':str(sensitivity),'sha256':sha256(Path(sensitivity))},
                                extinction_sha256=sha256(Path(reference_root)/'standard/extinction/extinction_lasilla.dat'))
         raise
+    if background_selection is not None:
+        engine['background_fit']['selection'] = background_selection
     return export_spectrum(context, engine, 'primary', output, basename)
 
 
 def reduce_night(input_dir, output_dir, reference_root, *, targets=None, include_standards=False,
-                 plot_python=None, skip_report=False):
+                 plot_python=None, skip_report=False, reviewed_sources=None):
     """Single-writer run with durable per-exposure results and explicit failures."""
     output = Path(output_dir).resolve()
     reference_root = Path(reference_root).resolve()
@@ -135,6 +147,9 @@ def reduce_night(input_dir, output_dir, reference_root, *, targets=None, include
         raise ValueError('no matching raw exposures')
     if any(f['issues'] for f in frames):
         raise ValueError('selected frames have invalid metadata')
+    from .reviewed_sources import load_reviewed_sources
+    selections = load_reviewed_sources(reviewed_sources, frames)
+    readiness=setup_checks(report,output)
     import pypeit
     import astropy
     import scipy
@@ -153,6 +168,9 @@ def reduce_night(input_dir, output_dir, reference_root, *, targets=None, include
                          'Red fringing remains because rapid processing applies no flat correction.',
                          'Source positions without a historical aperture remain unverified.',
                          'Resampling covariance is not stored; output uncertainty is diagonal only.'],
+           'methodology_checks':{'setup':'setup-checks.json','flexure':'checks',
+               'correlation_policy':'PypeIt comparison only; existing line gates determine the applied correction'},
+           'targets':targets, 'reviewed_sources':selections,
            'execution_status':'running', 'results':[],'errors':[],'skipped':[]}
     save_run(output, run)
     cache = {}
@@ -171,16 +189,21 @@ def reduce_night(input_dir, output_dir, reference_root, *, targets=None, include
             if data.shape!=wave.shape:
                 raise ValueError('archived arc and trimmed science geometry disagree')
             stage = 'sky_flexure'
-            shift,skyqa=sky_flexure(data,wave)
+            shift,skyqa=check_flexure(data,wave,output/'checks'/Path(f['path']).stem,
+                {'raw':f['path'],'raw_sha256':f['sha256'],'object':f['metadata']['OBJECT'],
+                 'setup':f['setup'],'arc':arcqa,'data_unit':'ADU',
+                 'raw_pixel_origin_yx':[ymin,99]})
             stage = 'target_association'
             hint,hintinfo=target_hint(f,input_dir)
             print(f"Reducing {f['metadata']['OBJECT']} {f['setup']['grism']}: shift {shift:.3f} A",file=sys.stderr,flush=True)
             stage = 'extraction_and_export'
-            qa=extract_frame(f,reference_root,output,hint,hintinfo,wave,arcqa,sens,shift,skyqa)
+            options = {'reviewed_source':selections[Path(f['path']).name]} if Path(f['path']).name in selections else {}
+            qa=extract_frame(f,reference_root,output,hint,hintinfo,wave,arcqa,sens,shift,skyqa,**options)
             run['results'].append(qa)
         except UnsupportedSetupError as exc:
             run['skipped'].append({'path':f['path'], 'object':f['metadata']['OBJECT'],
-                'reason':str(exc), 'code':exc.code, 'action':exc.action, 'setup':f['setup']})
+                'reason':str(exc), 'code':exc.code, 'action':exc.action, 'setup':f['setup'],
+                'readiness':readiness.get(f['path'],{}), 'review_file':str(output/'setup-checks.json')})
         except Exception as exc:
             traceback.print_exc(file=sys.stderr)
             log = output/'errors'/(Path(f['path']).stem+'.log')

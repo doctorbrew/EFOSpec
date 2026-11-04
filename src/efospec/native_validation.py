@@ -17,7 +17,7 @@ def validate_native_run(run_dir, output):
     from pypeit.wavecalib import WaveCalib
     from pypeit.core.wave import vactoair
     from .pypeit_adapter import EFOSpecEFOSC2Spectrograph
-    from .archive_calibration import sky_flexure
+    from .reduction_checks import check_flexure, check_red_sky
     from .native_wavelength import validate_solution
     run_dir=Path(run_dir).resolve();output=Path(output).resolve();output.mkdir(parents=True,exist_ok=False)
     manifest_path=run_dir/'run.json';manifest=json.loads(manifest_path.read_text())
@@ -74,12 +74,19 @@ def validate_native_run(run_dir, output):
                     entry.update(processing={'bias':True,'pixel_flat':True,'illumination_flat':True,
                         'overscan':False,'dark':False,'cosmic_ray_premask':False},
                         unmasked_fraction=float(good.mean()),units='electrons')
+                    data=np.where(good,science.image,np.nan)[:,x0:x1]
+                    directory=output/'checks'/Path(raw).stem
+                    metadata={'raw':raw,'raw_sha256':entry['raw_sha256'],
+                        'object':frames[raw]['metadata']['OBJECT'],'setup':group['setup'],
+                        'data_unit':'electrons','calibration_group':group['id'],
+                        'calibration_manifest_sha256':report['calibration_manifest_sha256']}
                     if group['setup']['grism']=='Gr16':
+                        red=check_red_sky(data,waveair[:,x0:x1],directory,metadata)
                         entry.update(status='processed_unvalidated',
+                            red_sky_comparison=red['correlation'],review_file=str(directory/'check.json'),
                             reason='5577 A outside Gr16 coverage; no validated independent red-sky diagnostic yet')
                     else:
-                        data=np.where(good,science.image,np.nan)[:,x0:x1]
-                        shift,qa=sky_flexure(data,waveair[:,x0:x1])
+                        shift,qa=check_flexure(data,waveair[:,x0:x1],directory,metadata)
                         entry.update(status='sky_measured',sky_flexure=qa,
                             note='Measured native arc-to-science offset; not applied or accepted as final wavelength calibration.')
                     if sha256(Path(raw))!=entry['raw_sha256']:raise ValueError('raw input changed during processing')

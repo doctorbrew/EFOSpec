@@ -54,7 +54,9 @@ def main(argv=None):
     recovery.add_argument('--reference-root')
     qc = commands.add_parser('recovery-qc', help='Create images and unverified candidate trials for a source-selection failure')
     qc.add_argument('path', help='Run containing current failed-exposure diagnostics')
-    qc.add_argument('--raw', required=True)
+    qc_source = qc.add_mutually_exclusive_group(required=True)
+    qc_source.add_argument('--raw',help='Failed raw exposure')
+    qc_source.add_argument('--product',help='Successful product with a recorded visual source identification')
     qc.add_argument('--output', required=True, help='Fresh subfolder inside runs/YYYY-MM-DD/QC')
     qc.add_argument('--reference-root')
     qc.add_argument('--test-recipes', action='store_true')
@@ -95,6 +97,7 @@ def main(argv=None):
     rapid.add_argument('--include-standards', action='store_true')
     rapid.add_argument('--plot-python', help='Python with house-style dependencies (default: EFOSPEC_PLOT_PYTHON or current Python)')
     rapid.add_argument('--skip-report', action='store_true', help='Reduce without generating plots/HTML')
+    rapid.add_argument('--reviewed-sources',help='Exposure-bound recipes and visual target-identification evidence')
     report = commands.add_parser('report', help='Generate an offline Fieldnotes page and diagnostic plots')
     report.add_argument('path', help='Completed rapid run directory')
     report.add_argument('--plot-python', help='Python with SciencePlots, pypalettes, Matplotlib and LaTeX')
@@ -116,7 +119,9 @@ def main(argv=None):
     try:
         if args.command == 'night':
             from .nightly import run_epoch,exit_code
-            return exit_code(run_epoch(args.night,stage=args.stage,project_root=args.project_root,plot_python=args.plot_python))
+            return exit_code(run_epoch(args.night,stage=args.stage,project_root=args.project_root,plot_python=args.plot_python,
+                                       native_calibrations=args.native_calibrations,targets=args.target,
+                                       reviewed_sources=args.reviewed_sources))
         if args.command == 'background-gui':
             from .background_gui import launch
             return launch(args.packet)
@@ -128,9 +133,13 @@ def main(argv=None):
             print(json.dumps(result,indent=2,allow_nan=False))
             return 0
         if args.command == 'recovery-qc':
-            from .recovery_qc import build_recovery_qc
-            result=build_recovery_qc(args.path,args.raw,args.output,args.reference_root,
-                                     test_recipes=args.test_recipes)
+            from .recovery_qc import build_recovery_qc, build_reviewed_qc
+            if args.product:
+                if args.test_recipes:raise ValueError('reviewed-product QC does not run candidate trials')
+                result=build_reviewed_qc(args.path,args.product,args.output,args.reference_root)
+            else:
+                result=build_recovery_qc(args.path,args.raw,args.output,args.reference_root,
+                                         test_recipes=args.test_recipes)
             print(json.dumps(result,indent=2,allow_nan=False))
             return int(any(c.get('trial',{}).get('execution')=='failed' for c in result['candidates']))
         if args.command == 'validate-native':
@@ -211,7 +220,8 @@ def main(argv=None):
             from .rapid import reduce_night
             result = reduce_night(args.path, args.output, args.reference_root,
                                   targets=args.target, include_standards=args.include_standards,
-                                  plot_python=args.plot_python, skip_report=args.skip_report)
+                                  plot_python=args.plot_python, skip_report=args.skip_report,
+                                  reviewed_sources=args.reviewed_sources)
             print(json.dumps({'output_dir':result['output_dir'], 'reduced':len(result['results']),
                               'errors':result['errors'], 'skipped':result['skipped'],
                               'report':result.get('report')},indent=2))

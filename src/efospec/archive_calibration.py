@@ -78,7 +78,7 @@ class SkyFlexureError(ValueError):
                          + str(diagnostics['lines']))
 
 
-def sky_flexure(data, waveair, *, max_shift=80.):
+def sky_flexure(data, waveair, *, max_shift=80., diagnostic_arrays=None):
     """Fit 5577 and the 6300/6363 blend with independently free centroids.
 
     The shift uses only 5577 and 6300 (S/N > 8, agreement within 3 A).
@@ -94,6 +94,8 @@ def sky_flexure(data, waveair, *, max_shift=80.):
     wave = waveair[:, data.shape[1]//2]
     columns = np.arange(20, data.shape[1]-20, 5)
     sky = np.nanmedian([np.interp(wave, waveair[:, i], data[:, i]) for i in columns], axis=0)
+    if diagnostic_arrays is not None:
+        diagnostic_arrays.update(waveair=wave.copy(), sky=sky.copy(), spatial_columns=columns)
     measurements, failures = [], []
     diagnostics = {'lines': measurements, 'fit_failures': failures,
                    'max_shift_angstrom': float(max_shift),
@@ -136,6 +138,8 @@ def sky_flexure(data, waveair, *, max_shift=80.):
         base = float(np.median(np.r_[f[:3], f[-3:]]))
         p, cov = curve_fit(green, w, f, p0=[max(float(f.max()-base), 1.), peak, 7., base, 0.],
                            bounds=bounds, maxfev=5000)
+        if diagnostic_arrays is not None:
+            diagnostic_arrays.update(green_wave=w, green_data=f, green_model=green(w, *p))
         record(rest, p, cov, 0, f-green(w, *p), bounds)
     except (ValueError, RuntimeError) as exc:
         failures.append({'line': rest, 'reason': str(exc)})
@@ -160,6 +164,8 @@ def sky_flexure(data, waveair, *, max_shift=80.):
         lower.extend([-np.inf, -np.inf]); upper.extend([np.inf, np.inf]); guess.extend([base, 0.])
         try:
             p, cov = curve_fit(red, w, f, p0=guess, bounds=(lower, upper), maxfev=5000)
+            if diagnostic_arrays is not None:
+                diagnostic_arrays.update(red_wave=w, red_data=f, red_model=red(w, *p))
             for line, index in [(6300.304, 0), (6363.776, 3)]:
                 record(line, p, cov, index, f-red(w, *p), (lower, upper))
         except (ValueError, RuntimeError) as exc:

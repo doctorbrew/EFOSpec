@@ -80,6 +80,19 @@ def test_separate_steps_preserve_products_and_new_log_starts_new_revision(epoch,
     assert first['output_dir']!=second['output_dir'] and sha256(manifest)==before
 
 
+def test_target_scope_is_persisted_passed_to_worker_and_reported(epoch, monkeypatch):
+    root, raw = epoch
+    write_raw(raw.parent,'standard.fits', **{'DATE-OBS':'2026-10-29T03:00:00','OBJECT':'vma2','ESO DPR TYPE':'STD'})
+    calls = worker(monkeypatch)
+    state = nightly.run_epoch('2026-10-28', project_root=root, targets=['SN<test>'])
+    assert state['selected_exposures'] == 1
+    assert calls[0][-2:] == ['--target','SN<test>']
+    html = (root/'runs/2026-10-28/index.html').read_text()
+    assert 'Selected targets: SN&lt;test&gt;' in html and 'Outside selected targets' in html
+    with pytest.raises(ValueError,match='target selection changed'):
+        nightly.run_epoch('2026-10-28',stage='report',project_root=root,targets=['vma2'])
+
+
 @pytest.mark.parametrize('change',['modify','add'])
 def test_changed_or_added_raw_inputs_require_a_new_log(epoch,monkeypatch,change):
     root,raw=epoch;calls=worker(monkeypatch)
@@ -156,3 +169,37 @@ def test_cli_date_selects_only_its_epoch_log(epoch):
     from efospec.__main__ import main
     assert main(['night','2026-10-28','--stage','log','--project-root',str(root)])==0
     assert (root/'runs/2026-10-28/nightly/index.html').exists()
+
+
+def test_selected_native_diagnostics_run_after_archive_without_changing_its_manifest(epoch,monkeypatch):
+    root,raw=epoch
+    calls=worker(monkeypatch)
+    original=nightly._invoke
+    def invoke(args,out,log):
+        if args[0]!='validate-native':return original(args,out,log)
+        calls.append(args)
+        dest=Path(args[args.index('--output')+1]);dest.mkdir()
+        (dest/'validation.json').write_text(json.dumps({'status':'incomplete',
+            'results':[],'errors':[{'raw':str(raw),'error':'weak sky'}],'skipped':[]}))
+        return 1
+    monkeypatch.setattr(nightly,'_invoke',invoke)
+    native=root/'native';native.mkdir()
+    (native/'inputs.json').write_text(json.dumps({'frames':[{'path':str(raw),'sha256':sha256(raw)}]}))
+    (native/'run.json').write_text(json.dumps({'groups':[{'associated_exposures':[str(raw)]}]}))
+    state=nightly.run_epoch('2026-10-28',project_root=root,native_calibrations=native)
+    assert [c[0] for c in calls]==['reduce-rapid','validate-native','report']
+    assert state['stages']['native_checks']['status']=='partial'
+    assert state['status']=='partial'
+    assert 'Contemporary raw-calibration checks' in (root/'runs/2026-10-28/index.html').read_text()
+    with pytest.raises(ValueError,match='selection changed'):
+        nightly.run_epoch('2026-10-28',stage='report',project_root=root,native_calibrations=root/'other')
+
+
+def test_native_selection_cannot_process_exposures_outside_requested_night(epoch,monkeypatch):
+    root,raw=epoch;calls=worker(monkeypatch)
+    native=root/'native';native.mkdir()
+    (native/'inputs.json').write_text(json.dumps({'frames':[]}))
+    (native/'run.json').write_text(json.dumps({'groups':[{'associated_exposures':['foreign.fits']}]}))
+    with pytest.raises(ValueError,match='does not match'):
+        nightly.run_epoch('2026-10-28',project_root=root,native_calibrations=native)
+    assert not calls

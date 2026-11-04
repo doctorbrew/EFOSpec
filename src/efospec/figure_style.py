@@ -36,7 +36,7 @@ def plain_tex(text):
 
 
 @house_style
-def save_qc(fig, directory, kind, object_name):
+def save_qc(fig, directory, kind, object_name, *, tick_fontsize=18, legend_fontsize=18):
     """Finalise limits first, style axes, export canonical files plus PNG preview."""
     from matplotlib.ticker import MaxNLocator,FixedLocator,NullLocator
     from matplotlib.text import Text
@@ -45,20 +45,21 @@ def save_qc(fig, directory, kind, object_name):
         if ax.get_label()=='<colorbar>':
             # ImageNormalize uses a function scale; linear/log tick locators
             # would misrepresent that colour scale.
-            ax.tick_params(direction='in',labelsize=18,length=9,width=1.6)
+            ax.tick_params(direction='in',labelsize=tick_fontsize,length=9,width=1.6)
             continue
         limits=ax.get_xlim()
         ticks=MaxNLocator(nbins=6).tick_values(*limits)
         step=abs(ticks[1]-ticks[0])
         fixed=ax.xaxis.get_major_locator()
         style.set_plotparams(ax,xticks=(step,step/4),yticks=None,grid=False)
+        ax.tick_params(axis='both', which='both', labelsize=tick_fontsize)
         if isinstance(fixed,FixedLocator):
             ax.xaxis.set_major_locator(fixed);ax.xaxis.set_minor_locator(NullLocator())
         ax.title.set_fontsize(20)
         handles,labels=ax.get_legend_handles_labels()
         if handles:
             style.styled_legend(ax,ncol=min(3,len(handles)),loc='upper center',
-                                bbox_to_anchor=(.5,-.2),fontsize=18)
+                                bbox_to_anchor=(.5,-.2),fontsize=legend_fontsize)
     # QC labels are plain metadata strings, not arbitrary TeX input.
     for text in fig.findobj(Text):
         if text.get_text():text.set_text(plain_tex(text.get_text()))

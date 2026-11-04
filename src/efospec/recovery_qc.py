@@ -15,9 +15,72 @@ from astropy.wcs import WCS
 from .inventory import sha256
 from .native_calibration import save_json
 from .recipes import validate_recipe
-from .revisions import FailedExposure, prepare_recovery, reextract
+from .revisions import Exposure, FailedExposure, prepare_recovery, reextract
 
 from .figure_style import house_style
+
+TRACE_COLORS = ('xkcd:red', 'xkcd:dodger blue', 'xkcd:green', 'xkcd:brown')
+
+
+def _profile_limit_samples(values, protected):
+    """Exclude narrow negative outliers from limits only, never the plotted data."""
+    from scipy.ndimage import median_filter
+    displayed = np.array(values, dtype=float, copy=True)
+    finite = np.isfinite(displayed)
+    if finite.sum() < 7:
+        return displayed, np.zeros(displayed.shape, dtype=bool)
+    filled = np.where(finite, displayed, np.nanmedian(displayed))
+    deviation = filled-median_filter(filled, size=7, mode='nearest')
+    center = np.median(deviation[finite])
+    sigma = 1.4826*np.median(np.abs(deviation[finite]-center))
+    threshold = max(10*sigma, np.finfo(float).eps*max(1., np.max(np.abs(filled))))
+    candidates = finite & (deviation < -threshold)
+    masked = np.zeros_like(candidates)
+    # Broad depressions remain visible; only isolated one/two-column spikes
+    # qualify for exclusion from the limit calculation.
+    groups = np.split(np.flatnonzero(candidates), np.flatnonzero(np.diff(np.flatnonzero(candidates)) > 1)+1)
+    for group in groups:
+        if (0 < len(group) <= 2 and group[0] > 0 and group[-1] < len(values)-1
+                and not protected[group].any()):
+            masked[group] = True
+    displayed[masked] = np.nan
+    return displayed, masked
+
+
+def _candidate_label(ax, x, label, color):
+    """Label a candidate just beside its trace, inside the lower axis edge."""
+    low, high = ax.get_xlim()
+    offset = .012*(high-low)
+    right_side = x+2*offset < high
+    return ax.text(x+offset if right_side else x-offset, .03, label,
+                   transform=ax.get_xaxis_transform(), rotation=90,
+                   ha='left' if right_side else 'right', va='bottom', fontsize=21.6,
+                   color=color, zorder=10,
+                   bbox={'boxstyle':'square,pad=0.3', 'facecolor':'white',
+                         'edgecolor':color, 'linewidth':1.2, 'alpha':.7})
+
+
+def _profile_limits(profiles, *, background_subtracted=False):
+    finite = np.concatenate(profiles)
+    finite = finite[np.isfinite(finite)]
+    if not finite.size:
+        return None
+    low, high = float(finite.min()), float(finite.max())
+    # Outward 10% padding works for positive, negative, and mixed-sign data.
+    fallback = .1*max(high-low, abs(low), abs(high), 1.)
+    if background_subtracted:
+        # Give the zero baseline and negative residuals clear space below the
+        # source peak, without allowing isolated dips to set the viewport.
+        lower_padding = max(.1*abs(low), .2*(high-low), fallback)
+        return min(0., low)-lower_padding, max(0., high)+(.1*abs(high) or fallback)
+    return low-(.1*abs(low) or fallback), high+(.1*abs(high) or fallback)
+
+
+def _compact_counts(value, position=None):
+    if value == 0:
+        return '0'
+    mantissa, exponent = f'{value:.2e}'.split('e')
+    return f'{mantissa.rstrip("0").rstrip(".")}e{int(exponent)}'
 
 
 def _image(ax, data, extent=None):
@@ -41,7 +104,7 @@ def _traces(exposure):
 
 @house_style
 def plot_exposure(exposure, output):
-    from .figure_style import COLORS, save_qc
+    from .figure_style import save_qc
     import matplotlib.pyplot as plt
     from matplotlib.patches import Rectangle
     raw = Path(exposure.frame['path'])
@@ -52,49 +115,137 @@ def plot_exposure(exposure, output):
     extent = [x0-.5, x0+nx-.5, y0-.5, y0+ny-.5]
     rows = np.arange(ny)+y0
     traces = _traces(exposure)
-    title = f"{exposure.result['object']} — identity UNVERIFIED\n{raw.name}"
+    stage = str(exposure.images.get('sky_mask_stage', ''))
+    sky_available = not stage.startswith('source_finding_only_no_')
+    residual = data-exposure.images['sky'] if sky_available else data
+    # Saved packets have no detection S/N. Rank display colors by median
+    # signal sampled along each trace, while preserving the candidate IDs.
+    strengths = [float(np.nanmedian([np.interp(t-x0, np.arange(nx), row)
+                  for t, row in zip(trace, residual)])) for trace in traces]
+    order = sorted(range(len(traces)), key=lambda i: (-strengths[i] if np.isfinite(strengths[i]) else np.inf, i))
+    colors = {i: TRACE_COLORS[rank % len(TRACE_COLORS)] for rank, i in enumerate(order)}
+    finite_traces = np.concatenate([t[np.isfinite(t)] for t in traces]) if traces else np.array([])
+    xlimits = (min(extent[0], finite_traces.min()-1) if finite_traces.size else extent[0],
+               max(extent[1], finite_traces.max()+1) if finite_traces.size else extent[1])
+    title = exposure.result['object']
     fig, axes = plt.subplots(1, 2, figsize=(20, 12), constrained_layout=True)
     im = _image(axes[0], full)
-    axes[0].add_patch(Rectangle((x0-.5,y0-.5),nx,ny,fill=False,color=COLORS[1],lw=1.5))
-    axes[0].set_title('Raw detector (ADU); rectangle = saved extraction window')
+    axes[0].add_patch(Rectangle((x0-.5,y0-.5),nx,ny,fill=False,color='xkcd:neon blue',lw=3.))
+    axes[0].annotate('Zoom', (x0+nx, y0+ny), xytext=(5, -8), textcoords='offset points',
+                     color='xkcd:neon blue', fontsize=18, va='top')
+    axes[0].set_title('Raw detector')
     fig.colorbar(im,ax=axes[0],label='ADU',shrink=.65)
     _image(axes[1], data, extent)
-    axes[1].set_title('Window (electrons); saved candidate traces')
+    axes[1].set_title('Candidate traces')
     for i, trace in enumerate(traces):
-        axes[1].plot(trace, rows, color=COLORS[i%3], lw=1.2, label=f'C{i+1}')
-    axes[1].legend()
+        axes[1].plot(trace, rows, color=colors[i], lw=2.4)
+    axes[1].set_xlim(*xlimits)
+    axes[1].set_ylim(extent[2], extent[3])
+    label_row = int(.03*(ny-1))
+    for i, trace in enumerate(traces):
+        _candidate_label(axes[1], trace[label_row], f'C{i+1}', colors[i])
     for ax in axes:
-        ax.set_xlabel('Raw x / spatial pixel (zero based)')
-        ax.set_ylabel('Raw y / spectral pixel (zero based)')
-    fig.suptitle(title);save_qc(fig,output,'science',exposure.result['object']);plt.close(fig)
+        ax.set_xlabel('Raw x / spatial pixel')
+        ax.set_ylabel('Raw y / spectral pixel')
+    fig.suptitle(title);save_qc(fig,output,'science',exposure.result['object'],tick_fontsize=27);plt.close(fig)
 
-    residual = data-exposure.images['sky']
-    fig = plt.figure(figsize=(20,16),constrained_layout=True)
-    grid = fig.add_gridspec(2,2,height_ratios=[3,1.3])
-    left, right, profile = fig.add_subplot(grid[0,0]), fig.add_subplot(grid[0,1]), fig.add_subplot(grid[1,:])
+    # A zero placeholder from a failed selection is not a fitted sky model.
+    fig, (left, right) = plt.subplots(1, 2, figsize=(20,12), constrained_layout=True)
     for ax in [left,right]:
         _image(ax,residual,extent)
-        ax.set_xlabel('Raw x (zero based)');ax.set_ylabel('Raw y (zero based)')
-    left.set_title('Sky-subtracted window; no overlays')
-    right.set_title('Same residual + saved traces; not a deblended image')
-    for i,trace in enumerate(traces):
-        right.plot(trace,rows,color=COLORS[i%3],lw=1.2,label=f'C{i+1}')
-        profile.axvline(trace[ny//2],color=COLORS[i%3],lw=1.1,
-                       label=f'C{i+1}: x={trace[ny//2]:.2f} at y={y0+ny//2}')
-    right.legend()
+        ax.set_xlabel('Raw x / spatial pixel');ax.set_ylabel('Raw y / spectral pixel')
+    left.set_title('Sky residual' if sky_available else 'Window (no sky fit)')
+    right.set_title('Residual + traces' if sky_available else 'Traces (no sky fit)')
+    for i, trace in enumerate(traces):
+        right.plot(trace,rows,color=colors[i],lw=2.4)
+    # Keep both residual views on the same detector bounds, including traces
+    # that extend beyond the saved window. No candidate is silently cropped.
+    for ax in [left, right]:
+        ax.set_xlim(*xlimits)
+        ax.set_ylim(extent[2], extent[3])
+    for i, trace in enumerate(traces):
+        _candidate_label(right, trace[label_row], f'C{i+1}', colors[i])
+    subtitle = '' if sky_available else '\nSky subtraction unavailable: no fitted background'
+    fig.suptitle(title+subtitle)
+    save_qc(fig,output,'traces',exposure.result['object'],tick_fontsize=27);plt.close(fig)
+
+    # A separate wide figure remains legible when it spans the report grid.
+    from .profile_background import load_profile_background, summed_profile
+    background = load_profile_background(exposure, output)
+    profile_sky_available = background is not None or sky_available
+    profile_residual = background['residual'] if background else residual
+    valid_rows = (background['valid_rows'] if background else
+                  np.asarray(exposure.images.get('sky_valid_rows', np.ones(ny, dtype=bool))))
+    profile_xlimits = background['x_limits'] if background else xlimits
+    fig, profile = plt.subplots(figsize=(20,8.5), constrained_layout=True)
+    for i, trace in enumerate(traces):
+        profile.axvline(trace[ny//2],color=colors[i],lw=2.2)
     x = np.arange(nx)+x0
+    protected = np.zeros(nx, dtype=bool)
+    for trace in traces:
+        finite = trace[np.isfinite(trace)]
+        if finite.size:
+            protected |= (x >= finite.min()-3) & (x <= finite.max()+3)
+    limit_samples, exclusions, row_ranges = [], {}, {}
     for indices, style, label in [(np.arange(ny),'k-','All rows'),
-            (np.arange(ny//4,ny//2),'--','Rows in second quarter'),
-            (np.arange(ny//2,3*ny//4),':','Rows in third quarter')]:
-        profile.plot(x,np.nanmedian(residual[indices],axis=0),style,lw=1.,label=label)
-    # Edge pixels can dominate this diagnostic without representing a source.
-    limits=np.percentile(residual[:,3:-3].mean(axis=0),[2,98])
-    spread=max(limits[1]-limits[0],1.)
-    profile.set_ylim(limits[0]-.2*spread,limits[1]+.35*spread)
-    profile.set_xlabel('Raw spatial pixel x (zero based)')
-    profile.set_ylabel('Median sky-subtracted electrons')
-    profile.legend(ncol=3);profile.grid(False)
-    fig.suptitle(title);save_qc(fig,output,'traces',exposure.result['object']);plt.close(fig)
+            (np.arange(ny//4,ny//2),'--','Second quarter'),
+            (np.arange(ny//2,3*ny//4),':','Third quarter')]:
+        if profile_sky_available:
+            values, row_count = summed_profile(profile_residual, indices, valid_rows)
+        else:
+            values, row_count = np.nanmedian(residual[indices],axis=0), len(indices)
+        for_limits, excluded = _profile_limit_samples(values, protected)
+        for_limits[(x < profile_xlimits[0]) | (x > profile_xlimits[1])] = np.nan
+        exclusions[label] = x[excluded].tolist()
+        limit_samples.append(for_limits)
+        first, last = int(y0+indices[0]), int(y0+indices[-1])
+        row_ranges[label] = {'raw_y_first':first, 'raw_y_last':last,
+                             'bounds':'inclusive', 'rows':len(indices), 'used_rows':row_count}
+        short_label = {'All rows':'All rows', 'Second quarter':'Q2', 'Third quarter':'Q3'}[label]
+        coverage = f' ({row_count}/{len(indices)} rows)' if row_count != len(indices) else ''
+        profile.plot(x,values/1000.,style,lw=2.,label=f'{short_label}: y={first}--{last}'+coverage)
+    # Keep every plotted sample, including spikes below the chosen viewport.
+    limits = _profile_limits(limit_samples, background_subtracted=profile_sky_available)
+    if limits is not None:
+        limits = tuple(value/1000. for value in limits)
+        profile.set_ylim(*limits)
+    profile.set_xlim(*profile_xlimits)
+    from matplotlib.ticker import ScalarFormatter
+    formatter = ScalarFormatter(useOffset=False)
+    formatter.set_scientific(False)
+    profile.yaxis.set_major_formatter(formatter)
+    for i, trace in enumerate(traces):
+        _candidate_label(profile, trace[ny//2], f'C{i+1}', colors[i])
+    profile.set_xlabel('Spatial Pixel', fontsize=28.6)
+    profile.set_ylabel((r'Summed Bkg-Subtracted Signal [$10^3\,e^{-}$]' if profile_sky_available
+                       else r'Median Signal [$10^3\,e^{-}$] (sky included)'), fontsize=28.6)
+    profile.set_title('Spatial profile (summed across dispersion axis - y)' if profile_sky_available
+                      else 'Spatial profile (median across dispersion axis - y)')
+    if profile_sky_available:
+        profile.axhline(0, color='0.5', lw=.8, zorder=0)
+    profile.legend(ncol=3, fontsize=23.4);profile.grid(False)
+    fig.suptitle(title)
+    save_qc(fig,output,'profiles',exposure.result['object'],tick_fontsize=27,legend_fontsize=23.4)
+    plt.close(fig)
+    save_json(Path(output)/'profile-display.json', {
+        'coordinates':'raw_detector_pixels_zero_based', 'candidate_reference_raw_y':int(y0+ny//2),
+        'strength_measure':'median electrons sampled along saved trace; not detection S/N',
+        'sky_subtracted':profile_sky_available,
+        'profile_statistic':('sum of pixel-wise background residuals over supported spectral rows at each fixed spatial x'
+                             if profile_sky_available else 'median over selected spectral rows at each fixed spatial x; no fitted background'),
+        'background_source':background['provenance'] if background else None,
+        'profile_x_limits':list(profile_xlimits),
+        'profile_row_ranges':row_ranges,
+        'traces':[{'candidate':i+1,'rank':rank+1,'color':colors[i],
+                   'median_electrons':strengths[i] if np.isfinite(strengths[i]) else None} for rank,i in enumerate(order)],
+        'display_only':True,'all_profile_samples_plotted':True,
+        'ylim_excluded_raw_x_by_profile':exclusions,
+        'outlier_rule':'negative deviation from 7-pixel running median > 10 MAD-sigma; width <= 2; protect trace envelope +/- 3 pixels',
+        'ylim':limits, 'ylim_rule':('20 percent span below retained minimum; include zero; 10 percent above maximum'
+                                  if profile_sky_available else '10 percent outward padding of retained extrema'),
+        'display_signal_unit':'10^3 electrons', 'display_signal_divisor':1000.,
+        'y_tick_format':'plain numbers in 10^3 electrons',
+    })
 
 
 @house_style
@@ -122,12 +273,12 @@ def acquisition_images(exposure, output):
                [x0-.5,x0+2*half-.5,y0-.5,y0+2*half-.5])
         axes[1].set_title('Detector-centre zoom; NOT a target identification')
         for ax in axes:
-            ax.set_xlabel('Acquisition raw x (zero based)');ax.set_ylabel('Acquisition raw y (zero based)')
+            ax.set_xlabel('Acquisition raw x');ax.set_ylabel('Acquisition raw y')
         celestial=bool(WCS(h).has_celestial)
         fig.suptitle(f"{path.name}\nFilter={h.get('ESO INS FILT1 NAME','?')}; slit={h.get('ESO INS SLIT1 NAME','?')}; "
                      f"EXPTIME={h.get('EXPTIME','?')} s\nNo registration to spectral detector; celestial WCS present={celestial}",fontsize=11)
         filename=f'acquisition-{len(records)+1}.png'
-        save_qc(fig,output,Path(filename).stem,exposure.result['object']);plt.close(fig)
+        save_qc(fig,output,Path(filename).stem,exposure.result['object'],tick_fontsize=27);plt.close(fig)
         records.append({'path':str(path),'sha256':sha256(path),'image':filename,
                         'has_celestial_wcs':celestial,'date_obs':h.get('DATE-OBS')})
     return records
@@ -195,7 +346,7 @@ def write_review_html(review, output):
         drift=f"{t['anchor_drift_pixel']:+.2f}" if 'anchor_drift_pixel' in t else '—'
         rows.append(f"<tr><td>C{c['number']}</td><td>{c['anchor_raw_x']:.3f}</td><td>{c['anchor_raw_y']:.0f}</td>"
                     f"<td>{link(c['recipe'],'Recipe JSON')}</td><td>{state}</td><td>{drift}</td></tr>")
-    images=['science.png','traces.png']+[a['image'] for a in review['acquisitions']]
+    images=['science.png','traces.png','profiles.png']+[a['image'] for a in review['acquisitions']]
     if (output/'trial-spectra.png').exists():images.append('trial-spectra.png')
     pictures=''.join(f'<p><a href="{quote(name)}"><img src="{quote(name)}" alt="{escape(name)}"></a></p>' for name in images)
     acquisitions=' · '.join(link(a['path'],Path(a['path']).name) for a in review['acquisitions']) or 'No matching acquisition frames found.'
@@ -254,4 +405,52 @@ def build_recovery_qc(run, raw_name, output, reference_root=None, *, test_recipe
     review['qc_source_sha256']=sha256(Path(__file__))
     (output/'target-selection.csv').write_text('raw_file,verified_candidate,verified_raw_x_zero_based,verified_raw_y_zero_based,evidence,reviewer\n'+raw_name+',,,,,\n')
     save_json(output/'review.json',review);write_review_html(review,output)
+    return review
+
+
+def build_reviewed_qc(run, product, output, reference_root=None):
+    """Show the newly fitted background with the original, stable C1/C2/C3 IDs."""
+    exposure = Exposure(run, product, reference_root)
+    selection = exposure.result['target']['reviewed_source']
+    original = FailedExposure(selection['parent_run'], selection['raw_name'], reference_root)
+    if (original.hashes['raw'] != exposure.hashes['raw'] or original.window != exposure.window
+            or not np.array_equal(original.images['data'], exposure.images['data'], equal_nan=True)
+            or not np.array_equal(original.images['waveair'], exposure.images['waveair'], equal_nan=True)):
+        raise ValueError('reviewed QC no longer matches the original candidate geometry')
+    # Display original candidate paths without altering any saved science array.
+    exposure.candidates = original.candidates
+    for key in ('found_traces','found_names'):
+        exposure.images[key] = original.images[key]
+    output = Path(output).resolve();output.mkdir(parents=True,exist_ok=False)
+    middle = exposure.window.shape[0]//2
+    review = dict(status='running', identity=f"C{selection['identity']['candidate']} verified by operator",
+        object=selection['object'], raw_name=selection['raw_name'], raw_path=exposure.frame['path'],
+        parent_run=str(exposure.run), input_sha256=exposure.hashes,
+        identification=selection['identity'], candidate_geometry_parent=str(original.run),
+        coordinates='raw_detector_pixels_zero_based', candidates=[], acquisitions=[])
+    for number, trace in enumerate(_traces(exposure),1):
+        review['candidates'].append(dict(number=number,anchor_raw_x=float(trace[middle]),
+            anchor_raw_y=middle+exposure.window.origin[0]))
+    plot_exposure(exposure, output)
+    review['acquisitions'] = acquisition_images(exposure, output)
+    refreshed = Exposure(run,product,reference_root)
+    if refreshed.hashes != exposure.hashes:
+        raise ValueError('reviewed exposure changed while creating QC')
+    for acquisition in review['acquisitions']:
+        if sha256(Path(acquisition['path'])) != acquisition['sha256']:
+            raise ValueError('acquisition input changed during QC')
+    review.update(status='complete', raw_and_calibration_inputs_unchanged=True,
+                  qc_source_sha256=sha256(Path(__file__)))
+    save_json(output/'review.json',review)
+    figures = ['science','traces','profiles']
+    figures += [Path(a['image']).stem for a in review['acquisitions']]
+    html = ('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+        '<style>body{font:16px system-ui;max-width:1200px;margin:24px auto;padding:16px}img{width:100%}</style>'
+        f'<h1>{escape(review["object"])}: {escape(review["identity"])}</h1>'
+        f'<p>{escape(review["raw_name"])}</p><p>{escape(selection["identity"]["evidence"])}</p>'
+        '<p>Original candidate IDs are retained. Residual panels and summed profiles use the newly fitted '
+        'two-sided PypeIt background. Identification is visual; no automatic astrometric match is claimed.</p>'
+        '<p><a href="review.json">Review record</a> · <a href="profile-display.json">Profile details</a></p>'
+        + ''.join(f'<img src="{name}.png" alt="{escape(name)}">' for name in figures))
+    (output/'index.html').write_text(html)
     return review

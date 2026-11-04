@@ -74,6 +74,15 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None):
     check = SpecObjs.from_fitsfile(str(native))
     if len(check)!=1 or not np.array_equal(check[0].OPT_COUNTS,s.OPT_COUNTS,equal_nan=True):
         raise ValueError('native spectrum did not round-trip')
+    diagnostic_path=None
+    if 'diagnostic_context' in engine:
+        from .pypeit_diagnostics import write_spec2d
+        from pypeit.core.wave import airtovac
+        diagnostics=engine['diagnostic_context']
+        diagnostic_path=write_spec2d(output/'native'/('spec2d_'+basename+'.fits'),
+            diagnostics['science'],diagnostics['slits'],airtovac(w*u.AA).value,
+            diagnostics['tilts'],result[0],arrays=result,raw_origin=(ymin,99+xlo),
+            stage='extracted')
     np.savez_compressed(output/'native'/(basename+'_images.npz'),data=data,
         sky=result[0],object_model=result[1],ivar=result[2],mask=result[3].mask, waveair=w,
         trace=s.TRACE_SPAT,spatial_origin=xlo,raw_y_origin=ymin, **sky_selection,
@@ -156,6 +165,9 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None):
           'valid_flux_fraction':float(np.mean(masks[0])), 'flux_band_order':['optimal','boxcar','sky','sigma'],
           'output_wavelength_medium':'air','native_wavelength_medium':'vacuum','reference_frame':'topocentric',
           'status':'EXPERIMENTAL','raw_unchanged':sha256(path)==frame['sha256']}
+    if diagnostic_path:
+        qa['native_spec2d']=diagnostic_path
+        qa['native_spec2d_sha256']=sha256(Path(diagnostic_path))
     if native_calibration:
         qa['calibration'] = context.calibration
         qa['sensitivity'] = context.calibration['sensitivity']

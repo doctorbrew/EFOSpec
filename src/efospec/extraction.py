@@ -127,6 +127,28 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
     finder = FindObjects.get_instance(sci, slits, inst, par, 'science', tilts=tilts,
                                      show=False, basename=basename, manual=instruction,
                                      initial_skymask=sky_input_mask)
+
+    def save_detection_failure(exc, found, sky, selection=None):
+        from pathlib import Path
+        from tempfile import NamedTemporaryFile
+        from .pypeit_diagnostics import write_spec2d
+        if selection is None:
+            selection=capture_sky_selection(finder,found)
+            selection.update(sky_input_mask=np.zeros_like(data,dtype=bool),
+                sky_mask_stage=np.array('source_finding_only_no_accepted_background_fit'))
+        if not isinstance(exc,SourceSelectionError):
+            exc.diagnostics.update(SourceSelectionError(str(exc),found,target_position).diagnostics)
+        directory=Path(output)/'native';directory.mkdir(parents=True,exist_ok=True)
+        with NamedTemporaryFile(dir=directory,prefix=basename+'_selection_failed_',
+                                suffix='.npz',delete=False) as stream:
+            np.savez_compressed(stream,data=data,waveair=waveair,sky=sky,**selection)
+            diagnostic=Path(stream.name)
+        exc.diagnostics['diagnostic_file']=str(diagnostic.resolve())
+        exc.diagnostics['native_spec2d']=write_spec2d(
+            directory/('spec2d_'+diagnostic.stem+'.fits'),sci,slits,
+            airtovac(waveair*u.AA).value,tilts,sky,
+            stage='source_selection_failed' if isinstance(exc,SourceSelectionError) else 'background_support_failed')
+
     fitted_background = None
     background_radius=manual[0]['radius'] if sky_model is not None else None
     auto_info=None
@@ -152,8 +174,10 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
                     sky_input_mask,_=nearby_mask(data.shape,sky_trace,radius=background_radius,
                         fwhm=fwhm,width_pixels=width,neighbours=neighbours,max_gap_pixels=60)
                     break
-                except BackgroundSupportError:
-                    if width==15:raise
+                except BackgroundSupportError as exc:
+                    if width==15:
+                        save_detection_failure(exc,found,np.zeros_like(data))
+                        raise
             finder.initial_skymask=sky_input_mask
             sky_model={'degree':2,'sigma_clip':4.}
             auto_info={'requested_width_spatial_pixels':30,'minimum_width_spatial_pixels':15,
@@ -162,13 +186,17 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
     if sky_model is None and not unresolved:
         sky, found = finder.run()
     elif sky_model is not None:
-        from .local_sky import fit_background
+        from .local_sky import fit_background, BackgroundSupportError
         if set(sky_model) != {'degree', 'sigma_clip'}:
             raise ValueError('bounded PypeIt background requires degree and sigma_clip')
         trace = (np.full(ny, manual[0]['spat']) if sky_trace is None else np.asarray(sky_trace, float))
-        fitted_background = fit_background(data, sci.ivar, tilts,
-            sky_input_mask & sci.select_flag(invert=True), trace,
-            radius=background_radius, **sky_model)
+        try:
+            fitted_background = fit_background(data, sci.ivar, tilts,
+                sky_input_mask & sci.select_flag(invert=True), trace,
+                radius=background_radius, **sky_model)
+        except BackgroundSupportError as exc:
+            if bounded_background:save_detection_failure(exc,found,np.zeros_like(data))
+            raise
         if auto_info is not None:fitted_background['summary']['selection']=auto_info
         sky = fitted_background['sky']
         sci.update_mask('BPM', indx=np.broadcast_to(~fitted_background['valid_rows'][:, None], data.shape))
@@ -189,17 +217,7 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
     try:
         names = select_sources(found, target_position, manual)
     except SourceSelectionError as exc:
-        from pathlib import Path
-        from tempfile import NamedTemporaryFile
-        directory = Path(output)/'native'
-        directory.mkdir(parents=True, exist_ok=True)
-        # Repeated failed exposures do not reserve a successful product name.
-        # Allocate a distinct diagnostic even when their legacy stems coincide.
-        with NamedTemporaryFile(dir=directory, prefix=basename+'_selection_failed_',
-                                suffix='.npz', delete=False) as stream:
-            np.savez_compressed(stream, data=data, waveair=waveair, sky=sky, **selection)
-            diagnostic = Path(stream.name)
-        exc.diagnostics['diagnostic_file'] = str(diagnostic.resolve())
+        save_detection_failure(exc,found,sky,selection)
         raise
     extractor = Extract.get_instance(sci, slits, found, inst, par, 'science', global_sky=sky,
                                      tilts=tilts, waveimg=airtovac(waveair*u.AA).value,
@@ -217,9 +235,11 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
             overlap = np.any(fitted_background['input_mask'] &
                              (abs(x-obj.TRACE_SPAT[:, None]) <= background_radius), axis=1)
             if np.any((~supported | overlap) & fitted_background['valid_rows']):
-                raise BackgroundSupportError('Fitted source trace moved outside the two-sided background support; review bands.',
+                exc=BackgroundSupportError('Fitted source trace moved outside the two-sided background support; review bands.',
                     initial_trace_median=float(np.median(trace)),fitted_trace_median=float(np.median(obj.TRACE_SPAT)),
                     unsupported_rows=np.flatnonzero((~supported|overlap)&fitted_background['valid_rows']).tolist())
+                save_detection_failure(exc,found,sky,selection)
+                raise exc
     extracted = arrays[4]
     objects = {}
     for identity, name in names.items():
@@ -228,6 +248,7 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
             raise ValueError(f'target {identity} lost during extraction')
         objects[identity] = extracted[selected]
     result = {'objects': objects, 'found': found, 'arrays': arrays, 'selection': selection,
+              'diagnostic_context':{'science':sci,'slits':slits,'tilts':tilts},
               'sky_policy': 'selected_global_sky' if sky_input_mask is not None else 'automatic_global_and_local'}
     if fitted_background is not None:
         result.update(sky_policy='bounded_two_sided_pypeit', background_fit=fitted_background['summary'])

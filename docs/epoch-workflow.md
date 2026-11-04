@@ -93,6 +93,11 @@ the date's `QC/` folder. These trials do not replace `nightly/current.json`.
 
 ## Status and limits
 
+- [Integrated reduction checks](reduction-checks.md) now save sky-line fits,
+  PypeIt correlation comparisons, calibration readiness and native 2D diagnostics.
+  `--native-calibrations RUN` adds contemporary raw-master checks to the same
+  dated invocation, with their own status and report section.
+
 | Exit | Meaning |
 | --- | --- |
 | `0` | Requested stage complete; all three stages complete for a successful full run |
@@ -105,6 +110,25 @@ the date's `QC/` folder. These trials do not replace `nightly/current.json`.
 - This workflow uses the experimental archive-calibration path; native calibration remains separate.
 - Candidate QC prepares inspection materials; it does not identify or extract a target automatically.
 - Recovery recipes remain bound to exposure/input hashes. A previous source's bands are never global defaults.
+
+## Reviewed targets and targeted reruns
+
+- `--target SN2026ayt` restricts a new dated revision to that exact FITS `OBJECT`.
+  The nightly log states this scope; other exposures remain visible as outside
+  the selection. Earlier full-night reductions remain in the archive.
+- `--reviewed-sources FILE.json` records explicit visual identifications and
+  exposure-specific bounded PypeIt recipes. The selection file is copied and
+  hashed inside the revision. Each entry identifies the raw basename/hash,
+  object, parent run, recipe path/hash, candidate number and operator evidence.
+- The recipe's original input hashes are verified. Fresh raw electrons, detector
+  window and wavelength map must match the reviewed parent exactly before the
+  source geometry can be reused. The sky fit and extraction are recomputed.
+  A mismatch fails explicitly; identification is never transferred by name alone.
+- Successful reviewed targets retain their original candidate IDs in Source QC,
+  with new residual images and summed background-subtracted profiles. Visual
+  identification remains distinct from automatic astrometric identification.
+- AT/SN targets appear first in observation tables and spectrum/QC sections,
+  grouped by target and time. Sorting never changes header-based frame roles.
 
 ## Recorded verification
 

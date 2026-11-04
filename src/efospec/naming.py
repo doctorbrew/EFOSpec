@@ -14,6 +14,20 @@ def legacy_token(value: str) -> str:
     return value.replace("#", "")
 
 
+def source_order(record):
+    """Display AT/SN targets first, grouped by name and then exposure time.
+
+    This is presentation order only; FITS headers continue to define frame roles.
+    Accept inventory frames, reduction results and QC records.
+    """
+    header = record.get('metadata', {})
+    name = str(header.get('OBJECT') or record.get('object', ''))
+    transient = bool(re.match(r'^(?:AT|SN)\s*\d{4}[a-z]+$', name.strip(), re.I))
+    return (not transient, name.casefold(),
+            str(header.get('DATE-OBS') or record.get('date_obs', '')),
+            str(record.get('raw', record.get('path', record.get('raw_name', '')))))
+
+
 def observing_night(date_obs: str) -> str:
     instant = datetime.fromisoformat(date_obs.replace("Z", "+00:00"))
     if instant.tzinfo is not None:

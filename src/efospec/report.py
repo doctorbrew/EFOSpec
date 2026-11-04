@@ -9,6 +9,7 @@ import sys
 from urllib.parse import quote
 
 from .inventory import sha256
+from .naming import source_order
 
 
 PIPELINE_STAGES = (
@@ -68,6 +69,13 @@ def reduction_methods(manifest):
     else:
         summary += ' PypeIt handles tracing, sky modelling and extraction.'
         caption = 'Blue shading: global-sky input selection before iterative rejection. Red shading in the spatial profiles: geometric boxcar aperture, not optimal-extraction weights. Opacity follows the selected fraction within each wavelength bin.'
+    if manifest.get('methodology_checks'):
+        rows.insert(1,('Calibration readiness','EFOSpec',
+            'Record matching raw arc/bias/flat and standard candidates for every setup, including skipped configurations. Availability does not enable unsupported setups.'))
+        rows.append(('Wavelength review','PypeIt + EFOSpec',
+            'Save sky spectra, fitted line models and failure gates. Compare with PypeIt sky-template correlation in vacuum coordinates; comparison shifts are not applied.'))
+        rows.append(('Review products','PypeIt + EFOSpec',
+            'Write PypeIt spec2d diagnostics for extracted or source-ambiguous windows. Preserve target uncertainty and saved recipes; no automatic selection of a nearby trace.'))
     return rows, summary, caption
 
 CSS = """
@@ -103,7 +111,7 @@ def write_report(run_directory, *, generation_error=None):
         except (ValueError, OSError):
             continue  # Show missing figures, never an unrelated/stale record.
     rows, sections, missing = [], [], []
-    for result in manifest['results']:
+    for result in sorted(manifest['results'], key=source_order):
         # Resolve by basename so a whole run can be moved without editing JSON.
         product = run/'products'/Path(result['product']).name
         digest = sha256(product)
@@ -169,6 +177,16 @@ def write_report(run_directory, *, generation_error=None):
     failures = ''.join(f'<li>{escape(e.get("object", Path(e.get("path", "")).name))}: '
                        f'{escape(e.get("error", e.get("reason", "")))}</li>' for e in errors+skips)
     limitations = ''.join(f'<li>{escape(note)}</li>' for note in manifest.get('limitations', []))
+    check_links=[]
+    for path in sorted((run/'checks').glob('*/check.json')):
+        record=json.loads(path.read_text())
+        label=record['metadata'].get('object',path.parent.name)+' / '+path.parent.name
+        plot=path.parent/'wavelength.png'
+        check_links.append('<details><summary>'+escape(label)+' — '+escape(record['status'])+'</summary>'
+            +f'<p><a href="{local_url(path,run)}">Measurements and decisions</a></p>'
+            +(f'<img style="max-width:100%" src="{local_url(plot,run)}" alt="Wavelength checks">' if plot.exists() else '')+'</details>')
+    if (run/'setup-checks.json').exists():
+        check_links.insert(0,'<p><a href="setup-checks.json">Raw calibration readiness by exposure</a></p>')
     page = f'''<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>EFOSpec Fieldnotes · {night}</title>
 <style>{CSS}</style></head><body><main>
@@ -185,6 +203,7 @@ def write_report(run_directory, *, generation_error=None):
 <p>{escape(method_summary)}</p>
 <div class="table-wrap"><table><thead><tr><th>Stage</th><th>Implementation</th><th>What happens</th></tr></thead><tbody>{method_rows}</tbody></table></div>
 <p class="caption">{escape(shading_caption)}</p>
+{''.join(check_links)}
 <details><summary>Run notes & limitations</summary><ul>{failures}{limitations}</ul></details></section>
 <footer><span>FIELDNOTES / EFOSpec · PypeIt {escape(str(manifest.get('pypeit_version', 'not recorded')))}</span>
 <a href="run.json">Source details ↗</a></footer></main></body></html>'''
@@ -224,4 +243,14 @@ def build_report(run_directory, *, plot_python=None, render_plots=True):
                          'Use --plot-python with SciencePlots, pypalettes, Matplotlib and LaTeX available.')
         except OSError as exc:
             error = f'Could not start the plot renderer: {exc}'
+    if render_plots and any((run/'checks').glob('*/check.json')):
+        python = plot_python or os.environ.get('EFOSPEC_PLOT_PYTHON') or sys.executable
+        try:
+            with (run/'check-plots.log').open('w') as log:
+                completed=subprocess.run([str(python),'-m','efospec.check_plots',str(run)],
+                    stdout=log,stderr=subprocess.STDOUT,check=False)
+            if completed.returncode:
+                error=(error+' ' if error else '')+'Wavelength check plotting failed; see check-plots.log.'
+        except OSError as exc:
+            error=(error+' ' if error else '')+f'Could not render wavelength checks: {exc}'
     return write_report(run, generation_error=error)

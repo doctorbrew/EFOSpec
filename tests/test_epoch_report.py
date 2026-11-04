@@ -73,6 +73,48 @@ def test_stale_plot_hash_is_never_shown_as_current_spectrum(epoch_page):
     assert 'figure unavailable' in (root/'index.html').read_text()
 
 
+def test_transients_appear_before_standards_and_spectrum_links_keep_identity(epoch_page):
+    from efospec.epoch_report import EpochPage
+    project, root, product = epoch_page
+    revision = root/'nightly/revision-1'
+    run = json.loads((revision/'reduction/run.json').read_text())
+    template = json.loads((revision/'observing-log.json').read_text())['frames'][0]
+    frames, results = [], []
+    for name, role in [('vma2','standard_candidate'), ('SN2026ayt','science'),
+                       ('L745a','standard_candidate'), ('AT2026agzp','science')]:
+        frames.append(dict(template, path=f'/raw/{name}.fits', role=role,
+                           metadata=dict(template['metadata'], OBJECT=name)))
+        results.append(dict(run['results'][0], raw=frames[-1]['path'], object=name))
+    save(revision/'observing-log.json', {'frames':frames})
+    run['results'] = results
+    page = EpochPage(root)
+    table = page.observations(revision, run)
+    spectra = page.spectra(revision/'reduction', run)
+    names = ['AT2026agzp','SN2026ayt','L745a','vma2']
+    assert [table.index('<td>'+n+'</td>') for n in names] == sorted(table.index('<td>'+n+'</td>') for n in names)
+    assert [spectra.index('id="spectrum-'+str(i)+'"') for i in [3,1,2,0]] == sorted(spectra.index('id="spectrum-'+str(i)+'"') for i in [3,1,2,0])
+    for index, name in enumerate(['vma2','SN2026ayt','L745a','AT2026agzp']):
+        row = next(row for row in table.split('<tr>') if '<td>'+name+'</td>' in row)
+        assert f'href="#spectrum-{index}"' in row
+
+
+def test_source_profiles_have_a_separate_full_width_card(epoch_page):
+    project, root, _ = epoch_page
+    packet = root/'nightly/revision-1/QC/ambiguous'
+    save(packet/'review.json', {'object':'AT2026agzp', 'raw_name':'ambiguous.fits',
+                               'identity':'UNVERIFIED', 'candidates':[]})
+    for kind in ['science', 'traces', 'profiles', 'acquisition-1']:
+        Image.new('RGB', (40, 10), 'white').save(packet/f'FitQC_AT2026agzp_{kind}.jpg')
+    result = build_epoch_page('2026-10-28', project)
+    html = (root/'index.html').read_text()
+    assert result['embedded_figures'] == 7
+    labels = ['2D Spectrum', 'Sky-subtracted 2D spectrum',
+              'Spatial Profile and Trace Identification', 'Acquisition 1']
+    positions = [html.index('<figcaption>AT2026agzp / '+label) for label in labels]
+    assert positions == sorted(positions)
+    assert '<figure class="plot full-width"><figcaption>AT2026agzp / Spatial Profile and Trace Identification' in html
+
+
 def test_report_does_not_follow_a_different_nights_pointer(epoch_page):
     project, root, _ = epoch_page
     save(root/'nightly/current.json', {'night':'2026-10-28', 'revision':'../../2026-10-29'})

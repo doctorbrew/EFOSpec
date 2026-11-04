@@ -28,6 +28,11 @@ def test_ambiguous_raw_can_be_recovered_with_hash_bound_manual_recipe(tmp_path,m
     run=tmp_path/'failed'
     original=reduce_night(inputs,run,REFERENCE,skip_report=True)
     assert len(original['errors'])==1 and original['errors'][0]['code']=='source_selection_required'
+    from pypeit.spec2dobj import Spec2DObj
+    diagnostic=Path(original['errors'][0]['diagnostics']['native_spec2d'])
+    assert fits.getheader(diagnostic)['QCSTAGE']=='source_selection_failed'
+    assert not fits.getheader(diagnostic)['OBJMODEL']
+    assert Spec2DObj.from_file(str(diagnostic),'DET01').sciimg.shape[1]==141
     exposure=FailedExposure(run,raw.name,REFERENCE)
     assert len(exposure.candidates)==2
     with pytest.raises(ValueError,match='explicit manual'):
@@ -60,10 +65,10 @@ def test_ambiguous_raw_can_be_recovered_with_hash_bound_manual_recipe(tmp_path,m
         recipe_data=json.loads(Path(c['recipe']).read_text())
         assert recipe_data['objects'][0]['label'].endswith('UNVERIFIED')
         assert fits.getheader(c['trial']['product'])['OBJECT'].endswith('UNVERIFIED')
-    assert all((packet/p).is_file() for p in ['science.png','traces.png','trial-spectra.png','index.html','target-selection.csv'])
+    assert all((packet/p).is_file() for p in ['science.png','traces.png','profiles.png','trial-spectra.png','index.html','target-selection.csv'])
     from PIL import Image
     jpgs=list(packet.glob('FitQC_*.jpg'))
-    assert len(jpgs)==4
+    assert len(jpgs)==5
     for jpg in jpgs:
         assert jpg.with_suffix('.pdf').is_file()
         with Image.open(jpg) as im:assert im.info['dpi']==(300,300)

@@ -232,7 +232,7 @@ class FailedExposure(Exposure):
         manifest_path = self.run/'run.json'
         self.manifest = json.loads(manifest_path.read_text())
         errors = [e for e in self.manifest['errors'] if Path(e['path']).name == raw_name
-                  and e.get('code') == 'source_selection_required']
+                  and e.get('code') in {'source_selection_required','background_support_required'}]
         if len(errors) != 1 or Path(raw_name).name != raw_name:
             raise ValueError('unknown or ambiguous failed exposure')
         error = errors[0]; info = error['diagnostics']

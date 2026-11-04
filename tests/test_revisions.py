@@ -44,6 +44,14 @@ def saved_exposure(tmp_path):
     engine = extract_spectra(data, wave, detector, exposure_time=frame['metadata']['EXPTIME'],
         read_noise=7.8, output=run, basename='test', target_position=48.)
     result = export_spectrum(context, engine, 'primary', run, 'test')
+    from pypeit.spec2dobj import Spec2DObj
+    from pypeit.core.wave import airtovac
+    from astropy import units as u
+    diagnostic=Spec2DObj.from_file(result['native_spec2d'],'DET01')
+    np.testing.assert_allclose(diagnostic.sciimg,data,rtol=1e-7)
+    np.testing.assert_array_equal(diagnostic.waveimg,airtovac(wave*u.AA).value)
+    np.testing.assert_array_equal(diagnostic.bpmmask.mask,engine['arrays'][3].mask)
+    assert fits.getheader(result['native_spec2d'])['RAWX0']==299
     manifest = {'results':[result], 'input_dir':str(tmp_path), 'output_dir':str(run),
         'pypeit_version':'1.14.0', 'limitations':['Synthetic calibration'], 'errors':[], 'skipped':[]}
     (run/'run.json').write_text(json.dumps(manifest))
