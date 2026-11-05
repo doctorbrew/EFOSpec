@@ -108,6 +108,8 @@ def test_unsupported_only_run_is_incomplete_and_cli_returns_nonzero(tmp_path):
     assert run['execution_status'] == 'failed'
     assert len(run['skipped']) == 2 and not run['errors'] and not run['results']
     assert all(e['code'] == 'unsupported_setup' and e['action'] for e in run['skipped'])
+    assert all(e['pipeline_support']['archive_bridge'] == 'not_enabled' for e in run['skipped'])
+    assert all(not e['pipeline_support']['scientifically_validated'] for e in run['skipped'])
 
 
 def test_sky_failure_manifest_has_action_measurements_and_traceback(tmp_path):

@@ -18,11 +18,17 @@ from .archive_calibration import fit_arc
 from .reduction_checks import check_flexure, setup_checks
 from .inventory import inventory, sha256
 from .naming import science_stem, product_name
+from .setup_support import archive_setup_issue, setup_support
 
 
 class UnsupportedSetupError(ValueError):
     code = 'unsupported_setup'
     action = 'Validate matching arc and sensitivity calibrations before enabling this setup.'
+
+    def __init__(self, setup):
+        self.support = setup_support(setup)
+        self.action = ' '.join(self.support['development_required'])
+        super().__init__(self.support['archive_issue'])
 
 
 def save_run(output, run):
@@ -56,9 +62,8 @@ def target_hint(frame, legacy_root):
 
 def select_archive(frame, reference_root):
     setup, h = frame['setup'], frame['metadata']
-    if (setup['grism'] not in {'Gr11','Gr13'} or setup['filter'] != 'Free'
-            or setup['binx'] != 2 or setup['biny'] != 2):
-        raise UnsupportedSetupError('rapid archive bridge supports only Gr11/Gr13 Free, 2x2')
+    if archive_setup_issue(setup):
+        raise UnsupportedSetupError(setup)
     base = Path(reference_root)/'archive/efosc'
     arcs = sorted((base/'arc'/setup['grism']/setup['filter']/setup['slit']).glob('*.fits'))
     if len(arcs) != 1:
@@ -203,6 +208,7 @@ def reduce_night(input_dir, output_dir, reference_root, *, targets=None, include
         except UnsupportedSetupError as exc:
             run['skipped'].append({'path':f['path'], 'object':f['metadata']['OBJECT'],
                 'reason':str(exc), 'code':exc.code, 'action':exc.action, 'setup':f['setup'],
+                'pipeline_support':exc.support,
                 'readiness':readiness.get(f['path'],{}), 'review_file':str(output/'setup-checks.json')})
         except Exception as exc:
             traceback.print_exc(file=sys.stderr)

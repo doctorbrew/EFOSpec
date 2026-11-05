@@ -8,6 +8,8 @@ experimental. Review evidence is retained even when extraction cannot proceed.
 1. Inventory and hash the raw exposures. Write `setup-checks.json` with actual
    arc, bias, flat and standard-candidate associations for every configuration.
    Candidate availability does not enable an unsupported archive setup.
+   Each exposure also records pipeline-route coverage and specific development
+   requirements; see [unsupported setups](unsupported-setups.md).
 2. Fit the archived wavelength map. Save the sampled sky spectrum and the
    green/red line models before evaluating the existing flexure gates.
 3. Compare the same sky with PypeIt 1.14's `spec_flex_shift`, using its Paranal

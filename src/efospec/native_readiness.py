@@ -4,6 +4,7 @@ This is a preflight report, not a native reduction implementation. Candidate
 standard exposures still need independent reference matching and flux fitting.
 """
 from .planning import RAW_ROLES, _select, validate_frame
+from .setup_support import setup_support
 
 
 def assess_native_readiness(inventory):
@@ -33,7 +34,8 @@ def assess_native_readiness(inventory):
                 if selection['status'] != 'selected':
                     blockers.append(f"{role} {selection['status']}: {target['path']}")
             exposures.append({'path': target['path'], 'setup': target['setup'],
-                              'raw_calibrations': selected})
+                              'raw_calibrations': selected,
+                              'pipeline_support': setup_support(target['setup'])})
         if not targets:
             blockers.append('No usable raw science or standard exposures.')
     complete = not blockers
