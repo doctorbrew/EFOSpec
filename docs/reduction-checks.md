@@ -18,16 +18,17 @@ experimental. Review evidence is retained even when extraction cannot proceed.
    require valid fits, peak S/N >8 and agreement within 3 Å. The 6363 check is
    recorded separately. Template correlation does not override a failed gate;
    it uses the same sky data and is not independent validation.
-5. Find sources and perform the existing bounded, two-sided PypeIt background
-   fit and extraction. Ambiguous traces retain explicit source-review status.
-   Failed background placement/fitting also retains candidate geometry and
-   diagnostic images. The nightly report generates acquisition/candidate QC
-   packets for both classes; neither is resolved by choosing the brightest trace.
+5. Prefer an explicitly reviewed source; otherwise choose the strongest positive
+   peak within 15 spatial pixels of the expected central position, retaining
+   detection-S/N checks. This selects extraction geometry, not target identity.
+   Perform the bounded, two-sided PypeIt background fit and extraction. Tied or
+   absent central sources and failed background support retain candidate geometry,
+   diagnostic images and acquisition/candidate QC packets for review.
 6. Write native `spec1d` and `spec2d` diagnostics for successful extractions;
    source-selection/background failures also retain `spec2d` windows with no object model.
    Deliver the usual flux products only when their reduction succeeds.
 7. Render wavelength-fit/correlation figures and source QC into the dated
-   Fieldnotes report. Save new recipes and outputs in fresh revisions.
+   ePESSTO+ report. Save new recipes and outputs in fresh revisions.
 
 ## Contemporary raw-calibration checks in the same run
 
@@ -80,6 +81,25 @@ validation are separate decisions. Numerical extraction success cannot identify
 SN2026ayt or validate SN/host separation. The provisional C3 experiment remains
 specific to SN2026aebl.
 
+## Gr16/OG530 delivery requirements
+
+- AT2026twd's Gr11/Free exposure is supported by the rapid archive path. Its
+  separate Gr16/OG530, slit1.5, 2x2 exposure is explicitly unsupported there.
+- For the Gr16 exposure, the current inventory supplies one matching arc, ten
+  bias candidates, three flats and a same-setup VMa2 standard candidate. Native
+  diagnostic masters already exist; lack of raw files is not the primary blocker.
+- Extend the paired native extraction/flux path beyond its current Gr11/Gr13
+  gate, with verified Gr16 geometry, wavelength mapping, variance and export.
+- Establish an independently checked red-sky flexure correction. The present
+  5577/6300 method cannot apply because 5577 Angstroms is outside this setup;
+  the existing red-template correlation is diagnostic only.
+- Identify the observed standard against a physical reference and fit a supported
+  Gr16/OG530 sensitivity curve. VMa2 currently lacks a registered native reference;
+  the candidate's presence does not establish a usable response.
+- Validate red response coverage, fringing, telluric regions and uncertainty
+  transfer before approving the spectrum for quantitative analysis. Keep failed
+  and unvalidated checks visible instead of enabling a setup by filename alone.
+
 References: [PypeIt 1.14 2D diagnostics](https://pypeit.readthedocs.io/en/1.14.0/out_spec2D.html),
 [sky regions](https://pypeit.readthedocs.io/en/1.14.0/skysub.html), and the installed
 PypeIt 1.14 `core/flexure.py` implementation. EFOSpec deliberately leaves
@@ -98,6 +118,8 @@ PypeIt's extraction-time correction disabled to prevent double correction.
 - External models are displayed only inside the common interval bracketed by
   accepted background samples. Invalid model rows are excluded consistently from
   every spatial column; missing detector samples are never treated as zero.
+  All candidate positions remain inside the profile axes, even when a candidate
+  falls outside that supported interval; no background curve is extrapolated there.
 - Without a selected fit, profiles remain labeled as medians including sky.
   Negative profile values stay plotted; narrow downward outliers affect neither
   source counts nor extraction and are excluded only from the display-limit calculation.
@@ -110,6 +132,49 @@ A fitted two-dimensional local background can remove smooth host light as well
 as sky, but it does not establish a validated host-galaxy decomposition beneath
 the supernova. Source identity, a near-zero background profile and successful
 extraction do not independently validate host subtraction.
+
+## Verified 5 November 2026 — both complete observing nights
+
+- Both final `runs/YYYY-MM-DD/index.html` pages retain the approved 29 October
+  layout, with the **ePESSTO+ / EFOSpec** masthead. Calibration checks are ordered
+  AT, SN, then other sources; failed or unvalidated checks are red. Selected
+  calibration manifests are included even when stored outside `calibrations/`.
+- **2026-10-28**, revision `20261105T003458Z-8d3f58`: all 20 selected exposures
+  attempted; seven spectra (four science, three standards), seven failures and
+  six unsupported exposures. SN2026ayt retains the visually confirmed C2 recipe.
+  Both AT2026agzp and SN2026aebl still require background review; five exposures
+  still fail sky-flexure checks. This full-night revision replaces the target-only
+  delivery pointer without deleting that earlier revision.
+- **2026-10-29**, revision `20261105T003942Z-333cad`: all 18 selected exposures
+  attempted; ten spectra (six science, four standards), two sky-flexure failures
+  and six unsupported exposures. SN2026aadx C3, SN2026afqd and AT2026aevu now
+  extract successfully. The report stages complete; native checks remain partial.
+- SN2026aadx uses the user's visual C3 identification and explicit raw-x bands
+  `[482, 502)` and `[575, 605)`. Its quadratic PypeIt background fit converged
+  with at least 14 accepted samples on each side in every supported row. The
+  iteration allowance increased from 35 to 100; clipping and acceptance gates
+  were unchanged.
+- SN2026afqd previously failed because two weak, broad detections had FWHMs of
+  34.6 and 36.3 pixels. Their approximately 52/54-pixel exclusion radii consumed
+  the left background. The reviewed C3 recipe uses clean raw-x bands `[516, 531)`
+  and `[570, 600)`. Its quadratic fit now has at least 12 accepted samples on each
+  side, no invalid rows, and reduced chi-squared 0.654. This is a background review;
+  the target association remains unverified and host deblending is not established.
+- Numerical products live in each revision's `reduction/products/`; QA, masks,
+  native diagnostics and provenance remain alongside them. Review these experimental
+  products before quantitative analysis; extraction success is not calibration
+  acceptance. Gr16 requirements are listed above; HostSub_GP remains a future task.
+- Both portable reports pass offline image loading, AT/SN ordering, red-status,
+  mobile-width, enlargement and byte-identical FITS-download checks. All 2,204
+  protected raw/earlier-revision files remain unchanged. Per-night evidence is
+  `report-verification.json`; the display-only profile refresh preserves the prior
+  QC/report and records unchanged reduction files in
+  `archive/profile-crop-20261105/refresh.json`.
+- Verification: 282 tests pass with 86.91% coverage. A final display-only export
+  margin adjustment keeps the enlarged rotated labels inside the PDF/JPG/PNG;
+  its source snapshot and unchanged-reduction checks are retained under
+  `archive/profile-label-margin-20261105/`. The exported profiles were inspected
+  visually and their image borders checked for clipping.
 
 ## Verified 4 November 2026 — reviewed source and second night
 

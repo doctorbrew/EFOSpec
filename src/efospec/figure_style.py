@@ -65,6 +65,10 @@ def save_qc(fig, directory, kind, object_name, *, tick_fontsize=18, legend_fonts
         if text.get_text():text.set_text(plain_tex(text.get_text()))
     safe=re.sub(r'[^A-Za-z0-9.+-]','_',object_name)
     stem=Path(directory)/f'FitQC_{safe}_{kind}'
-    style.savefig_light(fig,stem,dpi_pdf=300,dpi_jpg=300)
-    fig.savefig(Path(directory)/(kind+'.png'),dpi=150,bbox_inches='tight')
+    # Rotated TeX labels at the larger profile font can extend beyond the
+    # raster backend's tight bounds. Retain a physical margin in every format.
+    padding = .5 if kind == 'profiles' else matplotlib.rcParams['savefig.pad_inches']
+    with matplotlib.rc_context({'savefig.pad_inches': padding}):
+        style.savefig_light(fig,stem,dpi_pdf=300,dpi_jpg=300)
+        fig.savefig(Path(directory)/(kind+'.png'),dpi=150,bbox_inches='tight')
     return stem

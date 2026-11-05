@@ -44,6 +44,15 @@ class SourceSelectionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'not found uniquely'):
             select_sources(sources, manual=[{'id':'primary','spat':11.,'spec':50.}])
 
+    def test_central_selection_uses_positive_peak_strength_not_distance_or_field_brightness(self):
+        sources = [SimpleNamespace(NAME=name,SPAT_PIXPOS=x,smash_peakflux=peak,smash_snr=snr,sign=1)
+                   for name,x,peak,snr in [('near',70.,20.,8.),('bright',78.,100.,20.),
+                                           ('field',110.,1000.,80.),('sky',69.,-2.,20.)]]
+        self.assertEqual(select_sources(sources,70.),{'primary':'bright'})
+        sources[1].smash_peakflux=20.
+        with self.assertRaises(ValueError):select_sources(sources,70.)
+        with self.assertRaises(ValueError):select_sources([sources[3]],70.)
+
 
 class ExtractionIntegrationTests(unittest.TestCase):
     def setUp(self):

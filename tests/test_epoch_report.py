@@ -123,6 +123,32 @@ def test_report_does_not_follow_a_different_nights_pointer(epoch_page):
     assert not (root/'index.html').exists()
 
 
+def test_calibration_checks_order_transients_and_mark_failed_or_unvalidated(epoch_page):
+    from efospec.epoch_report import EpochPage
+    _,root,_=epoch_page
+    run=root/'nightly/revision-1/reduction'
+    for i,(name,status) in enumerate([('vma2','failed'),('SN2026aadx','passed'),
+                                     ('AT2026twd','unvalidated'),('L745a','passed')]):
+        save(run/f'checks/{i}/check.json',{'metadata':{'object':name},'status':status})
+    html=EpochPage(root).wavelength_checks(run)
+    names=['AT2026twd','SN2026aadx','L745a','vma2']
+    assert [html.index(name) for name in names]==sorted(html.index(name) for name in names)
+    assert html.count('class="qc-unvalidated"')==2
+    assert 'Wavelength correction is not validated' in html
+
+
+def test_calibration_table_uses_selected_manifest_outside_canonical_folder(epoch_page):
+    from efospec.epoch_report import EpochPage
+    _,root,_=epoch_page;revision=root/'nightly/revision-1'
+    selected=root/'native-selected'
+    save(selected/'run.json',{'groups':[{'id':'selected','setup':{'grism':'Gr16','filter':'OG530','slit':'slit1.5'},
+                                       'status':'unvalidated','wave_qa':[]}]})
+    state=json.loads((revision/'night.json').read_text());state['native_calibrations']=str(selected)
+    save(revision/'night.json',state)
+    html=EpochPage(root).calibrations(revision)
+    assert 'Gr16' in html and 'qc-status-bad' in html
+
+
 def test_background_is_bound_to_its_exposure_and_later_recipe_revision(epoch_page):
     project, root, _ = epoch_page
     packet = root/'QC/ambiguous'

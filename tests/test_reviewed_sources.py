@@ -66,3 +66,14 @@ def test_selection_requires_matching_selected_exposure_and_visual_evidence(revie
     selection['identity']['evidence']=''
     path.write_text(json.dumps(dict(schema_version=1,sources=[selection])))
     with pytest.raises(ValueError,match='evidence'):load_reviewed_sources(path,[frame])
+
+
+def test_background_review_does_not_claim_target_identification(reviewed):
+    selection,frame,data,wave,output=reviewed
+    selection['identity']['method']='operator_background'
+    selection['identity']['evidence']='Operator requested local background bands around the central source.'
+    path=output/'selection.json'
+    path.write_text(json.dumps(dict(schema_version=1,sources=[selection])))
+    selected=load_reviewed_sources(path,[frame])['raw.fits']
+    _,identity,_=prepare_reviewed_extraction(selected,frame,data,wave,(0,0),output)
+    assert identity['association']=='UNVERIFIED_target_association'

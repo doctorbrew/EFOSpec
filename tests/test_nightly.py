@@ -59,7 +59,7 @@ def test_partial_reduction_still_presents_one_dated_report_and_qc(epoch,monkeypa
     assert not (output.parent/'.running').exists()
     daily_log=root/'runs/2026-10-28/index.html'
     assert state['daily_log']==str(daily_log)
-    assert daily_log.is_file() and 'Fieldnotes' in daily_log.read_text()
+    assert daily_log.is_file() and 'ePESSTO+' in daily_log.read_text()
     assert capsys.readouterr().out.splitlines()[-1].endswith(str(daily_log))
     assert json.loads((output/'night.json').read_text())['daily_log']==str(daily_log)
 

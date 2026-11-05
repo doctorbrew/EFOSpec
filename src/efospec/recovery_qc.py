@@ -55,7 +55,7 @@ def _candidate_label(ax, x, label, color):
     return ax.text(x+offset if right_side else x-offset, .03, label,
                    transform=ax.get_xaxis_transform(), rotation=90,
                    ha='left' if right_side else 'right', va='bottom', fontsize=21.6,
-                   color=color, zorder=10,
+                   color=color, zorder=10, clip_on=True,
                    bbox={'boxstyle':'square,pad=0.3', 'facecolor':'white',
                          'edgecolor':color, 'linewidth':1.2, 'alpha':.7})
 
@@ -176,7 +176,12 @@ def plot_exposure(exposure, output):
     profile_residual = background['residual'] if background else residual
     valid_rows = (background['valid_rows'] if background else
                   np.asarray(exposure.images.get('sky_valid_rows', np.ones(ny, dtype=bool))))
-    profile_xlimits = background['x_limits'] if background else xlimits
+    supported_xlimits = background['x_limits'] if background else xlimits
+    # Candidate positions remain visible even when the fitted background only
+    # supports a smaller interval. Do not extrapolate its profile into that gap.
+    anchors = [trace[ny//2] for trace in traces if np.isfinite(trace[ny//2])]
+    profile_xlimits = (min([supported_xlimits[0]]+[x-3 for x in anchors]),
+                       max([supported_xlimits[1]]+[x+3 for x in anchors]))
     fig, profile = plt.subplots(figsize=(20,8.5), constrained_layout=True)
     for i, trace in enumerate(traces):
         profile.axvline(trace[ny//2],color=colors[i],lw=2.2)
@@ -194,6 +199,8 @@ def plot_exposure(exposure, output):
             values, row_count = summed_profile(profile_residual, indices, valid_rows)
         else:
             values, row_count = np.nanmedian(residual[indices],axis=0), len(indices)
+        if background:
+            values = np.where((x >= supported_xlimits[0]) & (x <= supported_xlimits[1]), values, np.nan)
         for_limits, excluded = _profile_limit_samples(values, protected)
         for_limits[(x < profile_xlimits[0]) | (x > profile_xlimits[1])] = np.nan
         exclusions[label] = x[excluded].tolist()
@@ -235,6 +242,7 @@ def plot_exposure(exposure, output):
                              if profile_sky_available else 'median over selected spectral rows at each fixed spatial x; no fitted background'),
         'background_source':background['provenance'] if background else None,
         'profile_x_limits':list(profile_xlimits),
+        'profile_background_x_limits':list(supported_xlimits) if background else None,
         'profile_row_ranges':row_ranges,
         'traces':[{'candidate':i+1,'rank':rank+1,'color':colors[i],
                    'median_electrons':strengths[i] if np.isfinite(strengths[i]) else None} for rank,i in enumerate(order)],
@@ -423,7 +431,10 @@ def build_reviewed_qc(run, product, output, reference_root=None):
         exposure.images[key] = original.images[key]
     output = Path(output).resolve();output.mkdir(parents=True,exist_ok=False)
     middle = exposure.window.shape[0]//2
-    review = dict(status='running', identity=f"C{selection['identity']['candidate']} verified by operator",
+    confirmed=selection['identity']['method']=='operator_visual'
+    identity_label=(f"C{selection['identity']['candidate']} verified by operator" if confirmed else
+                    f"C{selection['identity']['candidate']} background reviewed; target identity unverified")
+    review = dict(status='running', identity=identity_label,
         object=selection['object'], raw_name=selection['raw_name'], raw_path=exposure.frame['path'],
         parent_run=str(exposure.run), input_sha256=exposure.hashes,
         identification=selection['identity'], candidate_geometry_parent=str(original.run),
@@ -449,7 +460,9 @@ def build_reviewed_qc(run, product, output, reference_root=None):
         f'<h1>{escape(review["object"])}: {escape(review["identity"])}</h1>'
         f'<p>{escape(review["raw_name"])}</p><p>{escape(selection["identity"]["evidence"])}</p>'
         '<p>Original candidate IDs are retained. Residual panels and summed profiles use the newly fitted '
-        'two-sided PypeIt background. Identification is visual; no automatic astrometric match is claimed.</p>'
+        'two-sided PypeIt background. '
+        + ('Identification is visual; no automatic astrometric match is claimed.' if confirmed else
+           'Background geometry was reviewed; the source identity remains unverified.')+'</p>'
         '<p><a href="review.json">Review record</a> · <a href="profile-display.json">Profile details</a></p>'
         + ''.join(f'<img src="{name}.png" alt="{escape(name)}">' for name in figures))
     (output/'index.html').write_text(html)

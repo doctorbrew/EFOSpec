@@ -1,4 +1,4 @@
-"""Recover ambiguous synthetic exposures without silently selecting a neighbour."""
+"""Recover off-centre synthetic exposures without silently selecting a neighbour."""
 import json
 from pathlib import Path
 import numpy as np
@@ -13,14 +13,16 @@ from test_pypeit_adapter import write_raw
 REFERENCE=Path(__file__).resolve().parents[1]/'trunk/src/ntt'
 
 
-def test_ambiguous_raw_can_be_recovered_with_hash_bound_manual_recipe(tmp_path,monkeypatch,qtbot):
+def test_off_center_raw_can_be_recovered_with_hash_bound_manual_recipe(tmp_path,monkeypatch,qtbot):
     inputs=tmp_path/'raw';inputs.mkdir()
     raw=write_raw(inputs,'ambiguous.fits',**{'ESO OBS ID':42})
     frame=inspect_file(raw);arc,_=select_archive(frame,REFERENCE);wave,_=fit_arc(arc)
     y,x=np.indices(wave.shape);data=np.full(wave.shape,100.)
     for rest,amp in [(5577.338,500.),(6300.304,400.),(6363.776,133.)]:
         data+=amp*np.exp(-.5*((wave-rest+12.)/7.)**2)
-    for center in [442.,456.]:
+    # Both sources lie outside the observer's +/-15-pixel central search.
+    # Unequal/noisy peaks inside that window now intentionally select the brightest.
+    for center in [425.,473.]:
         data+=8000.*np.exp(-.5*((x-center)/1.7)**2)/(np.sqrt(2*np.pi)*1.7)
     data=np.random.default_rng(148).poisson(data).astype(float)
     with fits.open(raw,mode='update') as h:
@@ -44,7 +46,7 @@ def test_ambiguous_raw_can_be_recovered_with_hash_bound_manual_recipe(tmp_path,m
     before={p:sha256(p) for p in run.rglob('*') if p.is_file()}
     result=reextract(run,raw.name,recipe,tmp_path/'recovered',REFERENCE,failed=True,render_report=False)
     assert len(result['results'])==1
-    assert result['results'][0]['target']['median_trace_trimmed_pixel']==pytest.approx(442.,abs=.3)
+    assert result['results'][0]['target']['median_trace_trimmed_pixel']==pytest.approx(425.,abs=.3)
     assert all(sha256(p)==digest for p,digest in before.items())
     from efospec.recovery_qc import build_recovery_qc
     acquisition=write_raw(inputs,'acquisition.fits',**{

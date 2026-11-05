@@ -10,6 +10,57 @@ been published. Status describes actual work, not promised scientific support.
 - Unified PySide6 desktop, environment-backed launchers, extraction/replay and cancellation are delivered. See [desktop validation](../../validation-desktop-2026-11.md).
 - Native calibration acceptance remains open; [current experiments and blockers](../../validation-native-2026-11.md).
 
+## Immediate follow-up — repository review, 5 November 2026
+
+Reviewed `98a0ff6`; unchecked findings remain open. The 277-test suite passed at
+review time; subsequent delivery fixes and reruns are recorded below.
+
+- [ ] Make dated desktop folders prefer `nightly/current.json` over a legacy
+  root `run.json`. At review time, the 29 October desktop opened the older five-product
+  run while the final HTML used the seven-product run
+  (`desktop_session.resolve_session`).
+- [ ] Carry scientific status and limitations into the final portable report,
+  separately from workflow completion. Preserve source-identification status in
+  standalone FITS exports as well as QA JSON (`epoch_report`, `products`).
+- [ ] Record and verify saved image-array hashes for archive reductions as well
+  as native reductions. A temporary copy with `waveair` shifted by 10 Angstroms
+  was accepted by `Exposure` and its new recipe under the old arc provenance
+  (`products.export_spectrum`, `revisions.Exposure`). No corruption of the
+  current products was established.
+- [ ] Bind historical aperture-database selection to the exact exposure.
+  Repeated target/setup observations can currently reuse the first matching
+  aperture while claiming a historical association (`rapid.target_hint`).
+- [ ] Build a consolidated per-exposure delivery selection spanning full-night
+  and targeted revisions, retaining later failures and explicit supersession.
+  The reviewed 28 October pointer contained only the C2 rerun. A subsequent
+  full-night rerun now restores all current products; a general consolidated
+  selection across targeted and full-night revisions remains unimplemented.
+- [x] Resolve selected calibration manifests explicitly in the final report.
+  The renderer now reads the selected record before folder discovery, including
+  the 29 October ten-group selection outside `calibrations/`. Verified with a
+  regression fixture; failed/unvalidated statuses are red.
+- [ ] Complete source-identity review, unresolved flexure/background checks and
+  supported-setup validation before approving the affected exposures for analysis.
+  The full-night 5 November reruns deliver ten science spectra across both dates;
+  SN2026ayt C2 and SN2026aadx C3 have visual identification evidence. The others
+  remain unverified; all are experimental rapid products. See
+  [dated outcomes](../../reduction-checks.md#verified-5-november-2026--both-complete-observing-nights).
+- [ ] Complete independent flux/uncertainty acceptance and native response-support
+  work described in [native validation](../../validation-native-2026-11.md).
+  File integrity and a successful extraction do not establish calibration accuracy.
+
+Read-only product inventories and verification records are retained locally in
+`runs/2026-10-28/validation/repository-review-20261105/` and
+`runs/2026-10-29/validation/repository-review-20261105/`. The analysis inventories
+reference existing products; they do not promote trials or overwrite reductions.
+
+## Future research — outside current development
+
+- [ ] Evaluate dedicated 2-D host-galaxy subtraction, including
+  [HostSub_GP](https://github.com/slowdivePTG/HostSub_GP), after the current
+  reduction and analysis-readiness work. Deferred by the user on 5 November
+  2026; no integration or dependency changes are planned in the active phase.
+
 ## Completed rapid demonstration (2024-11-14 data)
 
 An experimental bridge now spans parts of T3–T5: archived air-wavelength IDs,

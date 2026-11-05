@@ -138,6 +138,7 @@ def exposure_sky_inputs(exposure, recipe):
         validate_bounded_mask(mask,trace,obj['radius'])
         bounds = None
     info = dict(coordinates='zero_based_extraction_window', raw_spatial_origin=x0,
+                requested_raw_bands=sky['include'],
                 selection='nearest_clean_two_sided_bands' if bounds is not None else 'explicit_two_sided_bands',
                 width_spatial_pixels=sky.get('width_pixels'),
                 actual_width_spatial_pixels=actual_width if bounds is not None else None,
@@ -148,7 +149,7 @@ def exposure_sky_inputs(exposure, recipe):
 
 
 def fit_background(data, ivar, tilts, mask, trace, *, radius, degree=1,
-                   sigma_clip=4., bsp=1., maxiter=35):
+                   sigma_clip=4., bsp=1., maxiter=100):
     """Use PypeIt's B-spline × Legendre fit, retaining its convergence evidence.
 
     ``degree=2`` supplies three Legendre terms. Unlike global_skysub in 1.14,
@@ -205,6 +206,7 @@ def fit_background(data, ivar, tilts, mask, trace, *, radius, degree=1,
     summary = dict(engine='pypeit.core.fitting.bspline_profile', pypeit_version=pypeit.__version__,
                    spatial_degree=degree, legendre_terms=degree+1, pypeit_exit_status=int(status),
                    sigma_clip=float(sigma_clip), bspline_spacing=float(bsp),
+                   maximum_iterations=maxiter,
                    reduced_chi2=float(chi2), invalid_rows=np.flatnonzero(~valid).tolist(),
                    accepted_fraction=float(used.sum()/good.sum()),
                    minimum_side_samples=int(final_counts[:, valid].min()),

@@ -8,8 +8,8 @@ from astropy.io import fits
 from efospec.recovery_qc import plot_exposure, _profile_limit_samples, _profile_limits
 
 
-@pytest.mark.parametrize('sky_available', [True, False])
-def test_all_three_candidates_and_median_curves_are_visible(tmp_path, monkeypatch, sky_available):
+@pytest.mark.parametrize('sky_available,bounded', [(True, False), (False, False), (True, True)])
+def test_all_three_candidates_and_median_curves_are_visible(tmp_path, monkeypatch, sky_available, bounded):
     ny, nx = 40, 141
     x = np.arange(nx)
     signal = sum(amp*np.exp(-.5*((x-center)/1.2)**2)
@@ -30,6 +30,10 @@ def test_all_three_candidates_and_median_curves_are_visible(tmp_path, monkeypatc
                                           else 'source_finding_only_no_background_fit')})
     figures = {}
     monkeypatch.setattr('efospec.figure_style.save_qc', lambda fig, output, kind, name, **kw: figures.update({kind: fig}))
+    if bounded:
+        monkeypatch.setattr('efospec.profile_background.load_profile_background', lambda *args: {
+            'residual': data-exposure.images['sky'], 'valid_rows': np.ones(ny, dtype=bool),
+            'x_limits': (150., 230.), 'provenance': None})
     plot_exposure(exposure, tmp_path)
     assert set(figures) == {'science', 'traces', 'profiles'}
     assert len(figures['traces'].axes) == 2
@@ -40,10 +44,13 @@ def test_all_three_candidates_and_median_curves_are_visible(tmp_path, monkeypatc
     expected = [statistic(residual,axis=0),statistic(residual[ny//4:ny//2],axis=0),
                 statistic(residual[ny//2:3*ny//4],axis=0)]
     for line, values in zip(profile.lines[3:], expected):
+        if bounded:
+            values[(x+100 < 150) | (x+100 > 230)] = np.nan
         np.testing.assert_array_equal(line.get_ydata(), values/1000.)
         assert line.get_linewidth() == 2.
-        assert line.get_ydata()[5] < low
-        assert np.max(line.get_ydata()) < high
+        if not bounded:
+            assert line.get_ydata()[5] < low
+        assert np.nanmax(line.get_ydata()) < high
     assert [line.get_xdata()[0] for line in profile.lines[:3]] == [115., 170., 225.]
     assert [line.get_color() for line in profile.lines[:3]] == ['xkcd:green','xkcd:dodger blue','xkcd:red']
     assert profile.get_legend_handles_labels()[1] == ['All rows: y=10--49','Q2: y=20--29','Q3: y=30--39']
@@ -51,6 +58,7 @@ def test_all_three_candidates_and_median_curves_are_visible(tmp_path, monkeypatc
     for ax in [figures['science'].axes[1], figures['traces'].axes[1], profile]:
         assert [text.get_text() for text in ax.texts] == ['C1','C2','C3']
         for text in ax.texts:
+            assert ax.get_xlim()[0] < text.get_position()[0] < ax.get_xlim()[1]
             assert text.get_rotation() == 90
             assert text.get_position()[1] == .03
             assert text.get_verticalalignment() == 'bottom'

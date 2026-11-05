@@ -17,6 +17,11 @@ def _text(value):
     return escape(str(value))
 
 
+def _unvalidated(status):
+    return any(word in str(status).lower() for word in
+               ('fail', 'unvalidated', 'unsupported', 'unavailable', 'missing', 'unknown'))
+
+
 def _table(headings, rows):
     return ('<div class="table-wrap"><table><thead><tr>'
             + ''.join('<th>'+_text(h)+'</th>' for h in headings)
@@ -149,14 +154,21 @@ class EpochPage:
 
     def wavelength_checks(self, run_dir):
         content=''
-        for path in sorted((run_dir/'checks').glob('*/check.json')):
-            check=self.read(path)
+        records=[(path,self.read(path)) for path in (run_dir/'checks').glob('*/check.json')]
+        for path,check in sorted(records,key=lambda item:source_order({
+                'object':item[1].get('metadata',{}).get('object',''), 'path':str(item[0])})):
             title=check.get('metadata',{}).get('object',path.parent.name)+' / '+path.parent.name
-            reason=', '.join(check.get('line_check',{}).get('failed_gates',[])) or 'Anchor checks passed'
+            status=check.get('status','unknown')
+            line=check.get('line_check',{})
+            reason=', '.join(line.get('failed_gates',[])) or (
+                'Anchor checks passed' if status=='passed' else 'Wavelength correction is not validated')
+            if status=='passed' and 'held_out_6363_pass' in line and line['held_out_6363_pass'] is not True:
+                status='anchors passed; 6363 check unvalidated'
             comparison=check.get('correlation',{})
             description=('PypeIt correlation: '+str(comparison.get('status','not recorded'))
                 +'; comparison only, not an applied correction.')
-            content+='<details><summary>'+_text(title)+' — '+_text(check.get('status','unknown'))+'</summary>'
+            css=' class="qc-unvalidated"' if _unvalidated(status) else ''
+            content+='<details'+css+'><summary>'+_text(title)+' — '+_text(status)+'</summary>'
             content+='<p>'+_text(reason)+'. '+_text(description)+'</p>'
             content+=self.figure(path.parent/'wavelength.png',title+' / wavelength checks')
             content+='<p>'+self.download(path,'Fit measurements and provenance')+'</p></details>'
@@ -196,6 +208,8 @@ class EpochPage:
                 'A fitted background is unavailable for these profiles; they show median electrons including sky across the stated y rows at each fixed x. ')
             if profile_info.get('background_source'):
                 profile_description += 'The profiles use a retained two-sided PypeIt fit; the 2D panels above retain the parent reduction state. '
+            if profile_info.get('profile_background_x_limits'):
+                profile_description += 'Curves are shown only within the supported background interval; candidate markers can lie outside it. '
             sections.append(f'<article class="exposure"><h3>{_text(title)}</h3>'
                 f'<p class="caption">{_text(raw)} · Identity {_text(review.get("identity", "unverified").lower())}</p>'
                 f'<p>{_text(candidates)} <span class="caption">(raw detector pixels)</span></p>'
@@ -300,17 +314,29 @@ class EpochPage:
                     +'<p>'+' · '.join(filter(None,downloads+[self.download(path,'Trial record')]))+'</p></article>')
         return ''.join(sections)
 
-    def calibrations(self):
+    def calibrations(self, revision=None):
         rows, seen = [], set()
-        for path in sorted((self.root/'calibrations').glob('*/run.json')):
+        paths=sorted((self.root/'calibrations').glob('*/run.json'))
+        selected=self.read(revision/'night.json').get('native_calibrations') if revision else None
+        if selected:
+            selected_path=Path(selected).resolve()/'run.json'
+            paths=[selected_path]+[p for p in paths if p.resolve()!=selected_path]
+        for path in paths:
             for group in self.read(path).get('groups', []):
+                if not group.get('id') or not group.get('setup'):
+                    continue
                 if group['id'] in seen:
                     continue
                 seen.add(group['id']);s = group.get('setup', {})
                 wave = group.get('wave_qa', [])
                 rms = ', '.join(f'{w["held_out_rms_pixel"]:.3f}' for w in wave if 'held_out_rms_pixel' in w)
+                status=group.get('status','unknown').replace('_',' ')
+                if any(w.get('independent_science_validation') is False for w in wave):
+                    status += '; science unvalidated'
+                label=_text(status)
+                if _unvalidated(status):label='<span class="qc-status-bad">'+label+'</span>'
                 rows.append([_text(s.get('grism', '')), _text(s.get('filter', '')), _text(s.get('slit', '')),
-                             _text(group.get('status', 'unknown').replace('_', ' ')), rms or '—'])
+                             label, rms or '—'])
         validations = sorted((self.root/'archive/native-validation').glob('*/validation.json'))
         note = ''
         if validations:
@@ -376,7 +402,7 @@ def build_epoch_page(night, project_root='.'):
     records += _table(['Folder', 'Contents'], [['nightly/', 'Current and previous processing revisions'],
         ['QC/', 'Retained source and background experiments'], ['calibrations/', 'Native masters and group selections'],
         ['archive/', 'Earlier reductions, diagnostics and logs']])
-    calibration_content=page.calibrations()
+    calibration_content=page.calibrations(revision)
     native=revision/'native-validation'
     if (native/'validation.json').exists():
         calibration_content+='<h3>Contemporary raw-calibration checks</h3><p>These checks use the selected native masters. They do not change the archive-calibrated spectra above.</p>'
@@ -399,8 +425,8 @@ def build_epoch_page(night, project_root='.'):
     scope = ('<p class="caption">Selected targets: '+_text(', '.join(state['targets']))
              +'. Other exposures are listed for context; earlier results remain in Archive.</p>') if state.get('targets') else ''
     html = f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Fieldnotes · {night} · EFOSpec</title><style>{CSS}{extra_css}</style></head><body><main>
-<header class="masthead"><span class="brand">Fieldnotes. / EFOSpec</span><span class="eyebrow">EFOSC2 · {night}</span></header>
+<title>ePESSTO+ · {night} · EFOSpec</title><style>{CSS}{extra_css}</style></head><body><main>
+<header class="masthead"><span class="brand">ePESSTO+ / EFOSpec</span><span class="eyebrow">EFOSC2 · {night}</span></header>
 <div class="intro"><div><span class="eyebrow">Observing night</span><h1>{night}</h1></div><p>{stats}</p></div>
 <p class="caption">Archive-calibration reduction · {_text(state.get('status', 'unknown'))} · revision {_text(revision.name)}</p>
 {scope}

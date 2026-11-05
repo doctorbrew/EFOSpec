@@ -26,12 +26,27 @@ def select_sources(found, target_position=None, manual=None):
     if manual is None:
         if target_position is None or not np.isfinite(target_position):
             raise ValueError('automatic selection requires a finite target position')
-        distance = np.array([abs(s.SPAT_PIXPOS-target_position) for s in found])
-        order = np.argsort(distance)
-        if distance[order[0]] > 15 or (len(order) > 1 and distance[order[1]] < 15):
-            raise SourceSelectionError(f'absent or ambiguous source at expected position {target_position}',
-                                       found, target_position)
-        return {'primary': str(found[order[0]].NAME)}
+        # Observer policy: strongest positive source peak within the existing
+        # 15-pixel central search window. This selects geometry, not identity.
+        candidates = [s for s in found if abs(s.SPAT_PIXPOS-target_position) <= 15
+                      and getattr(s, 'sign', 1) != -1]
+        ranked = []
+        for source in candidates:
+            peak = getattr(source, 'smash_peakflux', None)
+            snr = getattr(source, 'smash_snr', None)
+            if peak is not None and (not np.isfinite(peak) or peak <= 0):
+                continue
+            if snr is not None and (not np.isfinite(snr) or snr < 5):
+                continue
+            ranked.append((source, peak))
+        if len(ranked) == 1:
+            return {'primary': str(ranked[0][0].NAME)}
+        if ranked and all(peak is not None for _, peak in ranked):
+            ranked.sort(key=lambda item: item[1], reverse=True)
+            if not np.isclose(ranked[0][1], ranked[1][1], rtol=1e-8, atol=0):
+                return {'primary': str(ranked[0][0].NAME)}
+        raise SourceSelectionError(f'no distinct positive source peak near expected position {target_position}',
+                                   found, target_position)
     selected = {}
     for obj in manual:
         matches = [s for s in found if s.hand_extract_flag
@@ -250,6 +265,13 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
     result = {'objects': objects, 'found': found, 'arrays': arrays, 'selection': selection,
               'diagnostic_context':{'science':sci,'slits':slits,'tilts':tilts},
               'sky_policy': 'selected_global_sky' if sky_input_mask is not None else 'automatic_global_and_local'}
+    if manual is None:
+        result['source_selection'] = {
+            'method':'brightest_positive_central_peak', 'half_width_pixels':15,
+            'expected_window_pixel':float(target_position), 'identity_confirmed':False,
+            'candidates':[{'name':str(s.NAME),'window_pixel':float(s.SPAT_PIXPOS),
+                           'peak':float(s.smash_peakflux) if s.smash_peakflux is not None else None,
+                           'snr':float(s.smash_snr) if s.smash_snr is not None else None} for s in found]}
     if fitted_background is not None:
         result.update(sky_policy='bounded_two_sided_pypeit', background_fit=fitted_background['summary'])
     return result

@@ -79,6 +79,7 @@ def reduction_methods(manifest):
     return rows, summary, caption
 
 CSS = """
+.qc-unvalidated{border-left:3px solid #b42318;padding-left:12px}.qc-unvalidated>summary,.qc-status-bad{color:#b42318;font-weight:600}
 :root{--paper:#f7f6f0;--panel:#fffef9;--forest:#244d3d;--ink:#29362e;--quiet:#616a61;--line:#dfe2d7;--serif:'Iowan Old Style','Palatino Linotype',Georgia,serif}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.55 'Avenir Next',Avenir,'Helvetica Neue',Arial,sans-serif}
 main{max-width:1680px;margin:auto;padding:28px 32px 60px}a{color:var(--forest);text-underline-offset:3px}a:hover{color:#497c61}a:focus-visible,summary:focus-visible{outline:2px solid var(--forest);outline-offset:4px}
@@ -188,9 +189,9 @@ def write_report(run_directory, *, generation_error=None):
     if (run/'setup-checks.json').exists():
         check_links.insert(0,'<p><a href="setup-checks.json">Raw calibration readiness by exposure</a></p>')
     page = f'''<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1"><title>EFOSpec Fieldnotes · {night}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>ePESSTO+ · {night}</title>
 <style>{CSS}</style></head><body><main>
-<div class="masthead"><span class="brand">Fieldnotes<span aria-hidden="true">.</span> / EFOSpec</span>
+<div class="masthead"><span class="brand">ePESSTO+ / EFOSpec</span>
 <span class="eyebrow">EFOSC2 · reduction notebook</span></div>
 <div class="intro"><div><span class="eyebrow">Observing night / {night}</span><h1>The night's spectra.</h1></div>
 <p><span class="badge">Experimental reduction</span> &nbsp; {len(manifest['results'])} reduced · {len(errors)} failed · {len(skips)} skipped</p></div>
@@ -205,7 +206,7 @@ def write_report(run_directory, *, generation_error=None):
 <p class="caption">{escape(shading_caption)}</p>
 {''.join(check_links)}
 <details><summary>Run notes & limitations</summary><ul>{failures}{limitations}</ul></details></section>
-<footer><span>FIELDNOTES / EFOSpec · PypeIt {escape(str(manifest.get('pypeit_version', 'not recorded')))}</span>
+<footer><span>ePESSTO+ / EFOSpec · PypeIt {escape(str(manifest.get('pypeit_version', 'not recorded')))}</span>
 <a href="run.json">Source details ↗</a></footer></main></body></html>'''
     destination = run/'index.html'
     temporary = destination.with_suffix('.html.tmp')
@@ -214,7 +215,7 @@ def write_report(run_directory, *, generation_error=None):
     plot_dir.mkdir(exist_ok=True)
     (plot_dir/'index.html').write_text('<!doctype html><meta charset="utf-8">'
         '<meta http-equiv="refresh" content="0;url=../index.html">'
-        '<a href="../index.html">Open the Fieldnotes reduction report</a>')
+        '<a href="../index.html">Open the ePESSTO+ reduction report</a>')
     status = {'path': str(destination), 'status': 'incomplete' if missing or generation_error else 'complete',
               'missing_figures': missing, 'generation_error': generation_error}
     (run/'report.json').write_text(json.dumps(status, indent=2)+'\n')

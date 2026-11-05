@@ -2,7 +2,7 @@
 
 Always name the observing date. One invocation processes one date only. For the next epoch, change the date; there is no automatic multi-night loop.
 
-The user-approved Fieldnotes page is the **final daily-log output**, with the 2026-10-28 design as the baseline for future epochs. Keep its structure and make small requested refinements. The optional `$webpage-spectralog` coding-agent skill is installed in the user's agent configuration, outside this repository. The pipeline does not require a skill installation to generate its report.
+The user-approved **2026-10-29** page is the final daily-log template for both October nights and future epochs. Keep its Fieldnotes structure and use the masthead **ePESSTO+ / EFOSpec**. Calibration checks appear in AT, SN, then other-source order; failed or unvalidated checks are red. The optional `$webpage-spectralatlas` coding-agent skill is installed in the user's agent configuration, outside this repository. The pipeline does not require a skill installation to generate its report.
 
 Activate the existing EFOSpec Python environment and run from the EFOSpec checkout:
 
@@ -127,6 +127,14 @@ the date's `QC/` folder. These trials do not replace `nightly/current.json`.
 - Successful reviewed targets retain their original candidate IDs in Source QC,
   with new residual images and summed background-subtracted profiles. Visual
   identification remains distinct from automatic astrometric identification.
+- Confirmed choices take precedence: SN2026ayt C2 and SN2026aadx C3. Otherwise
+  choose the strongest positive PypeIt peak with detection S/N >=5 inside the
+  existing +/-15-pixel central window; ties or missing detections remain explicit
+  failures. This geometry rule alone does not confirm target identity.
+- An `operator_background` review permits an exposure-specific bounded recipe
+  without promoting its nominal source identity to visually confirmed status.
+  Local fits allow up to 100 rejection iterations while retaining the same
+  clipping, convergence and two-sided support gates.
 - AT/SN targets appear first in observation tables and spectrum/QC sections,
   grouped by target and time. Sorting never changes header-based frame roles.
 

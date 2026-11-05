@@ -25,9 +25,9 @@ def load_reviewed_sources(path, frames):
         if item['raw_sha256'] != frame['sha256'] or item['object'] != frame['metadata']['OBJECT']:
             raise ValueError('reviewed-source identity or raw hash does not match')
         identity = item['identity']
-        if (identity.get('method') != 'operator_visual' or not identity.get('evidence')
+        if (identity.get('method') not in {'operator_visual', 'operator_background'} or not identity.get('evidence')
                 or type(identity.get('candidate')) is not int or identity['candidate'] < 1):
-            raise ValueError('reviewed source needs explicit visual identification evidence')
+            raise ValueError('reviewed source needs explicit identification or background-review evidence')
         recipe_path = Path(item['recipe_path'])
         if not recipe_path.is_absolute() or not Path(item['parent_run']).is_absolute():
             raise ValueError('reviewed-source references must be absolute')
@@ -79,6 +79,7 @@ def prepare_reviewed_extraction(selection, frame, data, wave, origin, output):
     manual = [dict(obj, spec=row, spat=x)]
     arguments = dict(manual=manual, sky_input_mask=mask, sky_trace=trace,
                      sky_model={key:recipe['sky'][key] for key in ('degree','sigma_clip')})
-    identity = dict(association='operator_selected', identity=selection['identity'],
+    identity = dict(association=('operator_selected' if selection['identity']['method']=='operator_visual'
+                                 else 'UNVERIFIED_target_association'), identity=selection['identity'],
                     reviewed_source=provenance, requested=obj)
     return arguments, identity, background
