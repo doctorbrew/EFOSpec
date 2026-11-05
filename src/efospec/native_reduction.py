@@ -12,7 +12,18 @@ from .naming import science_stem, product_name
 from .products import PreparedExposure, export_spectrum
 
 
-def prepare(frame, associations, directory, position, cached=None):
+def arc_supported_rows(wavevac, limits):
+    """A contiguous rectangle supported by arc IDs across every spatial column."""
+    wavevac = np.asarray(wavevac, float)
+    low, high = limits
+    supported = np.flatnonzero(np.all(np.isfinite(wavevac) & (wavevac >= low) & (wavevac <= high), axis=1))
+    if len(supported) < 100 or np.any(np.diff(supported) != 1):
+        raise ValueError('insufficient contiguous arc-supported extraction rows')
+    return int(supported[0]), int(supported[-1])+1
+
+
+def prepare(frame, associations, directory, position, cached=None, *, arc_supported_only=False,
+            spatial_half_width=100, background_review=None):
     """Preserve the calibrated PypeIt noise model in a bounded raw-pixel window."""
     from pypeit.core.wave import vactoair
     from .extraction import extract_spectra
@@ -28,9 +39,18 @@ def prepare(frame, associations, directory, position, cached=None):
     image=process_exposure(frame,bundle)
     if not np.isfinite(position) or not 100<position<920:
         raise ValueError('source position must be a raw zero-based spatial pixel inside the slit')
-    xlo,xhi=int(position)-100,int(position)+101
+    if type(spatial_half_width) is not int or not 50 <= spatial_half_width <= 200:
+        raise ValueError('spatial half-width must be an integer from 50 to 200 pixels')
+    xlo,xhi=int(position)-spatial_half_width,int(position)+spatial_half_width+1
+    if xlo < 0 or xhi > image.image.shape[1]:
+        raise ValueError('requested source window extends outside the detector')
     # Keep the optical detector region. Coordinates remain raw, binned pixels.
-    cut=np.s_[4:1015,xlo:xhi]
+    ylo, yhi = 4, 1015
+    if arc_supported_only:
+        lower, upper = arc_supported_rows(bundle['wavevac'][ylo:yhi, xlo:xhi],
+            bundle['record']['wavelength']['shared_acceptance']['valid_wave_vacuum_angstrom'])
+        ylo, yhi = ylo+lower, ylo+upper
+    cut=np.s_[ylo:yhi,xlo:xhi]
     if np.any(bundle['slitmask'][cut]<0):
         raise ValueError('requested source window extends outside the traced slit')
     waveair=vactoair(bundle['wavevac'][cut]*u.AA).value
@@ -57,11 +77,21 @@ def prepare(frame, associations, directory, position, cached=None):
     for sub in ('products','native','qa','QA/PNGs'):(directory/sub).mkdir(parents=True,exist_ok=True)
     h=frame['metadata'];setup=frame['setup']
     basename=product_name(science_stem(h['OBJECT'],h['DATE-OBS'],setup['grism'],setup['filter'],setup['slit']),h['DATE-OBS'],{},'_f')[:-7]
+    arguments = {'bounded_background': True}
+    if background_review is not None:
+        from .filtered_background import review_arguments
+        arguments, background_evidence = review_arguments(background_review, frame, data, waveair,
+                                                          (ylo, xlo), bundle['directory'])
+        (directory/'background-review.json').write_text(json.dumps(background_review, indent=2)+'\n')
     engine=extract_spectra(data,waveair,image.detector,exposure_time=h['EXPTIME'],
         read_noise=h['ESO DET OUT1 RON'],output=directory,basename=basename,
-        target_position=position-xlo,processed=planes,bounded_background=True)
+        target_position=position-xlo,processed=planes,**arguments)
+    if background_review is not None:
+        engine['background_fit']['selection'] = background_evidence
+        engine['source_selection'] = {'method': 'reviewed_background_geometry', 'identity_confirmed': False,
+                                     'review': background_review}
     return dict(bundle=bundle,engine=engine,frame=frame,basename=basename,data=data,
-                waveair=waveair,detector=image.detector,processed=planes,xlo=xlo,position=position,
+                waveair=waveair,detector=image.detector,processed=planes,xlo=xlo,ylo=ylo,position=position,
                 arc=arc,shift=shift,sky=sky)
 
 

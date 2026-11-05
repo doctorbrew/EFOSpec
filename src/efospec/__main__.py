@@ -38,6 +38,15 @@ def main(argv=None):
     raw.add_argument('--output',required=True)
     raw.add_argument('--skip-report',action='store_true')
     raw.add_argument('--reuse-calibrations',help='Previous raw-only attempt; hashes and associations must match')
+    filtered = commands.add_parser('reduce-filtered', help='Separate native Gr13/GG495 standard counts and experimental responses')
+    filtered.add_argument('path', help='One observing night of raw data')
+    filtered.add_argument('--night', required=True, help='Observing date YYYY-MM-DD')
+    filtered.add_argument('--output', required=True, help='Fresh dated revision directory')
+    filtered.add_argument('--position', type=float, default=548., help='Expected spatial position in raw pixels')
+    filtered.add_argument('--spatial-half-width', type=int, default=100, help='Half-width of the calibrated extraction window in pixels')
+    filtered.add_argument('--background-reviews', help='Hash-bound reviewed background recipes for individual standards')
+    filtered.add_argument('--calibration-group', action='append', default=[], help='Previously built paired-native calibration directory; repeatable')
+    filtered.add_argument('--skip-report', action='store_true')
     revision = commands.add_parser('reextract', help='Replay a saved manual or automatic recipe')
     revision.add_argument('path')
     identity = revision.add_mutually_exclusive_group(required=True)
@@ -173,6 +182,14 @@ def main(argv=None):
             print(json.dumps({'conditional_tests_passed':result['conditional_tests_passed'],
                               'science_validated':result['science_validated'],'output':args.output}))
             return 0 if result['conditional_tests_passed'] else 1
+        if args.command == 'reduce-filtered':
+            from .filtered_reduction import reduce_filtered_night
+            result = reduce_filtered_night(args.path, args.output, night=args.night, position=args.position,
+                spatial_half_width=args.spatial_half_width, calibration_groups=args.calibration_group,
+                background_reviews=args.background_reviews, render_report=not args.skip_report)
+            print(json.dumps({'output_dir': result['output_dir'], 'counts_extracted': len(result['results']),
+                'errors': result['errors'], 'report': result.get('report'), 'science_validated': False}))
+            return int(result['status'] != 'complete' or result.get('report', {}).get('status') == 'incomplete')
         if args.command == 'reduce-native':
             from .native_reduction import reduce_pair
             result=reduce_pair(args.path,args.science,args.standard,args.output,

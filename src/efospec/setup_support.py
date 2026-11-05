@@ -43,7 +43,8 @@ def setup_support(setup):
         ])
     elif optical and filter_name == 'GG495':
         development.extend([
-            'Validate the existing experimental native extraction and response on filtered standards.',
+            ('Use reduce-filtered for separate experimental Gr13/GG495 standard counts; validate physical references and responses.'
+             if grism == 'Gr13' else 'Validate the existing experimental native extraction and response on filtered standards.'),
             'Measure the usable filter band from the data; do not substitute the Free-filter response.',
             'Retain matched Free/GG495 standard observations for a separately validated second-order correction.',
         ])
@@ -56,6 +57,7 @@ def setup_support(setup):
         'archive_issue': issue,
         'native_masters': 'experimental' if masters else 'not_enabled',
         'native_pair': 'experimental' if paired else 'not_enabled',
+        'separate_filtered_standards': 'experimental' if paired and grism == 'Gr13' and filter_name == 'GG495' else 'not_enabled',
         'scientifically_validated': False,
         'development_required': development,
         'validation_required': [

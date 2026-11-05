@@ -373,6 +373,16 @@ dialog.addEventListener('click', event => { if(event.target === dialog) dialog.c
 """
 
 
+EPOCH_CSS = """
+    main{max-width:1480px}.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0}.tabs a{padding:7px 12px;border:1px solid var(--line);border-radius:5px;text-decoration:none;background:var(--panel)}
+    .target>h2{margin-bottom:18px}.exposure{margin:24px 0 32px}.qc-plots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .qc-plots>.full-width{grid-column:1 / -1}
+    .enlarge{display:block;padding:0;border:0;background:transparent;width:100%;cursor:zoom-in}.enlarge:focus-visible{outline:3px solid var(--forest)}
+    .plots .plot-image{aspect-ratio:auto}td{white-space:normal}dialog{max-width:95vw;max-height:95vh;padding:10px;border:1px solid var(--line);border-radius:8px}dialog img{display:block;max-width:100%;height:auto}dialog button{position:sticky;top:0;padding:10px 18px;cursor:pointer}dialog::backdrop{background:#172c43bb}
+    @media(max-width:800px){.plots{grid-template-columns:1fr;overflow:visible}.qc-plots{grid-template-columns:1fr}.plot{min-width:0}h1{font-size:30px}.intro{display:block}}
+    """
+
+
 def build_epoch_page(night, project_root='.'):
     """Rebuild presentation only; saved science products and recipes stay unchanged."""
     if date.fromisoformat(night).isoformat() != night:
@@ -413,19 +423,11 @@ def build_epoch_page(night, project_root='.'):
     sections = ''.join(f'<section class="target" id="{anchor}"><h2>{title}</h2>{body}</section>'
                        for (anchor, title), body in zip(titles, content))
     stats = ' · '.join(f'{len(run.get(k, []))} {label}' for k, label in [('results','spectra'), ('errors','failed'), ('skipped','unsupported')])
-    extra_css = """
-    main{max-width:1480px}.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0}.tabs a{padding:7px 12px;border:1px solid var(--line);border-radius:5px;text-decoration:none;background:var(--panel)}
-    .target>h2{margin-bottom:18px}.exposure{margin:24px 0 32px}.qc-plots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-    .qc-plots>.full-width{grid-column:1 / -1}
-    .enlarge{display:block;padding:0;border:0;background:transparent;width:100%;cursor:zoom-in}.enlarge:focus-visible{outline:3px solid var(--forest)}
-    .plots .plot-image{aspect-ratio:auto}td{white-space:normal}dialog{max-width:95vw;max-height:95vh;padding:10px;border:1px solid var(--line);border-radius:8px}dialog img{display:block;max-width:100%;height:auto}dialog button{position:sticky;top:0;padding:10px 18px;cursor:pointer}dialog::backdrop{background:#172c43bb}
-    @media(max-width:800px){.plots{grid-template-columns:1fr;overflow:visible}.qc-plots{grid-template-columns:1fr}.plot{min-width:0}h1{font-size:30px}.intro{display:block}}
-    """
     warning = '<p class="note">'+_text('; '.join(page.warnings))+'</p>' if page.warnings else ''
     scope = ('<p class="caption">Selected targets: '+_text(', '.join(state['targets']))
              +'. Other exposures are listed for context; earlier results remain in Archive.</p>') if state.get('targets') else ''
     html = f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ePESSTO+ · {night} · EFOSpec</title><style>{CSS}{extra_css}</style></head><body><main>
+<title>ePESSTO+ · {night} · EFOSpec</title><style>{CSS}{EPOCH_CSS}</style></head><body><main>
 <header class="masthead"><span class="brand">ePESSTO+ / EFOSpec</span><span class="eyebrow">EFOSC2 · {night}</span></header>
 <div class="intro"><div><span class="eyebrow">Observing night</span><h1>{night}</h1></div><p>{stats}</p></div>
 <p class="caption">Archive-calibration reduction · {_text(state.get('status', 'unknown'))} · revision {_text(revision.name)}</p>
@@ -438,6 +440,80 @@ def build_epoch_page(night, project_root='.'):
     temporary.write_text(html);temporary.replace(destination)
     return {'path':str(destination), 'revision':revision.name, 'embedded_figures':page.images,
             'warnings':page.warnings, 'bytes':destination.stat().st_size}
+
+
+def build_filtered_page(run_dir):
+    """A portable supplement using the nightly report's style and QC renderer."""
+    root = Path(run_dir).resolve(); page = EpochPage(root)
+    run = page.read(root/'run.json')
+    if run.get('method') != 'native_filtered_standard_extraction' or run.get('status') == 'running':
+        raise ValueError('filtered report requires a completed separate-standard run')
+    night = date.fromisoformat(run['night']).isoformat()
+    rows, spectra, qc, backgrounds, calibrations = [], [], [], [], []
+    for result in sorted(run['results'], key=lambda row: (row['object'].casefold(), row['date_obs'])):
+        directory = Path(result['product']).parent.parent
+        directory.resolve().relative_to(root)
+        for filename, digest in result['product_sha256'].items():
+            path = Path(filename); path.resolve().relative_to(root)
+            if sha256(path) != digest: raise ValueError('filtered report product changed')
+        plots = directory/'plots'
+        drawing = page.read(plots/'plots.json')
+        if drawing.get('product_sha256') != result['product_sha256']:
+            raise ValueError('filtered figures do not match the extracted products')
+        for name, digest in drawing['figures_sha256'].items():
+            path = plots/name; path.resolve().relative_to(plots.resolve())
+            if sha256(path) != digest: raise ValueError('filtered figure changed')
+        title = _text(result['object']+' / '+result['date_obs'])
+        flux = result['flux_response']
+        if 'response' in flux and sha256(Path(flux['response']['path'])) != flux['response']['sha256']:
+            raise ValueError('filtered response changed before reporting')
+        rows.append([_text(result['object']), _text(result['date_obs']), 'Standard',
+                     'Gr13 / GG495', _text(result['setup']['slit']),
+                     'Counts extracted; <span class="qc-status-bad">flux unvalidated</span>'])
+        links = [page.download(Path(result[key]), label) for key, label in
+                 [('product','Counts FITS'), ('ascii','Counts ASCII'), ('native_spec1d','PypeIt spec1d')]]
+        links += [page.download(p, p.suffix[1:].upper()+' figure') for p in sorted(plots.glob('FitQC_*_counts.*'))
+                  if p.suffix in {'.pdf', '.jpg'}]
+        spectra.append('<article class="exposure"><h3>'+title+'</h3><p>'+' · '.join(links)+'</p>'
+            +page.figure(plots/'counts.png', result['object']+' / Extracted counts')+'</article>')
+        qc.append('<article class="exposure"><h3>'+title+'</h3>'
+            '<p class="qc-status-bad">Target identity unverified; exposure-specific flexure unmeasured.</p>'
+            '<div class="qc-plots">'+page.figure(plots/'science.png',result['object']+' / 2D Spectrum')
+            +page.figure(plots/'traces.png',result['object']+' / Sky-subtracted 2D spectrum')
+            +page.figure(plots/'profiles.png',result['object']+' / Spatial Profile and Trace Identification',full_width=True)
+            +'</div></article>')
+        bg = result['background']
+        backgrounds.append([title, str(bg['spatial_degree']), str(bg['minimum_side_samples']),
+                            f'{bg["reduced_chi2"]:.3f}', page.download(directory/'extraction.json','Fit and provenance')])
+        wave = result['wavelength']
+        detail = (page.download(Path(flux['response']['path']), 'Experimental response FITS')
+                  if 'response' in flux else _text(flux.get('error', 'No physical flux reference')))
+        calibrations.append('<article class="exposure"><h3>'+title+'</h3><p>'
+            +f'Arc RMS {wave["rms_pixel"]:.3f} pixel; held-out RMS {wave["held_out_rms_pixel"]:.3f} pixel. '
+            +'Wavelength support: '+'–'.join(f'{x:.1f}' for x in wave['valid_wave_vacuum_angstrom'])
+            +' vacuum Å.</p><p class="qc-status-bad">'+_text(flux['status'].replace('_',' '))
+            +'; no independent flux validation.</p><p>'+detail+'</p></article>')
+    issues = '<ul>'+''.join('<li>'+_text(s)+'</li>' for s in run['limitations'])+'</ul>'
+    issues += ''.join('<p class="qc-status-bad">'+_text(e['object']+': '+e['error'])+'</p>' for e in run['errors'])
+    titles = [('observations','Observing log'),('spectra','Spectra'),('issues','Issues'),('qc','Source QC'),
+              ('background','Background'),('calibrations','Calibrations'),('archive','Archive'),('records','Run record')]
+    bodies = [_table(['Source','UTC','Role','Setup','Slit','Outcome'],rows), ''.join(spectra), issues,
+              ''.join(qc), _table(['Exposure','Spatial degree','Minimum samples per side','Reduced chi2','Details'],backgrounds),
+              ''.join(calibrations), '<p>Earlier reductions and the main nightly report remain separate and unchanged.</p>',
+              '<p>Separate native filtered-standard reduction; second-order correction deferred.</p><p>'
+              +page.download(root/'run.json','Run manifest')+' · '+page.download(root/'setup-checks.json','Setup checks')+'</p>']
+    sections = ''.join(f'<section class="target" id="{a}"><h2>{t}</h2>{b}</section>'
+                       for (a,t),b in zip(titles,bodies))
+    html = f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ePESSTO+ · {night} · Filtered standards</title><style>{CSS}{EPOCH_CSS}</style></head><body><main>
+<header class="masthead"><span class="brand">ePESSTO+ / EFOSpec</span><span class="eyebrow">EFOSC2 · {night}</span></header>
+<div class="intro"><div><span class="eyebrow">Filtered standards</span><h1>{night}</h1></div><p>{len(run['results'])} extracted · {len(run['errors'])} failed</p></div>
+<p class="qc-status-bad">Experimental arc-calibrated counts. Flux calibration and exposure-specific flexure remain unvalidated.</p>
+<nav class="tabs" aria-label="Report sections">{''.join(f'<a href="#{a}">{t}</a>' for a,t in titles)}</nav>
+{sections}<footer>EFOSpec · {night} · Separate filtered reductions</footer></main>
+<dialog aria-label="Enlarged figure"><button type="button">Close</button><img alt=""></dialog><script>{SCRIPT}</script></body></html>'''
+    destination = root/'index.html'; destination.write_text(html)
+    return destination
 
 
 def main(argv=None):
