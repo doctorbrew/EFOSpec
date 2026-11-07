@@ -184,7 +184,7 @@ def test_copied_page_works_offline_with_zoom_navigation_and_download(epoch_page,
         page.locator('.enlarge').first.click()
         assert page.locator('dialog').is_visible()
         page.get_by_role('button', name='Close', exact=True).click()
-        page.get_by_role('link', name='Archive', exact=True).click()
+        page.get_by_role('link', name='Reduction Archive', exact=True).click()
         assert page.url.endswith('#archive')
         with page.expect_download() as download:
             page.get_by_role('link', name='FITS', exact=True).click()

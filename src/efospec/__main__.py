@@ -47,6 +47,14 @@ def main(argv=None):
     filtered.add_argument('--background-reviews', help='Hash-bound reviewed background recipes for individual standards')
     filtered.add_argument('--calibration-group', action='append', default=[], help='Previously built paired-native calibration directory; repeatable')
     filtered.add_argument('--skip-report', action='store_true')
+    catalogues = commands.add_parser('acquisition-catalogues', help='Solve acquisition images locally and overlay NED/SDSS/AllWISE catalogues')
+    catalogues.add_argument('night', help='One observing date YYYY-MM-DD')
+    catalogues.add_argument('--output', required=True, help='Fresh directory inside runs/DATE/QC/')
+    catalogues.add_argument('--project-root', default='.')
+    catalogues.add_argument('--target', action='append', default=[], help='Exact transient name; repeatable')
+    catalogues.add_argument('--catalogue', action='append', choices=['NED','SDSS','AllWISE'], help='Default: all three')
+    catalogues.add_argument('--timeout', type=float, default=20, help='Per-service read timeout in seconds')
+    catalogues.add_argument('--solver', default='solve-field', help='Local Astrometry.net executable')
     revision = commands.add_parser('reextract', help='Replay a saved manual or automatic recipe')
     revision.add_argument('path')
     identity = revision.add_mutually_exclusive_group(required=True)
@@ -182,6 +190,14 @@ def main(argv=None):
             print(json.dumps({'conditional_tests_passed':result['conditional_tests_passed'],
                               'science_validated':result['science_validated'],'output':args.output}))
             return 0 if result['conditional_tests_passed'] else 1
+        if args.command == 'acquisition-catalogues':
+            from .acquisition_catalogues import check_acquisition_catalogues
+            from .field_catalogues import CATALOGUES
+            result = check_acquisition_catalogues(args.night, args.output, project_root=args.project_root,
+                targets=args.target, catalogues=args.catalogue or CATALOGUES, timeout=args.timeout, solver=args.solver)
+            print(json.dumps({'night':args.night,'status':result['status'],'fields':len(result['fields']),
+                              'output':args.output,'host_identification':'not_assigned'}))
+            return int(result['status'] != 'complete')
         if args.command == 'reduce-filtered':
             from .filtered_reduction import reduce_filtered_night
             result = reduce_filtered_night(args.path, args.output, night=args.night, position=args.position,

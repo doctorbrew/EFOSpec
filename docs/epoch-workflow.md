@@ -65,6 +65,10 @@ runs/2026-10-28/nightly/<processing-UTC>-<unique-id>/
 ## Portable nightly log
 
 - The date's `index.html` contains observations, spectra, issues, source/background QC, calibrations and archive summaries.
+- The final section is **Reduction Archive**: retained reductions, folder locations,
+  then **Download logs** (log files only). There is no separate Run record section
+  or archive-calibration/status/revision caption beneath the date. Manifests and
+  provenance remain saved on disk.
 - Figures and product/log downloads are embedded; a copied HTML file works offline.
 - Figure enlargement and navigation stay within the page; existing PDF/JPG exports are preserved.
 - `nightly/index.html` remains an entry to revision-specific records.
@@ -77,6 +81,10 @@ python scripts/build_epoch_fieldnotes.py 2026-10-28
 For explicitly selected targets, [bounded PypeIt background trials](local-pypeit-background.md)
 save their geometry checks, candidate recipes and new extraction revisions inside
 the date's `QC/` folder. These trials do not replace `nightly/current.json`.
+
+[Acquisition catalogue QC](acquisition-catalogues.md) optionally solves acquisition
+images locally and adds NED/SDSS/AllWISE overlays to Source QC. Its dated command
+is separate from reduction; rebuilding the report uses only saved results.
 
 ## Retained results
 

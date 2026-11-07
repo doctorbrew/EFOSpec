@@ -210,7 +210,7 @@ class EpochPage:
                 profile_description += 'The profiles use a retained two-sided PypeIt fit; the 2D panels above retain the parent reduction state. '
             if profile_info.get('profile_background_x_limits'):
                 profile_description += 'Curves are shown only within the supported background interval; candidate markers can lie outside it. '
-            sections.append(f'<article class="exposure"><h3>{_text(title)}</h3>'
+            sections.append((source_order(review), f'<article class="exposure"><h3>{_text(title)}</h3>'
                 f'<p class="caption">{_text(raw)} · Identity {_text(review.get("identity", "unverified").lower())}</p>'
                 f'<p>{_text(candidates)} <span class="caption">(raw detector pixels)</span></p>'
                 '<p class="caption">Raw detector: full frame and extraction window. Candidate traces: saved source paths. '
@@ -224,7 +224,7 @@ class EpochPage:
                 + ('<p class="caption">Trace colors follow decreasing median signal: red, blue, green, brown. '
                    'Candidate IDs remain fixed. '
                    + self.download(folder/'profile-display.json', 'Profile display details')+'</p>'
-                   if (folder/'profile-display.json').is_file() else '')+'</article>')
+                   if (folder/'profile-display.json').is_file() else '')+'</article>'))
             # Discover saved polynomial experiments; never invent a global C3 recipe.
             rows, background_cards, experiments = [], [], {}
             for path in sorted(set(original.glob('*/background.json')) | set(folder.glob('*/background.json'))):
@@ -249,7 +249,9 @@ class EpochPage:
                     '<p class="note">Provisional source selection for this exposure only. Background-subtracted counts; no flux calibration or verified host separation.</p>'
                     + _table(['Candidate', 'Raw x', 'Degree', 'Background x bands', 'Valid spectrum'], rows)
                     + '<div class="qc-plots">'+''.join(background_cards)+'</div></article>')
-        return (''.join(sections) or '<p>No source-review packets for this revision.</p>',
+        from .catalogue_report import catalogue_qc
+        sections.extend(catalogue_qc(self, run))
+        return (''.join(html for _, html in sorted(sections, key=lambda item:item[0])) or '<p>No source-review packets for this revision.</p>',
                 (''.join(backgrounds)+self.local_background_checks(revision,run))
                 or '<p>No retained polynomial background experiments for these exposures.</p>')
 
@@ -359,6 +361,28 @@ class EpochPage:
                          len(run.get('errors', [])), len(run.get('skipped', []))])
         return _table(['Retained reduction', 'Spectra', 'Failed', 'Unsupported'], rows) if rows else '<p>No earlier reductions.</p>'
 
+    def archive_folders_and_logs(self, revision):
+        current = revision.relative_to(self.root)
+        folders = [
+            (current/'reduction/products', 'Current reduced spectra (FITS and ASCII)'),
+            (current/'QC', 'Current source and background inspection'),
+            (current/'logs', 'Current workflow, reduction and report logs'),
+            (Path('nightly'), 'Current and previous processing revisions'),
+            (Path('QC'), 'Retained source and background experiments'),
+            (Path('calibrations'), 'Native masters and group selections'),
+            (Path('archive'), 'Earlier reductions, diagnostics and logs'),
+        ]
+        if (self.root/'filtered').is_dir():
+            folders.insert(-1, (Path('filtered'), 'Separate filtered-standard reductions and reports'))
+        content = '<h3>Folders</h3><p>Night folder: <code>'+_text(str(self.root)+'/')+'</code></p>'
+        content += _table(['Folder', 'Contents'], [
+            ['<code>'+_text(str(path)+'/')+'</code>', label] for path, label in folders])
+        downloads = [self.download(p, p.name) for p in sorted((revision/'logs').glob('*.log'))]
+        content += '<details><summary>Download logs</summary>'
+        content += ('<ul>'+''.join('<li>'+d+'</li>' for d in downloads if d)+'</ul>'
+                    if any(downloads) else '<p>No saved logs.</p>')
+        return content+'</details>'
+
 
 SCRIPT = """
 const dialog = document.querySelector('dialog');
@@ -376,6 +400,7 @@ dialog.addEventListener('click', event => { if(event.target === dialog) dialog.c
 EPOCH_CSS = """
     main{max-width:1480px}.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0}.tabs a{padding:7px 12px;border:1px solid var(--line);border-radius:5px;text-decoration:none;background:var(--panel)}
     .target>h2{margin-bottom:18px}.exposure{margin:24px 0 32px}.qc-plots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    #archive code{overflow-wrap:anywhere}
     .qc-plots>.full-width{grid-column:1 / -1}
     .enlarge{display:block;padding:0;border:0;background:transparent;width:100%;cursor:zoom-in}.enlarge:focus-visible{outline:3px solid var(--forest)}
     .plots .plot-image{aspect-ratio:auto}td{white-space:normal}dialog{max-width:95vw;max-height:95vh;padding:10px;border:1px solid var(--line);border-radius:8px}dialog img{display:block;max-width:100%;height:auto}dialog button{position:sticky;top:0;padding:10px 18px;cursor:pointer}dialog::backdrop{background:#172c43bb}
@@ -400,18 +425,7 @@ def build_epoch_page(night, project_root='.'):
     qc, background = page.qc(revision, run)
     titles = [('observations', 'Observing log'), ('spectra', 'Spectra'), ('issues', 'Issues'),
               ('qc', 'Source QC'), ('background', 'Background'), ('calibrations', 'Calibrations'),
-              ('archive', 'Archive'), ('records', 'Run record')]
-    stage_rows = [[_text(k), _text(v.get('status', 'unknown')), _text(v.get('error', ''))]
-                  for k, v in state.get('stages', {}).items()]
-    downloads = [page.download(revision/'observing-log.csv', 'Observing log CSV'),
-                 page.download(revision/'night.json', 'Workflow JSON'), page.download(revision/'reduction/run.json', 'Reduction JSON')]
-    downloads += [page.download(p, p.name) for p in sorted((revision/'logs').glob('*.log'))]
-    downloads += [page.download(revision/'reviewed-sources.json','Reviewed source identifications')]
-    records = _table(['Stage', 'Status', 'Error'], stage_rows)
-    records += '<details><summary>Download logs and provenance</summary><ul>'+''.join('<li>'+d+'</li>' for d in downloads if d)+'</ul></details>'
-    records += _table(['Folder', 'Contents'], [['nightly/', 'Current and previous processing revisions'],
-        ['QC/', 'Retained source and background experiments'], ['calibrations/', 'Native masters and group selections'],
-        ['archive/', 'Earlier reductions, diagnostics and logs']])
+              ('archive', 'Reduction Archive')]
     calibration_content=page.calibrations(revision)
     native=revision/'native-validation'
     if (native/'validation.json').exists():
@@ -419,18 +433,17 @@ def build_epoch_page(night, project_root='.'):
         calibration_content+=page.download(native/'validation.json','Native validation record')
         calibration_content+=page.wavelength_checks(native)
     content = [page.observations(revision, run), page.spectra(revision/'reduction', run), page.problems(run,revision/'reduction'), qc,
-               background, calibration_content, page.archive(revision), records]
+               background, calibration_content, page.archive(revision)+page.archive_folders_and_logs(revision)]
     sections = ''.join(f'<section class="target" id="{anchor}"><h2>{title}</h2>{body}</section>'
                        for (anchor, title), body in zip(titles, content))
     stats = ' · '.join(f'{len(run.get(k, []))} {label}' for k, label in [('results','spectra'), ('errors','failed'), ('skipped','unsupported')])
     warning = '<p class="note">'+_text('; '.join(page.warnings))+'</p>' if page.warnings else ''
     scope = ('<p class="caption">Selected targets: '+_text(', '.join(state['targets']))
-             +'. Other exposures are listed for context; earlier results remain in Archive.</p>') if state.get('targets') else ''
+             +'. Other exposures are listed for context; earlier results remain in Reduction Archive.</p>') if state.get('targets') else ''
     html = f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ePESSTO+ · {night} · EFOSpec</title><style>{CSS}{EPOCH_CSS}</style></head><body><main>
 <header class="masthead"><span class="brand">ePESSTO+ / EFOSpec</span><span class="eyebrow">EFOSC2 · {night}</span></header>
 <div class="intro"><div><span class="eyebrow">Observing night</span><h1>{night}</h1></div><p>{stats}</p></div>
-<p class="caption">Archive-calibration reduction · {_text(state.get('status', 'unknown'))} · revision {_text(revision.name)}</p>
 {scope}
 <nav class="tabs" aria-label="Report sections">{''.join(f'<a href="#{a}">{t}</a>' for a,t in titles)}</nav>
 {warning}{sections}<footer>EFOSpec · {night} · Saved figures and measurements</footer></main>

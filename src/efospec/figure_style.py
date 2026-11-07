@@ -37,7 +37,7 @@ def plain_tex(text):
 
 @house_style
 def save_qc(fig, directory, kind, object_name, *, tick_fontsize=18, legend_fontsize=18):
-    """Finalise limits first, style axes, export canonical files plus PNG preview."""
+    """Export house-style figures; tick_fontsize is the base before the 1.3 factor."""
     from matplotlib.ticker import MaxNLocator,FixedLocator,NullLocator
     from matplotlib.text import Text
     for ax in fig.axes:
@@ -45,14 +45,15 @@ def save_qc(fig, directory, kind, object_name, *, tick_fontsize=18, legend_fonts
         if ax.get_label()=='<colorbar>':
             # ImageNormalize uses a function scale; linear/log tick locators
             # would misrepresent that colour scale.
-            ax.tick_params(direction='in',labelsize=tick_fontsize,length=9,width=1.6)
+            ax.tick_params(direction='in',which='both',labelsize=style.tick_label_size(tick_fontsize),length=9,width=1.6)
+            ax.xaxis.get_offset_text().set_fontsize(style.tick_label_size(tick_fontsize))
+            ax.yaxis.get_offset_text().set_fontsize(style.tick_label_size(tick_fontsize))
             continue
         limits=ax.get_xlim()
         ticks=MaxNLocator(nbins=6).tick_values(*limits)
         step=abs(ticks[1]-ticks[0])
         fixed=ax.xaxis.get_major_locator()
-        style.set_plotparams(ax,xticks=(step,step/4),yticks=None,grid=False)
-        ax.tick_params(axis='both', which='both', labelsize=tick_fontsize)
+        style.set_plotparams(ax,xticks=(step,step/4),yticks=None,grid=False,fs=tick_fontsize)
         if isinstance(fixed,FixedLocator):
             ax.xaxis.set_major_locator(fixed);ax.xaxis.set_minor_locator(NullLocator())
         ax.title.set_fontsize(20)

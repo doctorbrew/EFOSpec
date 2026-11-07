@@ -48,13 +48,21 @@ FILT_GROUPS = {
 FILT_GRP_COL = dict(zip(FILT_GROUPS, [HIROSHIGE(x) for x in np.linspace(0.05, 0.95, 4)]))
 
 
+TICK_LABEL_SCALE = 1.3
+
+
+def tick_label_size(base=18):
+    """Apply the mandatory 30% increase once, from a declared base size."""
+    return float(base) * TICK_LABEL_SCALE
+
+
 def apply_style():
     """Apply the established SciencePlots + LaTeX rcParams."""
     plt.style.use("science")
     plt.rcParams.update({
         "text.usetex": True, "font.family": "serif", "font.size": 18,
         "axes.labelsize": 22, "axes.titlesize": 20, "legend.fontsize": 18,
-        "xtick.labelsize": 18, "ytick.labelsize": 18,
+        "xtick.labelsize": tick_label_size(), "ytick.labelsize": tick_label_size(),
         "figure.dpi": 300, "savefig.dpi": 300, "savefig.bbox": "tight",
         "lines.linewidth": 2.0, "lines.markersize": 10, "errorbar.capsize": 3,
     })
@@ -105,16 +113,20 @@ def _linear_locators(axis, limits, ticks):
 
 
 def _tick_style(ax, fs):
+    fs = tick_label_size(fs)
     ax.xaxis.set_ticks_position("both")
     ax.yaxis.set_ticks_position("both")
     ax.tick_params(axis="both", which="major", direction="in", width=1.6, length=9, color="k", labelsize=fs)
     ax.tick_params(axis="both", which="minor", direction="in", width=1.0, length=5, color="k", labelsize=fs)
+    ax.xaxis.get_offset_text().set_fontsize(fs)
+    ax.yaxis.get_offset_text().set_fontsize(fs)
 
 
 def set_plotparams(ax_obj, xticks=(1, 0.5), yticks=(1, 0.5), grid=True, fs=18, tick_fs=None):
     """Style linear axes with inward ticks; grid remains visually absent.
 
     Apply after setting data/limits. Use None for automatic tick locations.
+    fs and tick_fs are base sizes; the mandatory 1.3 factor is applied once.
     The retained grid argument does not enable a visible grid in the house style.
     """
     if ax_obj.get_xscale() != "linear" or ax_obj.get_yscale() != "linear":
@@ -126,7 +138,7 @@ def set_plotparams(ax_obj, xticks=(1, 0.5), yticks=(1, 0.5), grid=True, fs=18, t
 
 
 def set_plotparams_log(ax_obj, axis="both", grid=True, fs=18):
-    """Style already-logarithmic axes, preserving their bases and locators."""
+    """Style log axes; fs is the base size before the mandatory 1.3 factor."""
     if axis not in {"x", "y", "both"}:
         raise ValueError("axis must be x, y, or both")
     for name in (["x", "y"] if axis == "both" else [axis]):

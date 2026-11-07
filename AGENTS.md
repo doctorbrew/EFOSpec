@@ -25,7 +25,7 @@
 
 ## Epoch workflow
 
-- **The approved 2026-10-29 report is the final daily-log template.** Keep its Fieldnotes layout with the user-facing masthead `ePESSTO+ / EFOSpec`. Deliver `runs/YYYY-MM-DD/index.html` with the observing log, spectra, issues, source QC, background, calibrations, archive and run record in consecutive sections, including 2026-10-28. Preserve this design for future epochs; make requested refinements incrementally. Use the agent-installed `webpage-spectralatlas` skill when available. Sort source calibration checks AT, then SN, then other sources; show failed or unvalidated checks in red.
+- **The approved 2026-10-29 report is the final daily-log template.** Keep its Fieldnotes layout with the user-facing masthead `ePESSTO+ / EFOSpec`. Deliver `runs/YYYY-MM-DD/index.html` with the observing log, spectra, issues, source QC, background, calibrations and Reduction Archive in consecutive sections, including 2026-10-28. The final Reduction Archive contains retained reductions, folder details and log-only downloads; omit a separate Run record section and the archive-calibration/status/revision caption beneath the date. Preserve this design for future epochs; make requested refinements incrementally. Use the agent-installed `webpage-spectralatlas` skill when available. Sort source calibration checks AT, then SN, then other sources; show failed or unvalidated checks in red.
 - Automatic source geometry follows the brightest positive PypeIt source peak within 15 spatial pixels of the expected central position. Explicit reviewed choices take precedence (SN2026ayt C2; SN2026aadx C3). This extraction rule alone does not establish astrophysical identity. Keep positive-source/SNR checks and bounded two-sided background support.
 - Coding-agent skills belong in the user's agent configuration, never in this repository. Keep skill definitions, copies and downloadable skill bundles outside the checkout; the report generator and project documentation remain here.
 - Run and report one explicitly named observing date at a time. Prefer `python scripts/reduce_epoch.py YYYY-MM-DD`, or its separate log/reduction/report scripts. The next epoch is a new invocation with a new date; do not introduce an automatic multi-night loop.
@@ -34,10 +34,14 @@
 
 ## Documentation and verification
 
-- **All new or regenerated scientific plots must use the `plot-style` skill**, including QC, detector images, profiles and diagnostic spectra. Use the existing root `plot_style.py`: SciencePlots, mandatory LaTeX, Hiroshige colours, inward ticks after setting limits, and both PDF + 300-dpi JPG. PNGs may accompany these as report previews. Do not silently use Matplotlib defaults.
+- **All new or regenerated scientific plots must use the `plot-style` skill**, including QC, detector images, profiles and diagnostic spectra. Use the existing root `plot_style.py`: SciencePlots, mandatory LaTeX, Hiroshige colours, inward ticks after setting limits, all tick labels enlarged by 30% once from the declared base (18 → 23.4 pt), and both PDF + 300-dpi JPG. PNGs may accompany these as report previews. Do not silently use Matplotlib defaults.
 
 - Keep Markdown compact; prefer short bullets and explicit delivered/planned status.
 - Use observing-night paths such as `runs/2024-11-14` in instructions. Identify historical test-directory names as internal evidence only.
 - Do not describe browser integration tests as desktop-app tests.
 - Verify desktop interactions, cancellation, recipe replay, and unchanged scientific outputs on every platform claimed as supported.
 - Use focused checks for the changed scope; documentation changes need link/consistency checks, not new implementation-mirroring tests.
+
+## Website and document naming
+
+- Use the actual project name and content purpose in visible branding. Do not use “Scientific fieldnotes” or “Fieldnotes” in generated titles, mastheads, headings, subtitles or eyebrow text; the style name is internal only.
