@@ -231,6 +231,11 @@ def test_acquisition_qc_to_offline_report_preserves_raw_data_and_rejects_tamperi
     html=(root/'index.html').read_text()
     assert 'Test galaxy' in html and 'Only catalogue-classified galaxy candidates are marked' in html
     assert 'unavailable</span>' in html and 'Reduction Archive' in html
-    assert '#records' not in html and 'data:image/jpeg;base64,' in html
+    assert '#records' not in html and 'data:image/webp;base64,' in html
+    # The viewer-safe page embeds only a compact preview; the full-resolution
+    # figure stays a sibling download and is embedded in the portable export.
+    assert 'data:image/jpeg;base64,' not in html
+    portable=(root/'index-portable.html').read_text()
+    assert 'data:image/jpeg;base64,' in portable and 'data:application/pdf;base64,' in portable
     Path(field['astrometry']['wcs']).write_bytes(b'changed')
     with pytest.raises(ValueError,match='WCS changed'):build_epoch_page(night,tmp_path)
