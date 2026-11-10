@@ -91,7 +91,9 @@ class ReportTests(unittest.TestCase):
         (self.run/'style-preview/FitTrace_a.jpg').unlink()
         status = write_report(self.run)
         self.assertEqual(status['status'], 'incomplete')
-        self.assertEqual(status['missing_figures'], [{'product': 'a_f.fits', 'figure': '2D trace'}])
+        self.assertEqual(status['missing_figures'],
+                         [{'product': 'a_f.fits',
+                           'figure': '2D spectrum before and after sky subtraction'}])
         self.assertEqual(len(Page((self.run/'index.html').read_text()).images), 2)
 
     def test_changed_science_product_cannot_reuse_stale_figures(self):

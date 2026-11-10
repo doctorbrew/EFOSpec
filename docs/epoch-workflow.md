@@ -2,7 +2,7 @@
 
 Always name the observing date. One invocation processes one date only. For the next epoch, change the date; there is no automatic multi-night loop.
 
-The user-approved **2026-10-29** page is the final daily-log template for both October nights and future epochs. Keep its Fieldnotes structure and use the masthead **ePESSTO+ / EFOSpec**. Calibration checks appear in AT, SN, then other-source order; failed or unvalidated checks are red. The optional `$webpage-spectralatlas` coding-agent skill is installed in the user's agent configuration, outside this repository. The pipeline does not require a skill installation to generate its report.
+The user-approved **2026-10-29** page is the final daily-log template for both October nights and future epochs. Keep its approved section structure and use the masthead **ePESSTO+ / EFOSpec**. Calibration checks appear in AT, SN, then other-source order; failed or unvalidated checks are red. The optional `$webpage-spectralatlas` coding-agent skill is installed in the user's agent configuration, outside this repository. The pipeline does not require a skill installation to generate its report.
 
 Activate the existing EFOSpec Python environment and run from the EFOSpec checkout:
 
@@ -31,7 +31,7 @@ python scripts/03_report_epoch.py 2026-10-28
 | Stage | Work |
 | --- | --- |
 | Observing log | Inventory `data/DATE/`; record FITS roles, dates and hashes in CSV/JSON |
-| Reduction | Verify unchanged inputs; reduce science/standards using archived calibrations |
+| Reduction | Verify unchanged inputs; build native raw calibrations and same-night standard responses |
 | Final report | Build the nightly log, plots and candidate QC; retain partial results |
 
 - Observing date spans noon UTC to noon the next day.
@@ -42,6 +42,53 @@ python scripts/03_report_epoch.py 2026-10-28
 ## Dated outputs
 
 Open **`runs/2026-10-28/index.html`**.
+
+The opening page embeds lightweight WebP figure previews, so figures also work
+in HTML viewers without access to neighbouring files. Full-resolution figures
+and scientific products remain unchanged. Downloads use the sibling
+`report-assets/` folder: open the report in Chrome or Safari with that folder
+alongside to download files. For a single-file offline copy including downloads,
+use `index-portable.html`, also linked from the footer. It can exceed 100 MB;
+open it in a browser rather than a chat file preview.
+Both versions are written by the same renderer without re-extracting spectra.
+
+Spatial-profile figures show the summed data and saved PypeIt sky model beside
+the sky-subtracted profile in each wavelength bin. The three curves use identical
+native pixels, with linear electron units. The spatial degree comes from the saved
+fit; no new polynomial is fitted to the sums. Model curves stop at the common
+background-band envelope rather than displaying unsupported extrapolation. The
+figures carry no explanatory paragraphs or per-panel scale annotations: the
+summation rule, display limits and excluded columns stay in the saved
+diagnostics and the report caption.
+
+The per-source 2D card shows both sky-subtraction stages on one wavelength axis,
+above and below, so the fitted sky can be judged against its residual.
+
+Recovery-QC spatial profiles exclude the outermost three unprotected columns on
+each side from the limit estimate. Slit-boundary columns have no fitted
+background and run an order of magnitude above the sources, and the spike rule
+deliberately never masks a run touching the array end. Those samples remain
+plotted; only the viewport changes. Protected candidate and aperture columns are
+never dropped, and `profile-display.json` records the margin.
+
+Acquisition image displays use `RdBu`; spectral 2D and raw spectral detector
+images use grayscale (`gray_r`). Redshift-evidence cut-outs use `RdBu_r` about
+the clipped median of each panel, so line emission above the local background
+reads red and absorption or over-subtraction reads blue. All retain the arcsinh
+stretch. The 2D spectral panels take their noise width from the sky-sampling
+bands as before, but their upper limit from the 99.5th data percentile: a
+sky-subtracted trace sits hundreds of background sigma above zero, and the
+earlier five-sigma limit saturated it so only noise texture stayed visible. Three-sigma
+clipping (median/MAD, up to five iterations) estimates the
+colour scale only: all finite image samples remain in the display and numerical
+products are untouched. Residual scales are symmetric about zero; raw/acquisition
+scales about the clipped median, with limits at five robust sigma and a one-sigma
+arcsinh width. Acquisition full/zoom views share one normalization. A yellow
+outline on each full image marks the exact displayed bounds of the right-hand zoom.
+Implementation references: [Astropy sigma clipping](https://docs.astropy.org/en/stable/api/astropy.stats.sigma_clip.html)
+and [Matplotlib invertible colour normalization](https://matplotlib.org/stable/api/_as_gen/matplotlib.colors.FuncNorm.html).
+Per-date `report-assets/sky-model-arcsinh-verification.json` records unchanged
+inputs; prior plots are retained under each run's `archive/before-sky-model-arcsinh/`.
 
 ```text
 runs/2026-10-28/nightly/<processing-UTC>-<unique-id>/
@@ -62,20 +109,47 @@ runs/2026-10-28/nightly/<processing-UTC>-<unique-id>/
 - The report can be regenerated without re-extraction.
 - Raw files and accepted products remain unchanged.
 
+## Independent redshift candidates
+
+After reducing one night, run the automated 2D emission-line search and recorded
+NED cross-match into a fresh QC revision:
+
+```sh
+python scripts/measure_host_redshifts.py 2026-10-28 \
+  --output runs/2026-10-28/QC/host-redshifts-NEW --update-report
+```
+
+The current accepted and rescue products are selected and hash-checked. The
+observing table keeps NED and spectral redshifts separate, with catalogue methods,
+candidate associations and provisional wavelength flags. No NED prior enters
+the spectral fit. Missing or ambiguous line systems remain without an estimate;
+this emission-line workflow does not cover absorption-only hosts. Measurements,
+plots and input hashes remain in the revision; `QC/redshift-current.json` selects
+the current results. An incompatible parent revision prevents activation.
+See [the delivered method and validation record](rescue-2026-11-09.md).
+
 ## Portable nightly log
 
-- The date's `index.html` contains observations, spectra, issues, source/background QC, calibrations and archive summaries.
+- The date's `index.html` contains observations, spectra, issues, source QC,
+  redshift evidence, background QC, calibrations and archive summaries.
+- **Redshift evidence** is its own tab when measurements are current: it has its
+  own inputs, figures and provenance and reads as a separate measurement from
+  source QC. Spectral redshifts are quoted as `z ± error`, where the error is
+  the larger of the inverse-variance fit error and the standard error of the
+  group-to-group scatter over every consistent narrow emission-line group. It
+  excludes wavelength, background and resampling systematics.
 - The final section is **Reduction Archive**: retained reductions, folder locations,
   then **Download logs** (log files only). There is no separate Run record section
   or archive-calibration/status/revision caption beneath the date. Manifests and
   provenance remain saved on disk.
-- Figures and product/log downloads are embedded; a copied HTML file works offline.
+- `index.html` embeds its figure previews; downloads load from `report-assets/` offline.
+  `index-portable.html` embeds them all and can be copied as one self-contained file.
 - Figure enlargement and navigation stay within the page; existing PDF/JPG exports are preserved.
 - `nightly/index.html` remains an entry to revision-specific records.
 - Rebuild from saved results without re-extraction or new plots:
 
 ```sh
-python scripts/build_epoch_fieldnotes.py 2026-10-28
+python -m efospec.epoch_report 2026-10-28
 ```
 
 For explicitly selected targets, [bounded PypeIt background trials](local-pypeit-background.md)
@@ -94,6 +168,7 @@ is separate from reduction; rebuilding the report uses only saved results.
 | `QC/` | Retained manual source/background experiments |
 | `calibrations/` | Retained masters and group selections |
 | `archive/` | Earlier reductions, diagnostics, inventories and logs |
+| `report-assets/` | Byte-identical figure/download payloads for the small opening page |
 
 - Use the date's `index.html`/`README.md` when available, or `nightly/index.html`.
 - Write new results inside dated revisions.
@@ -115,13 +190,13 @@ is separate from reduction; rebuilding the report uses only saved results.
 - Reporting continues after partial reduction. For separate steps, run `report` even after exit `1`.
 - `night.json` records stage outcomes; missing/incomplete workers cannot become successes.
 - A per-date lock prevents concurrent operations. Inspect its PID before removing a stale `.running` lock.
-- This workflow uses the experimental archive-calibration path; native calibration remains separate.
+- New revisions default to `--flux-calibration same-night`: native raw bias/flat/arc processing and contemporary responses. `--flux-calibration archive` explicitly replays the archived bridge. Existing revisions without a recorded policy retain archive replay. Policy changes require a new revision.
 - Candidate QC prepares inspection materials; it does not identify or extract a target automatically.
 - Recovery recipes remain bound to exposure/input hashes. A previous source's bands are never global defaults.
 
 ## Reviewed targets and targeted reruns
 
-- `--target SN2026ayt` restricts a new dated revision to that exact FITS `OBJECT`.
+- `--target SN2026ayt` selects that exact FITS `OBJECT`; the same-night route also includes matching standard exposures needed for calibration.
   The nightly log states this scope; other exposures remain visible as outside
   the selection. Earlier full-night reductions remain in the archive.
 - `--reviewed-sources FILE.json` records explicit visual identifications and
@@ -154,3 +229,20 @@ is separate from reduction; rebuilding the report uses only saved results.
 - Original workflow validation: **174 tests passed, 90.69% coverage**; wheel build passed.
 - Evidence: the dated `nightly/current.json`, its revision's `verification.json`, and `runs/epoch-workflow-full-tests.log`.
 - [Current desktop validation](validation-desktop-2026-11.md) · [Desktop guide](desktop.md).
+
+## Contemporary daily standards
+
+- Implementation and limits: [daily response calibration](daily-standard-calibration.md).
+- Same observing night and identical grism/filter/slit/binning/readout are required.
+  Among successful fits, choose the nearest observation in MJD; ties fail explicitly.
+- Standards and science use the same native raw processing and bounded extraction.
+  Science retains both sky anchors and the independent 6363 Å check. Short standards
+  remain labelled arc-only; their wavelength status accompanies the applied response.
+- Missing/failed standards never trigger an archived-response fallback. Counts from
+  a successfully extracted standard survive a response-fit failure.
+- New flux delivery currently supports Gr11/Gr13 Free only. Filtered and red work
+  stays in the separate diagnostic routes; no filtered response substitutes for Free.
+- Archive-grid reviewed recipes fail explicitly in the native route: they require
+  new native geometry review, including previously identified C2/C3 sources.
+- The Calibration section shows actual standard exposures, response downloads and
+  the number of held-out transfers. Absolute flux accuracy remains unvalidated.

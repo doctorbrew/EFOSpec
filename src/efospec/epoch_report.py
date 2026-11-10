@@ -1,4 +1,4 @@
-"""Portable, read-only Fieldnotes assembled from one epoch's saved evidence."""
+"""Read-only nightly reports assembled from one epoch's saved evidence."""
 import argparse
 import base64
 from collections import Counter
@@ -76,7 +76,7 @@ class EpochPage:
                 f'<button class="enlarge" type="button" aria-label="Enlarge {_text(title)}">'
                 f'<img loading="lazy" src="{url}" alt="{_text(title)}"></button></figure>')
 
-    def spectra(self, run_dir, run):
+    def spectra(self, run_dir, run, *, id_prefix='spectrum'):
         records = [self.read(p) for p in sorted((run_dir/'style-preview').glob('FitSpectrum_*.json'))]
         sections = []
         for i, result in sorted(enumerate(run.get('results', [])), key=lambda item: source_order(item[1])):
@@ -88,7 +88,7 @@ class EpochPage:
             outputs = [run_dir/'style-preview'/Path(p).name for p in record.get('outputs', [])]
             title = f"{result.get('object', 'Unknown')} · {result.get('grism', '')} · {result.get('slit', '')}"
             cards = []
-            for prefix, name in [('FitSpectrum_', 'Spectrum'), ('FitTrace_', '2D trace'), ('FitSpatialProfile_', 'Spatial profile')]:
+            for prefix, name in [('FitSpectrum_', 'Spectrum'), ('FitTrace_', '2D spectrum before and after sky subtraction'), ('FitSpatialProfile_', 'Spatial profile')]:
                 images = [p for p in outputs if p.name.startswith(prefix) and p.suffix == '.jpg']
                 cards.append(self.figure(images[0] if len(images) == 1 else None, title+' / '+name))
             downloads = ' · '.join(filter(None, [self.download(product, 'FITS'), self.download(product.with_suffix('.asci'), 'ASCII')]))
@@ -97,12 +97,25 @@ class EpochPage:
                 ' · <span title="The extracted detector trace has not been independently matched to the named target; extraction itself succeeded.">Target identity unverified</span>')
             if result.get('target',{}).get('identity',{}).get('method') == 'operator_visual':
                 identity = ' · C'+str(result['target']['identity']['candidate'])+' identified visually by operator'
-            sections.append(f'<article class="exposure" id="spectrum-{i}"><h3>{_text(title)}</h3>'
+            if result.get('status')=='PROVISIONAL':
+                identity += ' · <strong class="qc-status-bad">Provisional: wavelength unvalidated</strong>'
+                identity += ' · '+_text(result.get('interpretation',''))
+            sections.append(f'<article class="exposure" id="{_text(id_prefix)}-{i}"><h3>{_text(title)}</h3>'
                 f'<p class="caption">{_text(result.get("date_obs", ""))} UTC{identity} · {downloads}</p>'
                 f'<div class="plots">{"".join(cards)}</div></article>')
+        for result in run.get('review_counts',[]):
+            for path,digest in result['product_sha256'].items():
+                if sha256(Path(path))!=digest:raise ValueError('review counts changed')
+            plots=Path(result['product']).parent.parent/'plots'
+            title=result['object']+' / '+result['setup']['grism']+' / Review counts'
+            links=' · '.join([self.download(Path(result['product']),'Counts FITS'),self.download(Path(result['ascii']),'Counts ASCII')])
+            sections.append('<article class="exposure"><h3>'+_text(title)+'</h3>'
+                '<p class="qc-status-bad">Wavelength validation failed; unshifted arc wavelengths, no flux calibration.</p>'
+                '<p>'+links+'</p><div class="plots">'+''.join(self.figure(plots/(kind+'.png'),title+' / '+kind)
+                    for kind in ('counts','traces','profiles'))+'</div></article>')
         return ''.join(sections) or '<p>No spectra recorded in this revision.</p>'
 
-    def observations(self, revision, run):
+    def observations(self, revision, run, provisional=None, redshifts=None):
         targets = self.read(revision/'night.json').get('targets')
         outcomes = {}
         for group, label in [('results', 'Spectrum'), ('errors', 'Failed'), ('skipped', 'Unsupported')]:
@@ -112,6 +125,13 @@ class EpochPage:
                           'background_support_required':'Review background',
                           'unsupported_setup':'Unsupported setup'}.get(result.get('code'), label)
                 outcomes[raw] = f'<a href="#spectrum-{i}">Spectrum ↓</a>' if group == 'results' else _text(reason)
+        for standard in run.get('standards', []):
+            raw = Path(standard['frame']['path']).name
+            outcomes.setdefault(raw, 'Standard counts; response unvalidated')
+        for result in run.get('review_counts',[]):
+            outcomes[Path(result['raw']).name]='Review counts; wavelength unvalidated'
+        for i,result in enumerate((provisional or {}).get('results',[])):
+            outcomes[Path(result['raw']).name]=f'<a class="qc-status-bad" href="#rescue-spectrum-{i}">Provisional flux; wavelength unvalidated ↓</a>'
         rows = []
         for frame in sorted(self.read(revision/'observing-log.json').get('frames', []), key=source_order):
             if frame.get('role') not in {'science', 'standard_candidate'} or 'duplicate_of' in frame:
@@ -123,12 +143,14 @@ class EpochPage:
                 seconds = round(float(h.get('EXPTIME') or 0))
             except (ValueError, TypeError, OverflowError):
                 seconds = h.get('EXPTIME', 'Unknown')
+            from .redshift_report import redshift_cells
+            cells=redshift_cells((redshifts or {}).get(raw),standard=frame['role']=='standard_candidate')
             rows.append([_text(h.get('OBJECT', '')), _text(start),
                 'Standard' if frame['role'] == 'standard_candidate' else 'Science',
                 _text(setup.get('grism', ''))+' / '+_text(setup.get('filter', '')),
                 _text(setup.get('slit', '')), _text(seconds),
-                outcomes.get(raw, 'Outside selected targets' if targets and h.get('OBJECT') not in targets else 'Not reduced')])
-        return _table(['Target', 'UTC start', 'Role', 'Setup', 'Slit', 'Seconds', 'Result'], rows)
+                outcomes.get(raw, 'Outside selected targets' if targets and h.get('OBJECT') not in targets else 'Not reduced'),*cells])
+        return _table(['Target', 'UTC start', 'Role', 'Setup', 'Slit', 'Seconds', 'Result', 'z (NED)', 'z (spectral)'], rows)
 
     def problems(self, run, run_dir=None):
         groups = {}
@@ -142,10 +164,23 @@ class EpochPage:
             detail = {'sky_flexure_unreliable':'Sky lines did not pass the flexure checks.',
                 'source_selection_required':'Multiple traces; target selection needs review.',
                 'background_support_required':'Insufficient clean two-sided background; inspect the saved trace geometry.',
-                'unsupported_setup':'This archive reduction does not support the recorded setup.'}.get(code, items[0].get('reason', items[0].get('error', code)))
+                'wavelength_validation_failed':'Science sky-line validation failed; any review counts retain unshifted arc wavelengths.',
+                'unsupported_setup':'The selected reduction route does not support the recorded setup.'}.get(code, items[0].get('reason', items[0].get('error', code)))
             rows.append([_text(code), len(items), _text(targets), _text(detail)])
         content=_table(['Issue', 'Exposures', 'Targets', 'Meaning'], rows) if rows else '<p>No recorded reduction failures.</p>'
         if run_dir is not None:
+            if run.get('flux_calibration') == 'same-night':
+                from .sky_quality import explained_sky_failure
+                for item in run.get('errors', []):
+                    content+='<p class="qc-status-bad">'+_text(item.get('object','Exposure')+': '+explained_sky_failure(item))+'</p>'
+                    if item.get('traceback'):
+                        content += '<p>'+self.download(Path(item['traceback']),
+                            str(item.get('object','Exposure'))+' failure log')+'</p>'
+                    if item.get('diagnostics',{}).get('review_file'):
+                        content+='<p>'+self.download(Path(item['diagnostics']['review_file']),'Sky-line measurements')+'</p>'
+                for item in run.get('review_counts_errors',[]):
+                    content+='<p class="qc-status-bad">'+_text(item['object']+' review extraction: '+item['error'])+'</p>'
+                content += '<p>'+self.download(run_dir/'run.json','Daily response and extraction record')+'</p>'
             content+=self.wavelength_checks(run_dir)
             readiness=run_dir/'setup-checks.json'
             if readiness.exists():
@@ -344,9 +379,37 @@ class EpochPage:
         if validations:
             v = self.read(validations[-1]);counts = Counter(x.get('status', 'unknown') for x in v.get('results', []))
             note = '<p class="caption">Latest retained native diagnostic: '+_text(', '.join(f'{n} {k.replace("_", " ")}' for k, n in counts.items()))
-            note += f'; {len(v.get("errors", []))} failed checks. These masters were not used for the archive spectra above.</p>'
-        return (_table(['Grism', 'Filter', 'Slit', 'Recorded status', 'Held-out RMS (px)'], rows)+note
-                if rows else '<p>No retained native calibration groups.</p>')
+            note += f'; {len(v.get("errors", []))} failed checks. These retained diagnostics are separate from this revision’s calibration provenance.</p>'
+        historical = (_table(['Grism', 'Filter', 'Slit', 'Recorded status', 'Held-out RMS (px)'], rows)+note
+                      if rows else '<p>No retained native calibration groups.</p>')
+        if not revision:
+            return historical
+        run = self.read(revision/'reduction/run.json')
+        if run.get('flux_calibration') != 'same-night':
+            return historical
+        responses = []
+        for entry in run.get('standards', []):
+            frame, fit = entry['frame'], entry['fit']
+            setup = frame['setup']; response = fit.get('response')
+            download = 'No fitted response'
+            if response:
+                path = Path(response['path'])
+                if sha256(path) != response['sha256']:
+                    raise ValueError('daily response changed since reduction')
+                download = self.download(path, 'Response FITS')
+            responses.append([_text(frame['metadata']['OBJECT']), _text(frame['metadata']['DATE-OBS']),
+                _text(setup['grism']+' / '+setup['filter']+' / '+setup['slit']),
+                '<span class="qc-status-bad">'+_text(fit['status'].replace('_',' '))+'</span>', download])
+        associations = [[_text(r['object']), _text(r['sensitivity'].get('standard_name','')),
+                         _text(Path(r['sensitivity']['standard_raw']).name)] for r in run.get('results', [])]
+        current = '<h3>Same-night standard responses</h3><p class="qc-status-bad">Experimental flux scale; absolute accuracy unvalidated. Standards retain arc-only wavelengths. No slit-loss, telluric or second-order correction.</p>'
+        current += (_table(['Standard','UTC start','Setup','Status','Download'],responses)
+                    if responses else '<p>No contemporary response was built; see failed exposures.</p>')
+        current += _table(['Spectrum','Reference standard','Observed standard exposure'], associations)
+        current += ('<p>'+str(len(run.get('held_out',[])))+' held-out exposure transfers recorded; '
+                    +str(len(run.get('held_out_errors',[])))+' transfer checks failed. '
+                    'These test internal repeatability, not an independent absolute scale.</p>')
+        return current+historical
 
     def archive(self, revision):
         paths = list((self.root/'archive').glob('*/run.json'))
@@ -422,21 +485,76 @@ def build_epoch_page(night, project_root='.'):
     if state.get('night') != night:
         raise ValueError('workflow belongs to a different observing date')
     run = page.read(revision/'reduction/run.json')
+    rescue=None;rescue_path=None
+    pointer_path=root/'rescue/current.json'
+    if pointer_path.exists():
+        pointer=page.read(pointer_path);rescue_path=(root/pointer['path']).resolve()
+        if not rescue_path.is_relative_to(root/'rescue') or pointer.get('night')!=night:
+            raise ValueError('invalid provisional rescue pointer')
+        if sha256(rescue_path/'run.json')!=pointer['run_sha256']:
+            raise ValueError('provisional rescue manifest changed')
+        candidate=page.read(rescue_path/'run.json')
+        parent_manifest=revision/'reduction/run.json'
+        if parent_manifest.is_file() and candidate.get('parent_sha256')==sha256(parent_manifest):
+            if candidate.get('wavelength_policy')!='provisional_arc_only' or candidate.get('night')!=night:
+                raise ValueError('invalid provisional rescue policy')
+            failures={e['path'] for e in run['errors'] if e.get('code')=='wavelength_validation_failed'}
+            for result in candidate['results']:
+                if result.get('status')!='PROVISIONAL' or result['raw'] not in failures or result.get('wavelength_validated') is not False:
+                    raise ValueError('rescue result cannot replace an accepted product')
+                for path,digest in result['product_sha256'].items():
+                    if sha256(Path(path))!=digest:raise ValueError('provisional product changed')
+            rescue=candidate
+        else:
+            page.warnings.append('Retained provisional rescue belongs to an earlier reduction; it is not shown as current.')
     qc, background = page.qc(revision, run)
+    if rescue:
+        audit=page.read(rescue_path/'verification.json')
+        if audit and (audit.get('run_sha256')!=sha256(rescue_path/'run.json') or audit.get('status')!='passed'):
+            raise ValueError('current rescue needs a matching product audit')
+        geometry=[]
+        for item in sorted(audit.get('spectra',[]),key=source_order):
+            sides=item.get('background_gap_from_aperture_edge_pixels')
+            if not sides:continue
+            gaps=[f"{s['median_gap']:.1f} (range {s['minimum_gap']:.1f}–{s['maximum_gap']:.1f})" for s in sides]
+            geometry.append([_text(item['object']),*gaps,item['background_minimum_side_samples']])
+        if geometry:
+            retained_background=background
+            background='<h3>Current provisional backgrounds</h3><p>Nearby finite bands follow the source trace, with guards for source wings and trace movement. '
+            background+='Distances below run from the final fitted aperture edge to the nearest sampled pixel centre, in detector pixels. '
+            background+='The local background can include extended galaxy light; this is not validated host deblending. All four fits retain two-sided support without aperture overlap.</p>'
+            background+=_table(['Target','Left gap (pixels)','Right gap (pixels)','Minimum retained pixels per side'],geometry)
+            background+='<p>'+page.download(rescue_path/'verification.json','Provisional product and background audit')+'</p>'
+            background+='<h3>Other retained background diagnostics</h3>'+retained_background
+    from .redshift_report import load_redshifts,redshift_section
+    redshifts=load_redshifts(page,revision/'reduction',rescue_path if rescue else None)
+    # Redshift evidence is its own tab: it has its own inputs, figures and
+    # provenance, and reads as a separate measurement from source QC.
+    redshift_content=redshift_section(page,redshifts)
     titles = [('observations', 'Observing log'), ('spectra', 'Spectra'), ('issues', 'Issues'),
               ('qc', 'Source QC'), ('background', 'Background'), ('calibrations', 'Calibrations'),
               ('archive', 'Reduction Archive')]
+    if redshift_content:
+        titles.insert(4, ('redshifts', 'Redshift evidence'))
     calibration_content=page.calibrations(revision)
     native=revision/'native-validation'
     if (native/'validation.json').exists():
         calibration_content+='<h3>Contemporary raw-calibration checks</h3><p>These checks use the selected native masters. They do not change the archive-calibrated spectra above.</p>'
         calibration_content+=page.download(native/'validation.json','Native validation record')
         calibration_content+=page.wavelength_checks(native)
-    content = [page.observations(revision, run), page.spectra(revision/'reduction', run), page.problems(run,revision/'reduction'), qc,
+    spectra=page.spectra(revision/'reduction',run)
+    if rescue:
+        spectra+='<h3>Provisional rescue spectra</h3><p class="qc-status-bad">Same-night flux calibration; science wavelengths remain unvalidated. No flexure correction applied. These do not replace accepted products.</p>'
+        spectra+=page.spectra(rescue_path,rescue,id_prefix='rescue-spectrum')
+    content = [page.observations(revision, run, rescue, redshifts), spectra, page.problems(run,revision/'reduction'), qc,
                background, calibration_content, page.archive(revision)+page.archive_folders_and_logs(revision)]
+    if redshift_content:
+        content.insert(4, redshift_content)
     sections = ''.join(f'<section class="target" id="{anchor}"><h2>{title}</h2>{body}</section>'
                        for (anchor, title), body in zip(titles, content))
     stats = ' · '.join(f'{len(run.get(k, []))} {label}' for k, label in [('results','spectra'), ('errors','failed'), ('skipped','unsupported')])
+    if run.get('review_counts'):stats+=' · '+str(len(run['review_counts']))+' review counts'
+    if rescue:stats+=' · '+str(len(rescue['results']))+' provisional flux spectra'
     warning = '<p class="note">'+_text('; '.join(page.warnings))+'</p>' if page.warnings else ''
     scope = ('<p class="caption">Selected targets: '+_text(', '.join(state['targets']))
              +'. Other exposures are listed for context; earlier results remain in Reduction Archive.</p>') if state.get('targets') else ''
@@ -448,19 +566,22 @@ def build_epoch_page(night, project_root='.'):
 <nav class="tabs" aria-label="Report sections">{''.join(f'<a href="#{a}">{t}</a>' for a,t in titles)}</nav>
 {warning}{sections}<footer>EFOSpec · {night} · Saved figures and measurements</footer></main>
 <dialog aria-label="Enlarged figure"><button type="button">Close</button><img alt=""></dialog><script>{SCRIPT}</script></body></html>'''
-    destination = root/'index.html'
-    temporary = destination.with_suffix('.html.tmp')
-    temporary.write_text(html);temporary.replace(destination)
-    return {'path':str(destination), 'revision':revision.name, 'embedded_figures':page.images,
-            'warnings':page.warnings, 'bytes':destination.stat().st_size}
+    from .report_assets import write_report_bundle
+    bundle=write_report_bundle(root/'index.html',html)
+    return dict(bundle,revision=revision.name,embedded_figures=page.images,warnings=page.warnings)
 
 
 def build_filtered_page(run_dir):
     """A portable supplement using the nightly report's style and QC renderer."""
     root = Path(run_dir).resolve(); page = EpochPage(root)
     run = page.read(root/'run.json')
-    if run.get('method') != 'native_filtered_standard_extraction' or run.get('status') == 'running':
-        raise ValueError('filtered report requires a completed separate-standard run')
+    if run.get('method') not in {'native_filtered_standard_extraction','native_red_counts_diagnostic',
+                               'native_optical_counts_diagnostic'} or run.get('status') == 'running':
+        raise ValueError('counts report requires a completed separate native run')
+    red=run['method']=='native_red_counts_diagnostic'
+    purpose=('Red spectra' if red else 'Wavelength review counts' if
+             run['method']=='native_optical_counts_diagnostic' else 'Filtered standards')
+    roles={f['path']:f['role'] for f in page.read(root/'inputs.json').get('frames',[])}
     night = date.fromisoformat(run['night']).isoformat()
     rows, spectra, qc, backgrounds, calibrations = [], [], [], [], []
     for result in sorted(run['results'], key=lambda row: (row['object'].casefold(), row['date_obs'])):
@@ -480,8 +601,9 @@ def build_filtered_page(run_dir):
         flux = result['flux_response']
         if 'response' in flux and sha256(Path(flux['response']['path'])) != flux['response']['sha256']:
             raise ValueError('filtered response changed before reporting')
-        rows.append([_text(result['object']), _text(result['date_obs']), 'Standard',
-                     'Gr13 / GG495', _text(result['setup']['slit']),
+        rows.append([_text(result['object']), _text(result['date_obs']),
+                     'Science' if roles.get(result['raw'])=='science' else 'Standard',
+                     _text(result['setup']['grism']+' / '+result['setup']['filter']), _text(result['setup']['slit']),
                      'Counts extracted; <span class="qc-status-bad">flux unvalidated</span>'])
         links = [page.download(Path(result[key]), label) for key, label in
                  [('product','Counts FITS'), ('ascii','Counts ASCII'), ('native_spec1d','PypeIt spec1d')]]
@@ -513,17 +635,17 @@ def build_filtered_page(run_dir):
     bodies = [_table(['Source','UTC','Role','Setup','Slit','Outcome'],rows), ''.join(spectra), issues,
               ''.join(qc), _table(['Exposure','Spatial degree','Minimum samples per side','Reduced chi2','Details'],backgrounds),
               ''.join(calibrations), '<p>Earlier reductions and the main nightly report remain separate and unchanged.</p>',
-              '<p>Separate native filtered-standard reduction; second-order correction deferred.</p><p>'
+              '<p>Separate native counts reduction; no accepted exposure-specific flexure or flux calibration.</p><p>'
               +page.download(root/'run.json','Run manifest')+' · '+page.download(root/'setup-checks.json','Setup checks')+'</p>']
     sections = ''.join(f'<section class="target" id="{a}"><h2>{t}</h2>{b}</section>'
                        for (a,t),b in zip(titles,bodies))
     html = f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ePESSTO+ · {night} · Filtered standards</title><style>{CSS}{EPOCH_CSS}</style></head><body><main>
+<title>ePESSTO+ · {night} · {purpose}</title><style>{CSS}{EPOCH_CSS}</style></head><body><main>
 <header class="masthead"><span class="brand">ePESSTO+ / EFOSpec</span><span class="eyebrow">EFOSC2 · {night}</span></header>
-<div class="intro"><div><span class="eyebrow">Filtered standards</span><h1>{night}</h1></div><p>{len(run['results'])} extracted · {len(run['errors'])} failed</p></div>
+<div class="intro"><div><span class="eyebrow">{purpose}</span><h1>{night}</h1></div><p>{len(run['results'])} extracted · {len(run['errors'])} failed</p></div>
 <p class="qc-status-bad">Experimental arc-calibrated counts. Flux calibration and exposure-specific flexure remain unvalidated.</p>
 <nav class="tabs" aria-label="Report sections">{''.join(f'<a href="#{a}">{t}</a>' for a,t in titles)}</nav>
-{sections}<footer>EFOSpec · {night} · Separate filtered reductions</footer></main>
+{sections}<footer>EFOSpec · {night} · {purpose}</footer></main>
 <dialog aria-label="Enlarged figure"><button type="button">Close</button><img alt=""></dialog><script>{SCRIPT}</script></body></html>'''
     destination = root/'index.html'; destination.write_text(html)
     return destination

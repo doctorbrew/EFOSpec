@@ -51,11 +51,27 @@ class Assets(HTMLParser):
         if tag=='img' and 'src' in a:self.images.append(a['src'])
 
 
+def test_old_high_snr_sky_failure_gets_precise_explanation_without_changing_record(tmp_path):
+    from copy import deepcopy
+    from efospec.epoch_report import EpochPage
+    item=dict(object='SNtest',code='wavelength_validation_failed',
+        error='sky line 6363.78 is weak or unconstrained (SNR 31.8, centroid error 3.33 A)',
+        diagnostics={'lines':[dict(rest_air_angstrom=6363.776,peak_snr=31.8,
+            centroid_error_angstrom=3.33,sigma_angstrom=11.95,
+            profile='uniform_slit_convolved_gaussian')]})
+    before=deepcopy(item)
+    html=EpochPage(tmp_path).problems(dict(flux_calibration='same-night',errors=[item]),tmp_path)
+    assert 'centroid uncertainty 3.33 A exceeds 1.50 A' in html
+    assert 'peak/residual SNR 31.8; minimum 5' in html
+    assert 'weak or unconstrained' not in html
+    assert item==before
+
+
 def test_single_file_contains_evidence_downloads_and_only_internal_navigation(epoch_page):
     project, root, product = epoch_page
     before = {p:sha256(p) for p in root.rglob('*') if p.is_file()}
     result = build_epoch_page('2026-10-28', project)
-    html = (root/'index.html').read_text();assets = Assets(html)
+    html = (root/'index-portable.html').read_text();assets = Assets(html)
     assert result['embedded_figures']==3 and result['warnings']==[]
     assert 'SN &lt;test&gt;' in html and 'Target identity unverified' in html
     assert 'source_selection_required' in html and 'archive/initial-reduction' in html
@@ -71,6 +87,39 @@ def test_stale_plot_hash_is_never_shown_as_current_spectrum(epoch_page):
     result = build_epoch_page('2026-10-28', project)
     assert result['embedded_figures']==0
     assert 'figure unavailable' in (root/'index.html').read_text()
+
+
+@pytest.mark.parametrize('mode', ['current','stale','accepted'])
+def test_rescue_report_keeps_failed_wavelength_status_and_parent_identity(epoch_page,mode):
+    project,root,product=epoch_page
+    parent=root/'nightly/revision-1/reduction/run.json'
+    original=json.loads(parent.read_text())
+    raw='/raw/science.fits' if mode=='accepted' else '/raw/failed-wave.fits'
+    original['errors'].append(dict(path='/raw/failed-wave.fits',object='Failed wave',code='wavelength_validation_failed'))
+    save(parent,original)
+    rescue=root/'rescue/trial'
+    spectrum=rescue/'provisional.fits';spectrum.parent.mkdir(parents=True);spectrum.write_bytes(b'provisional')
+    run=dict(night='2026-10-28',parent_sha256='stale' if mode=='stale' else sha256(parent),
+        wavelength_policy='provisional_arc_only',results=[dict(raw=raw,object='Failed wave',grism='Gr11',
+            product=str(spectrum),product_sha256={str(spectrum):sha256(spectrum)},status='PROVISIONAL',
+            wavelength_validated=False,interpretation='Selected trace; identity unverified.')])
+    save(rescue/'run.json',run)
+    save(root/'rescue/current.json',dict(night='2026-10-28',path='rescue/trial',run_sha256=sha256(rescue/'run.json')))
+    before=sha256(parent)
+    if mode=='accepted':
+        with pytest.raises(ValueError,match='cannot replace an accepted product'):
+            build_epoch_page('2026-10-28',project)
+    else:
+        result=build_epoch_page('2026-10-28',project)
+        html=(root/'index.html').read_text()
+        if mode=='current':
+            assert 'id="rescue-spectrum-0"' in html
+            assert 'science wavelengths remain unvalidated' in html
+            assert 'id="spectrum-0"' in html
+        else:
+            assert 'id="rescue-spectrum-0"' not in html
+            assert any('earlier reduction' in w for w in result['warnings'])
+    assert sha256(parent)==before and product.read_bytes()==b'saved spectrum\x00\x01'
 
 
 def test_transients_appear_before_standards_and_spectrum_links_keep_identity(epoch_page):
@@ -174,7 +223,7 @@ def test_copied_page_works_offline_with_zoom_navigation_and_download(epoch_page,
     from playwright.sync_api import sync_playwright
     project, root, product = epoch_page
     build_epoch_page('2026-10-28', project)
-    standalone = tmp_path/'standalone.html';standalone.write_bytes((root/'index.html').read_bytes())
+    standalone = tmp_path/'standalone.html';standalone.write_bytes((root/'index-portable.html').read_bytes())
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
         context = browser.new_context(offline=True, accept_downloads=True)
@@ -218,3 +267,41 @@ def test_local_background_geometry_is_not_reported_as_a_successful_reduction(epo
     save(directory.parent/'local-background.json',record)
     build_epoch_page('2026-10-28',project)
     assert 'Bounded background' not in (root/'index.html').read_text()
+
+
+def test_daily_response_provenance_download_and_tamper_check(epoch_page):
+    project,root,product=epoch_page
+    manifest=root/'nightly/revision-1/reduction/run.json'
+    run=json.loads(manifest.read_text())
+    response=manifest.parent/'response.fits';response.write_bytes(b'new response')
+    run['flux_calibration']='same-night'
+    run['results'][0]['sensitivity']=dict(standard_name='VMa2',standard_raw='/raw/today.fits')
+    run['standards']=[dict(frame=dict(path='/raw/today.fits',metadata={'OBJECT':'VMa2','DATE-OBS':'2026-10-29T03:00'},
+        setup=dict(grism='Gr13',filter='Free',slit='slit1.0')),
+        fit=dict(status='response_built_unvalidated',response=dict(path=str(response),sha256=sha256(response))))]
+    save(manifest,run)
+    build_epoch_page('2026-10-28',project)
+    html=(root/'index.html').read_text(); assets=Assets(html)
+    assert 'Same-night standard responses' in html and 'today.fits' in html
+    assert 'absolute accuracy unvalidated' in html
+    assert '0 held-out exposure transfers' in html
+    assert (root/assets.downloads['response.fits']).read_bytes()==response.read_bytes()
+    response.write_bytes(b'changed')
+    with pytest.raises(ValueError,match='daily response changed'):
+        build_epoch_page('2026-10-28',project)
+
+
+def test_log_stage_with_retained_rescue_does_not_require_new_reduction_manifest(epoch_page):
+    project,root,product=epoch_page
+    parent=root/'nightly/revision-1/reduction/run.json'
+    rescue=root/'rescue/earlier'
+    save(rescue/'run.json',dict(night='2026-10-28',parent_sha256=sha256(parent),
+        wavelength_policy='provisional_arc_only',results=[]))
+    save(root/'rescue/current.json',dict(night='2026-10-28',path='rescue/earlier',
+        run_sha256=sha256(rescue/'run.json')))
+    parent.unlink()
+    before=sha256(product)
+    result=build_epoch_page('2026-10-28',project)
+    assert any('earlier reduction' in w for w in result['warnings'])
+    assert sha256(product)==before
+    assert not parent.exists()

@@ -93,6 +93,9 @@ def _verify_inputs(state, output):
         raise ValueError('raw inputs changed since the observing log; start a new dated revision')
     if state.get('reviewed_sources') and sha256(Path(state['reviewed_sources'])) != state['reviewed_sources_sha256']:
         raise ValueError('reviewed-source selection changed; start a new dated revision')
+    for group,digest in state.get('calibration_group_manifests',{}).items():
+        if sha256(Path(group)/'calibration.json')!=digest:
+            raise ValueError('cached native calibration record changed')
 
 
 def _reduce(state, output):
@@ -108,8 +111,13 @@ def _reduce(state, output):
         associated={raw for g in groups for raw in g['associated_exposures']}
         if not associated or any(p not in known or supplied.get(p)!=known[p] for p in associated):
             raise ValueError('native calibration selection does not match this observing night and its raw hashes')
-    arguments=['reduce-rapid',state['input_dir'],'--output',str(output/'reduction'),
-               '--reference-root',state['reference_root'],'--include-standards','--skip-report']
+    if state.get('flux_calibration','archive') == 'same-night':
+        arguments=['reduce-daily',state['input_dir'],'--night',state['night'],
+                   '--output',str(output/'reduction')]
+        for group in state.get('calibration_groups',[]):arguments+=['--calibration-group',group]
+    else:
+        arguments=['reduce-rapid',state['input_dir'],'--output',str(output/'reduction'),
+                   '--reference-root',state['reference_root'],'--include-standards','--skip-report']
     for target in state.get('targets') or []:arguments += ['--target',target]
     if state.get('reviewed_sources'):arguments += ['--reviewed-sources',state['reviewed_sources']]
     code=_invoke(arguments,output,state['night']+'-reduction.log')
@@ -130,7 +138,7 @@ def _reduce(state, output):
             if native_code in (0,1) and checked.get('status') in ('complete','incomplete') else 'failed',
             'worker_exit':native_code,'record':str(path),
             'note':'Native calibration diagnostics only; no native correction or sensitivity is applied to archive products.'}
-    return {'status':'partial' if run['errors'] or run['skipped'] else 'complete','worker_exit':code,
+    return {'status':'partial' if run['errors'] or run['skipped'] or run.get('held_out_errors') else 'complete','worker_exit':code,
             'spectra':len(run['results']),'failed':len(run['errors']),'unsupported':len(run['skipped'])}
 
 
@@ -142,6 +150,12 @@ def _report(state, output):
     args=['report',str(run_dir)]
     if state.get('plot_python'):args+=['--plot-python',state['plot_python']]
     code=_invoke(args,output,state['night']+'-report.log')
+    review_counts=json.loads(manifest.read_text()).get('review_counts_run')
+    counts_plot_error=False
+    if review_counts:
+        with (output/'logs'/(state['night']+'-review-counts-plots.log')).open('w') as log:
+            counts_plot_error=subprocess.run([state.get('plot_python') or sys.executable,
+                '-m','efospec.filtered_plots',review_counts],stdout=log,stderr=subprocess.STDOUT,check=False).returncode!=0
     native_plot_error=False
     if (output/'native-validation/checks').exists():
         with (output/'logs'/(state['night']+'-native-plots.log')).open('w') as log:
@@ -152,6 +166,7 @@ def _report(state, output):
     rendered=json.loads(report_path.read_text()) if report_path.exists() else {}
     failures=[];packets=[]
     for failure in json.loads(manifest.read_text())['errors']:
+        if state.get('flux_calibration','archive') == 'same-night':continue
         if failure.get('code') not in {'source_selection_required','background_support_required'}:continue
         if not failure.get('diagnostics',{}).get('diagnostic_file') and failure.get('code')=='background_support_required':
             failures.append(Path(failure['path']).name);continue
@@ -176,7 +191,8 @@ def _report(state, output):
         if qc_code or q.get('status')!='complete' or q.get('raw_name')!=raw or q.get('parent_run')!=str(run_dir):
             failures.append(raw)
         else:packets.append(str(packet/'index.html'))
-    return {'status':'complete' if code==0 and rendered.get('status')=='complete' and not failures and not native_plot_error else 'partial',
+    return {'status':'complete' if code==0 and rendered.get('status')=='complete' and not failures and not native_plot_error and not counts_plot_error else 'partial',
+            'review_counts_plot_error':counts_plot_error,
             'native_plot_error':native_plot_error,
             'worker_exit':code,'qc_packets':packets,'qc_failures':failures,'fieldnotes':str(run_dir/'index.html')}
 
@@ -206,7 +222,10 @@ def _index(state, output):
             rows.append('<tr>'+''.join('<td>'+escape(str(v))+'</td>' for v in values)+'</tr>')
     stages='; '.join(f"{name}: {value['status']}" for name,value in state['stages'].items())
     errors=''.join('<li>'+escape(v['error'])+'</li>' for v in state['stages'].values() if v.get('error'))
-    page=f'''<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EFOSpec — {state['night']} nightly log</title><style>body{{font:16px system-ui;margin:28px;color:#172c43;background:#faf9f5}}p{{max-width:1100px;line-height:1.6}}td,th{{padding:9px;border-bottom:1px solid #ccc;text-align:left}}table{{border-collapse:collapse}}a{{color:#1765a0}}.scroll{{overflow-x:auto}}li{{margin:8px 0}}</style></head><body><h1>Observing night {state['night']}</h1><p>One epoch: noon UTC on {state['night']} to noon the following day. Processing revision: {escape(output.name)}.</p><p>{escape(stages)}</p><ul>{errors}</ul><div class="scroll"><table><tr><th>Object</th><th>UTC exposure start</th><th>Role</th><th>Seconds</th><th>Grism</th><th>Filter</th><th>Slit</th><th>Outcome</th></tr>{''.join(rows)}</table></div><p>Experimental archive-calibration reduction. Unsupported setups and failed checks remain explicit; this workflow does not enable native flux-calibrated extraction.</p><ul>{''.join('<li>'+link+'</li>' for link in links)}</ul><h2>{state['night']} — source-review QC</h2><ul>{qc or '<li>No candidate QC packets available.</li>'}</ul><p>Manual recipes remain exposure-specific; no C3 aperture or background bands are applied to a different exposure or date.</p></body></html>'''
+    calibration_note = ('Experimental same-night raw calibration. Responses match night and complete setup; absolute flux accuracy remains unvalidated.'
+                        if state.get('flux_calibration','archive') == 'same-night' else
+                        'Experimental archive-calibration reduction. Archived sensitivities are explicitly selected; absolute flux accuracy remains unvalidated.')
+    page=f'''<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EFOSpec — {state['night']} nightly log</title><style>body{{font:16px system-ui;margin:28px;color:#172c43;background:#faf9f5}}p{{max-width:1100px;line-height:1.6}}td,th{{padding:9px;border-bottom:1px solid #ccc;text-align:left}}table{{border-collapse:collapse}}a{{color:#1765a0}}.scroll{{overflow-x:auto}}li{{margin:8px 0}}</style></head><body><h1>Observing night {state['night']}</h1><p>One epoch: noon UTC on {state['night']} to noon the following day. Processing revision: {escape(output.name)}.</p><p>{escape(stages)}</p><ul>{errors}</ul><div class="scroll"><table><tr><th>Object</th><th>UTC exposure start</th><th>Role</th><th>Seconds</th><th>Grism</th><th>Filter</th><th>Slit</th><th>Outcome</th></tr>{''.join(rows)}</table></div><p>{calibration_note}</p><ul>{''.join('<li>'+link+'</li>' for link in links)}</ul><h2>{state['night']} — source-review QC</h2><ul>{qc or '<li>No candidate QC packets available.</li>'}</ul><p>Manual recipes remain exposure-specific; no C3 aperture or background bands are applied to a different exposure or date.</p></body></html>'''
     (output/'index.html').write_text(page)
     relative=quote(output.name+'/index.html')
     (output.parent/'index.html').write_text(f'<!doctype html><meta charset="utf-8"><title>{state["night"]} nightly log</title><meta http-equiv="refresh" content="0;url={relative}"><a href="{relative}">Observing night {state["night"]}</a>')
@@ -215,8 +234,9 @@ def _index(state, output):
 
 
 def run_epoch(night, *, stage='all', project_root='.', plot_python=None, native_calibrations=None,
-              targets=None, reviewed_sources=None):
+              targets=None, reviewed_sources=None, flux_calibration=None, calibration_groups=None):
     night=_date(night)
+    if flux_calibration not in {None,'same-night','archive'}:raise ValueError('unknown flux calibration policy')
     if stage not in {'all','log','reduce','report'}:raise ValueError('unknown epoch stage')
     project=Path(project_root).resolve();input_dir=project/'data'/night
     if not input_dir.is_dir():raise ValueError(f'{night}: raw directory missing: {input_dir}')
@@ -227,17 +247,37 @@ def run_epoch(night, *, stage='all', project_root='.', plot_python=None, native_
     try:
         with handle:handle.write(f'{os.getpid()}\n')
         if stage in {'all','log'}:
+            inherited_reviews=None
+            if reviewed_sources is None and (root/'current.json').exists():
+                previous=json.loads((root/'current.json').read_text())
+                previous_dir=(root/previous['revision']).resolve()
+                if previous_dir.parent!=root:raise ValueError('invalid previous dated revision pointer')
+                previous_state=json.loads((previous_dir/'night.json').read_text())
+                if previous_state.get('reviewed_sources'):
+                    source=Path(previous_state['reviewed_sources'])
+                    if sha256(source)!=previous_state['reviewed_sources_sha256']:
+                        raise ValueError('previous reviewed-source record changed')
+                    inherited_reviews=json.loads(source.read_text())
+                    if targets:
+                        inherited_reviews['sources']=[s for s in inherited_reviews['sources'] if s['object'] in targets]
             token=datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')+'-'+uuid.uuid4().hex[:6]
             output=root/token;output.mkdir();(output/'logs').mkdir()
             state={'schema_version':1,'night':night,'input_dir':str(input_dir),'output_dir':str(output),
                    'reference_root':str(Path(__file__).resolve().parents[2]/'trunk/src/ntt'),
                    'plot_python':plot_python,
                    'native_calibrations':str(Path(native_calibrations).resolve()) if native_calibrations else None,
-                   'targets':targets,
+                   'targets':targets,'flux_calibration':flux_calibration or 'same-night',
                    'stages':{},'status':'running'}
-            if reviewed_sources:
+            if calibration_groups:
+                if state['flux_calibration']!='same-night':raise ValueError('native calibration groups require same-night flux policy')
+                state['calibration_groups']=[str(Path(p).resolve()) for p in calibration_groups]
+                state['calibration_group_manifests']={p:sha256(Path(p)/'calibration.json') for p in state['calibration_groups']}
+            if reviewed_sources or inherited_reviews:
                 selection=output/'reviewed-sources.json'
-                shutil.copyfile(reviewed_sources,selection)
+                if reviewed_sources:shutil.copyfile(reviewed_sources,selection)
+                else:
+                    _save(selection,inherited_reviews)
+                    state['reviewed_sources_inherited_from']=str(previous_dir)
                 state.update(reviewed_sources=str(selection),reviewed_sources_sha256=sha256(selection))
             _save(root/'current.json',{'night':night,'revision':token})
         else:
@@ -245,6 +285,10 @@ def run_epoch(night, *, stage='all', project_root='.', plot_python=None, native_
             if pointer.get('night')!=night or output.parent!=root:raise ValueError('invalid dated revision pointer')
             state=json.loads((output/'night.json').read_text())
             if state['night']!=night or state['input_dir']!=str(input_dir):raise ValueError('revision belongs to a different date or input directory')
+            if flux_calibration is not None and flux_calibration != state.get('flux_calibration','archive'):
+                raise ValueError('flux calibration policy changed; start a new dated revision')
+            if calibration_groups is not None and [str(Path(p).resolve()) for p in calibration_groups]!=state.get('calibration_groups',[]):
+                raise ValueError('native calibration groups changed; start a new dated revision')
             if plot_python:state['plot_python']=plot_python
             if targets is not None and targets != state.get('targets'):
                 raise ValueError('target selection changed; start a new dated revision')
@@ -280,6 +324,9 @@ def add_arguments(parser):
     parser.add_argument('night',help='One observing date, YYYY-MM-DD (noon UTC to following noon)')
     parser.add_argument('--project-root',default='.',help='Directory containing data/ and runs/')
     parser.add_argument('--plot-python',help='Python environment for house-style figures')
+    parser.add_argument('--calibration-group',action='append',help='Reuse a hash-verified native raw calibration group; repeatable')
+    parser.add_argument('--flux-calibration',choices=['same-night','archive'],default=None,
+                        help='New revisions default to same-night raw responses; archive explicitly replays the legacy bridge')
     parser.add_argument('--native-calibrations',help='Explicit calibration run for contemporary raw-arc/sky diagnostics')
     parser.add_argument('--target',action='append',help='Reduce only this OBJECT value; repeatable, recorded in the log')
     parser.add_argument('--reviewed-sources',help='Exposure-bound recipes and visual target-identification evidence')
@@ -295,5 +342,6 @@ def script_main(stage):
     args=parser.parse_args()
     try:return exit_code(run_epoch(args.night,stage=stage,project_root=args.project_root,plot_python=args.plot_python,
                                   native_calibrations=args.native_calibrations,targets=args.target,
-                                  reviewed_sources=args.reviewed_sources))
+                                  reviewed_sources=args.reviewed_sources,flux_calibration=args.flux_calibration,
+                                  calibration_groups=args.calibration_group))
     except (OSError,ValueError,ImportError) as exc:parser.exit(2,f'[{args.night}] {exc}\n')

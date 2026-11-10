@@ -30,6 +30,15 @@ def main(argv=None):
     browser.add_argument('--port',type=int,default=0)
     browser.add_argument('--no-browser',action='store_true')
     raw = commands.add_parser('reduce-native', help='Experimental raw-only science/standard pair')
+    rescue = commands.add_parser('rescue-daily', help='Explicit provisional flux from audited wavelength-review counts; does not accept failed flexure')
+    rescue.add_argument('path',help='Completed same-night parent reduction')
+    rescue.add_argument('--night',required=True)
+    rescue.add_argument('--output',required=True,help='Fresh provisional revision directory')
+    rescue.add_argument('--counts-run',action='append',default=[],help='Additional optical counts run with documented successful background geometry')
+    rescue.add_argument('--target',action='append')
+    rescue.add_argument('--boxcar-target',action='append',default=[],help='Use finite-aperture boxcar flux as primary; includes extended emission')
+    rescue.add_argument('--skip-report',action='store_true')
+    rescue.add_argument('--replace-review-counts',action='store_true',help='Explicitly use newly re-extracted counts in place of the parent review counts')
     raw.add_argument('path',help='Night directory with raw calibrations')
     raw.add_argument('--science',required=True)
     raw.add_argument('--standard',required=True)
@@ -38,6 +47,13 @@ def main(argv=None):
     raw.add_argument('--output',required=True)
     raw.add_argument('--skip-report',action='store_true')
     raw.add_argument('--reuse-calibrations',help='Previous raw-only attempt; hashes and associations must match')
+    daily = commands.add_parser('reduce-daily', help='One night with raw calibrations and same-night standard responses')
+    daily.add_argument('path')
+    daily.add_argument('--night', required=True)
+    daily.add_argument('--output', required=True)
+    daily.add_argument('--target', action='append')
+    daily.add_argument('--reviewed-sources')
+    daily.add_argument('--calibration-group',action='append',default=[],help='Hash-verified native calibration group to reuse')
     filtered = commands.add_parser('reduce-filtered', help='Separate native Gr13/GG495 standard counts and experimental responses')
     filtered.add_argument('path', help='One observing night of raw data')
     filtered.add_argument('--night', required=True, help='Observing date YYYY-MM-DD')
@@ -47,6 +63,14 @@ def main(argv=None):
     filtered.add_argument('--background-reviews', help='Hash-bound reviewed background recipes for individual standards')
     filtered.add_argument('--calibration-group', action='append', default=[], help='Previously built paired-native calibration directory; repeatable')
     filtered.add_argument('--skip-report', action='store_true')
+    red = commands.add_parser('reduce-red', help='Experimental Gr16/OG530 review counts; no accepted flexure or flux calibration')
+    red.add_argument('path', help='One observing night of raw data')
+    red.add_argument('--night', required=True)
+    red.add_argument('--output', required=True, help='Fresh dated revision directory')
+    red.add_argument('--position', type=float, default=548.)
+    red.add_argument('--spatial-half-width', type=int, default=100)
+    red.add_argument('--target', action='append', help='Exact target name; repeatable')
+    red.add_argument('--calibration-group', action='append', default=[])
     catalogues = commands.add_parser('acquisition-catalogues', help='Solve acquisition images locally and overlay NED/SDSS/AllWISE catalogues')
     catalogues.add_argument('night', help='One observing date YYYY-MM-DD')
     catalogues.add_argument('--output', required=True, help='Fresh directory inside runs/DATE/QC/')
@@ -138,7 +162,8 @@ def main(argv=None):
             from .nightly import run_epoch,exit_code
             return exit_code(run_epoch(args.night,stage=args.stage,project_root=args.project_root,plot_python=args.plot_python,
                                        native_calibrations=args.native_calibrations,targets=args.target,
-                                       reviewed_sources=args.reviewed_sources))
+                                       reviewed_sources=args.reviewed_sources,flux_calibration=args.flux_calibration,
+                                       calibration_groups=args.calibration_group))
         if args.command == 'background-gui':
             from .background_gui import launch
             return launch(args.packet)
@@ -198,6 +223,23 @@ def main(argv=None):
             print(json.dumps({'night':args.night,'status':result['status'],'fields':len(result['fields']),
                               'output':args.output,'host_identification':'not_assigned'}))
             return int(result['status'] != 'complete')
+        if args.command == 'reduce-red':
+            from .filtered_reduction import reduce_red_night
+            result = reduce_red_night(args.path, args.output, night=args.night, position=args.position,
+                spatial_half_width=args.spatial_half_width, calibration_groups=args.calibration_group,
+                targets=args.target)
+            print(json.dumps({'output_dir':result['output_dir'], 'counts_extracted':len(result['results']),
+                              'errors':[{k:r[k] for k in ('object','error','log')} for r in result['errors']],
+                              'science_validated':False}))
+            return int(result['status'] != 'complete')
+        if args.command == 'rescue-daily':
+            from .rescue import rescue_daily, build_rescue_report
+            result=rescue_daily(args.path,args.output,night=args.night,counts_runs=args.counts_run,
+                targets=args.target,boxcar_targets=args.boxcar_target,replace_review_counts=args.replace_review_counts)
+            report=None if args.skip_report else build_rescue_report(args.output)
+            print(json.dumps(dict(output=result['output_dir'],provisional_spectra=len(result['results']),
+                errors=result['errors'],wavelength_validated=False,report=report)))
+            return int(bool(result['errors']) or (report is not None and report['status']!='complete'))
         if args.command == 'reduce-filtered':
             from .filtered_reduction import reduce_filtered_night
             result = reduce_filtered_night(args.path, args.output, night=args.night, position=args.position,
@@ -249,6 +291,13 @@ def main(argv=None):
             json.dump(result, sys.stdout, indent=2, allow_nan=False)
             sys.stdout.write('\n')
             return 0
+        if args.command == 'reduce-daily':
+            from .daily_reduction import reduce_daily
+            result = reduce_daily(args.path,args.output,night=args.night,targets=args.target,
+                                  reviewed_sources=args.reviewed_sources,calibration_groups=args.calibration_group)
+            print(json.dumps(dict(output_dir=result['output_dir'], status=result['execution_status'],
+                                  spectra=len(result['results']), errors=result['errors'], skipped=result['skipped']),indent=2))
+            return 0 if result['execution_status']=='complete' else 1
         if args.command == 'reduce-rapid':
             from .rapid import reduce_night
             result = reduce_night(args.path, args.output, args.reference_root,

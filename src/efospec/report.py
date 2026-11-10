@@ -76,6 +76,10 @@ def reduction_methods(manifest):
             'Save sky spectra, fitted line models and failure gates. Compare with PypeIt sky-template correlation in vacuum coordinates; comparison shifts are not applied.'))
         rows.append(('Review products','PypeIt + EFOSpec',
             'Write PypeIt spec2d diagnostics for extracted or source-ambiguous windows. Preserve target uncertainty and saved recipes; no automatic selection of a nearby trace.'))
+    if manifest.get('wavelength_policy')=='provisional_arc_only':
+        rows=[(stage,owner,'Retain raw arc wavelengths. Science sky validation failed; no flexure correction is applied.')
+              if stage=='Wavelength calibration' else (stage,owner,detail) for stage,owner,detail in rows]
+        summary+=' PROVISIONAL: science wavelengths remain unvalidated.'
     return rows, summary, caption
 
 CSS = """
@@ -132,7 +136,7 @@ def write_report(run_directory, *, generation_error=None):
                     f'<td>{grism}</td><td class="num">{exposure:.0f}</td><td class="num">{snr:.1f}</td>'
                     f'<td><a href="#{anchor}">View plots ↗</a></td><td>{downloads}</td></tr>')
         cards = []
-        for prefix, title in (('FitSpectrum_', 'Spectrum'), ('FitTrace_', '2D trace'),
+        for prefix, title in (('FitSpectrum_', 'Spectrum'), ('FitTrace_', '2D spectrum before and after sky subtraction'),
                               ('FitSpatialProfile_', 'Spatial profile')):
             jpgs = [p for n, p in files.items() if n.startswith(prefix) and p.suffix == '.jpg' and p.is_file()]
             if len(jpgs) == 1:
@@ -153,6 +157,8 @@ def write_report(run_directory, *, generation_error=None):
         association = result.get('target', {}).get('association')
         notice = ('<p class="note">Target identity is unverified: extraction used the nominal acquisition position.</p>'
                   if association not in {'historical_aperture', 'operator_selected'} else '')
+        if result.get('status')=='PROVISIONAL':
+            notice+='<p class="qc-status-bad">Provisional flux; science wavelengths unvalidated. '+escape(result.get('interpretation',''))+'</p>'
         if result.get('valid_flux_fraction',1.) < .8:
             notice += (f'<p class="note">Only {100*result["valid_flux_fraction"]:.0f}% '
                        'of output flux bins are valid. Unsupported bins remain masked; inspect extraction and response coverage.</p>')
