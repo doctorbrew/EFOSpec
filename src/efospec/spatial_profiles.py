@@ -40,6 +40,9 @@ def wavelength_binned_profiles(data, wavelength_edges, box_radius):
         count = selected.sum(axis=0)
         flux = np.where(selected, residual, 0.).sum(axis=0)
         flux[count == 0] = np.nan  # Missing coverage is not a zero measurement.
+        observed = np.where(selected, data['data'], 0.).sum(axis=0)
+        fitted_sky = np.where(selected, data['sky'], 0.).sum(axis=0)
+        observed[count == 0] = fitted_sky[count == 0] = np.nan
         background_fraction = np.divide((selected & sky).sum(axis=0), count,
                                          out=np.zeros(len(x)), where=count > 0)
         aperture_fraction = np.divide((selected*aperture).sum(axis=0), count,
@@ -48,9 +51,23 @@ def wavelength_binned_profiles(data, wavelength_edges, box_radius):
         if not trace_rows.any() or not count.any():
             raise ValueError(f'no trace coverage in wavelength bin {lo:g}--{hi:g}')
         trace_positions = trace[trace_rows]+origin
+        # The saved model is meaningful as interpolation only where the fit
+        # bands bracket x in every contributing, supported spectral row.
+        support = np.asarray(data.get('sky_accepted_mask', sky), dtype=bool)
+        fit_rows = selected.any(axis=1) & np.asarray(
+            data.get('sky_valid_rows', np.ones(len(trace), dtype=bool)))
+        fit_rows &= support.any(axis=1)
+        model_supported = np.zeros(len(x), dtype=bool)
+        if fit_rows.any():
+            lower = np.argmax(support[fit_rows], axis=1).max()
+            upper = len(x)-1-np.argmax(support[fit_rows, ::-1], axis=1).max()
+            if lower < upper:
+                model_supported = (x >= lower) & (x <= upper) & (count > 0)
         profiles.append({
             'wavelength_air_angstrom': [float(lo), float(hi)],
             'spatial_pixel': x+origin, 'summed_electrons': flux,
+            'summed_data_electrons': observed, 'summed_sky_electrons': fitted_sky,
+            'sky_model_supported': model_supported,
             'native_pixel_count': count, 'background_fraction': background_fraction,
             'aperture_fraction': aperture_fraction,
             'median_trace_pixel': float(np.median(trace_positions)),

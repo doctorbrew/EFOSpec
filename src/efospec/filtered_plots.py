@@ -25,7 +25,8 @@ def plot_counts(spectrum, record, output):
     ax.set_xlim(float(wave[valid].min()), float(wave[valid].max()))
     ax.set_xlabel('Vacuum wavelength (Å)')
     ax.set_ylabel(r'Extracted signal [$10^3\,e^{-}$ / pixel]')
-    ax.set_title(record['object']+' / Gr13 + GG495 / Arc-calibrated counts')
+    setup=record['setup']
+    ax.set_title(record['object']+' / '+setup['grism']+' + '+setup['filter']+' / Arc-calibrated counts')
     save_qc(fig, output, 'counts', record['object']); plt.close(fig)
 
 
@@ -34,8 +35,9 @@ def plot_filtered_run(run):
     from .recovery_qc import plot_exposure
     run = Path(run).resolve()
     manifest = json.loads((run/'run.json').read_text())
-    if manifest.get('method') != 'native_filtered_standard_extraction':
-        raise ValueError('filtered plotting requires a separate standard run')
+    if manifest.get('method') not in {'native_filtered_standard_extraction','native_red_counts_diagnostic',
+                                    'native_optical_counts_diagnostic'}:
+        raise ValueError('counts plotting requires a separate native counts run')
     for record in manifest['results']:
         for name, digest in record['product_sha256'].items():
             path = Path(name)
@@ -64,3 +66,10 @@ def plot_filtered_run(run):
                       ('filtered_plots.py', 'recovery_qc.py', 'profile_background.py', 'figure_style.py')},
                   'plot_style_sha256': sha256(Path(__file__).resolve().parents[2]/'plot_style.py'),
                   'figures_sha256': {p.name: sha256(p) for p in files}})
+
+
+if __name__=='__main__':
+    import sys
+    from .epoch_report import build_filtered_page
+    plot_filtered_run(sys.argv[1])
+    build_filtered_page(sys.argv[1])

@@ -7,6 +7,33 @@ from efospec.spatial_profiles import wavelength_binned_profiles
 
 
 class SpatialProfileTests(unittest.TestCase):
+    def test_plot_draws_saved_sky_beside_residual_with_correct_panel_shading(self):
+        from scripts.preview_spectrum_style import draw_spatial_profiles
+        import matplotlib.pyplot as plt
+        x = np.arange(21)
+        wave = np.linspace(4000., 7000., 90)
+        sky = np.broadcast_to(100.+.2*(x-10)**2, (90, 21))
+        signal = np.broadcast_to(50.*np.exp(-.5*((x-10)/2.)**2), sky.shape)
+        bands = np.broadcast_to(((x>=3)&(x<=6))|((x>=14)&(x<=17)), sky.shape)
+        data = dict(data=sky+signal, sky=sky, waveair=np.broadcast_to(wave[:,None],sky.shape),
+                    trace=np.full(90,10.), spatial_origin=100, sky_input_mask=bands,
+                    sky_spatial_degree=2, box_radius=3.)
+        fig, record = draw_spatial_profiles(dict(object='SNtest',grism='Gr13',exptime_s=100.), wave, data)
+        self.assertEqual(len(fig.axes),6)
+        for i, panel in enumerate(record['bins']):
+            model, residual = fig.axes[2*i:2*i+2]
+            np.testing.assert_allclose(model.lines[0].get_ydata(),
+                                       np.array(panel['summed_data_electrons'])/1000.)
+            sky_curve = model.lines[1].get_ydata()
+            np.testing.assert_allclose(sky_curve[3:18], np.array(panel['summed_sky_electrons'])[3:18]/1000.)
+            self.assertTrue(np.isnan(sky_curve[:3]).all() and np.isnan(sky_curve[18:]).all())
+            np.testing.assert_allclose(residual.lines[0].get_ydata(),
+                                       np.array(panel['summed_electrons'])/1000.)
+            for ax in (model,residual):
+                self.assertEqual(ax.images[0].get_transform(),ax.get_xaxis_transform())
+        self.assertEqual(record['sky_model']['spatial_degree'],2)
+        plt.close(fig)
+
     def test_tilted_wavelength_bins_partition_native_counts_without_resampling(self):
         data = {'data': np.array([[1., 2.], [3., 4.], [5., 6.]]),
                 'sky': np.ones((3, 2)),
@@ -17,6 +44,11 @@ class SpatialProfileTests(unittest.TestCase):
         np.testing.assert_array_equal(first['summed_electrons'], [2., 1.])
         np.testing.assert_array_equal(second['summed_electrons'], [4., 8.])
         np.testing.assert_array_equal(first['native_pixel_count'], [2, 1])
+        np.testing.assert_array_equal(first['summed_data_electrons'], [4., 2.])
+        np.testing.assert_array_equal(first['summed_sky_electrons'], [2., 1.])
+        for panel in (first, second):
+            np.testing.assert_allclose(panel['summed_data_electrons']-panel['summed_sky_electrons'],
+                                       panel['summed_electrons'])
         np.testing.assert_array_equal(first['summed_electrons']+second['summed_electrons'],
                                       (data['data']-data['sky']).sum(axis=0))
         np.testing.assert_array_equal(first['spatial_pixel'], [100, 101])

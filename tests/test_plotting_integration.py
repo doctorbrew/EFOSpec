@@ -39,7 +39,11 @@ class PlottingIntegrationTests(unittest.TestCase):
             trace = 20.+0.5*np.sin(np.arange(len(wave))/50.)
             sky = np.full((len(wave), len(x)), 100.)
             signal = 20.*np.exp(-0.5*((x[None, :]-trace[:, None])/2.)**2)
+            signal += 10.*np.exp(-0.5*((x[None,:]-31.)/1.5)**2)
+            signal[:,38] += 5000.  # Explicit display-only spike; keep the pixels.
+            signal[:,1:5] -= 5000.  # Unsupported extrapolation must not set limits.
             sky_mask = (abs(x[None, :]-trace[:, None]) > 8.) & (x > 0) & (x < 40)
+            sky_mask &= (x>=5)&(x<=35)
             image = run/'native'/(product.name[:-7]+'_images.npz')
             np.savez(image, data=sky+signal, sky=sky,
                      waveair=np.broadcast_to(wave[:, None], sky.shape),
@@ -51,6 +55,7 @@ class PlottingIntegrationTests(unittest.TestCase):
             table.header['BOX_RADIUS'] = 4.
             fits.HDUList([fits.PrimaryHDU(), table]).writeto(native)
             result = {'object': 'SN_test', 'grism': 'Gr13', 'exptime_s': 600.,
+                      'raw':'/synthetic/science.fits','raw_sha256':'synthetic-raw-hash',
                       'date_obs': header['DATE-OBS'], 'product': str(product),
                       'native_spec1d': str(native), 'median_native_snr_4000_8500': 20.,
                       'target': {'selected': 'TARGET', 'association': 'synthetic_fixture'}}
@@ -61,12 +66,19 @@ class PlottingIntegrationTests(unittest.TestCase):
             shutil.copyfile(product, second_product)
             shutil.copyfile(image, second_image)
             second_result = {**result, 'product': str(second_product),
+                             'raw':'/synthetic/science-auto.fits',
                              'joint': {'profile_model': 'fixed_gaussian_shared_trace'}}
+            display=run/'profile-display.json'
+            display.write_text(json.dumps(dict(schema_version=1,display_only=True,
+                coordinates='zero_based_legacy_trimmed_detector_pixels',exposures={
+                    'science.fits':dict(raw_sha256='synthetic-raw-hash',ylim_exclude_intervals=[[138,139]],
+                        limits_within_background_and_candidates=True,
+                        profile_candidates=[dict(label='C2',search_interval=[128,135])])})))
             (run/'run.json').write_text(json.dumps({
                 'input_dir': 'synthetic', 'pypeit_version': '1.14.0',
                 'results': [result, second_result], 'errors': [], 'skipped': [], 'limitations': []}))
             before = {p.relative_to(run): sha256(p)
-                      for p in [product, native, image, second_product, second_image]}
+                      for p in [product, native, image, second_product, second_image, display]}
             manifest_before = (run/'run.json').read_bytes()
             moved = Path(directory)/'moved'
             run.rename(moved)
@@ -86,9 +98,29 @@ class PlottingIntegrationTests(unittest.TestCase):
             joint_record = next(r for r in records if Path(r['product']).name == second_product.name)
             self.assertEqual(joint_record['legend_labels'],
                              ['Joint fixed profiles', r'Conditional $\pm 1\sigma$'])
+            self.assertEqual(joint_record['spatial_profile_diagnostics']['display_settings'],{})
+            for panel in joint_record['spatial_profile_diagnostics']['bins']:
+                self.assertIn(138,panel['automatic_spike_excluded_spatial_pixels'])
+                self.assertNotIn(131,panel['ylim_excluded_spatial_pixels'])
+                self.assertGreater(panel['summed_electrons'][38]/1000.,panel['ylim'][1])
             self.assertEqual(record['footer_text'], [])
             self.assertTrue(record['latex'])
             self.assertTrue(record['combined_upper_wavelength_ticklabels'])
+            self.assertEqual(record['trace_diagnostics']['image_display']['colormap'], 'gray_r')
+            self.assertEqual(record['trace_diagnostics']['image_display']['center'], 0.)
+            self.assertEqual(record['spatial_profile_diagnostics']['sky_model']['source'],
+                             'saved extraction sky image; no new fit')
+            for panel in record['spatial_profile_diagnostics']['bins']:
+                np.testing.assert_allclose(np.asarray(panel['summed_data_electrons'],dtype=float)
+                    -np.asarray(panel['summed_sky_electrons'],dtype=float),
+                    np.asarray(panel['summed_electrons'],dtype=float),atol=1e-8)
+                self.assertIn(138,panel['ylim_excluded_spatial_pixels'])
+                self.assertGreater(panel['summed_electrons'][38]/1000.,panel['ylim'][1])
+                self.assertLess(panel['summed_electrons'][2]/1000.,panel['ylim'][0])
+                self.assertEqual(panel['background_interpolation_span'],[105.,135.])
+                self.assertEqual(panel['candidate_annotations'][0]['label'],'C2')
+                self.assertEqual(panel['candidate_annotations'][0]['spatial_pixel'],131.)
+                self.assertLess(panel['summed_electrons'][31]/1000.,panel['ylim'][1])
             self.assertEqual(len(record['outputs']), 8)
             for name in [name for record in records for name in record['outputs']]:
                 path = Path(name)
