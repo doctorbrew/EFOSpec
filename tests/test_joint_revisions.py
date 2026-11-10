@@ -42,7 +42,7 @@ def test_joint_validation_does_not_relax_point_engine(saved_exposure):
     run,reference,_=saved_exposure;e=Exposure(run,'test_f.fits',reference);r=recipe_for(e)
     r['objects'][1]['spat']=r['objects'][0]['spat']+5
     assert validate_joint_recipe(r,e.window,e.hashes)['schema_version']==2
-    r.pop('background_degree');r.update(schema_version=1,engine_version='1.14.0')
+    r.pop('background_degree');r.update(schema_version=1,engine_version='3.0.0')
     with pytest.raises(ValueError,match='separated'):validate_recipe(r,e.window,e.hashes)
 
 

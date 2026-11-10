@@ -113,7 +113,7 @@ def reduce_pair(input_dir, science, standard, output, *, science_position=548., 
     output=Path(output).resolve();output.mkdir(parents=True,exist_ok=False)
     manifest={'schema_version':1,'status':'EXPERIMENTAL','method':'native_raw_calibration_with_PypeIt_extraction',
         'input_dir':str(Path(input_dir).resolve()),'output_dir':str(output),'python':sys.executable,
-        'pypeit_version':'1.14.0','results':[],'errors':[],'skipped':[],
+        'pypeit_version':'3.0.0','results':[],'errors':[],'skipped':[],
         'limitations':['Experimental Gr11/Gr13 raw path; no IRAF runtime or calibration products.',
                       'Source position is an operator/acquisition hypothesis, not an astrometric identification.',
                       'No telluric/slit-loss correction; flux errors exclude response uncertainty.']}

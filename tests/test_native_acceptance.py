@@ -30,8 +30,9 @@ def test_standard_training_closure_cannot_claim_independent_accuracy(tmp_path):
         fits.Column(name='WAVE',format='D',array=vac),fits.Column(name='ZEROPOINT',format='D',array=zp),
         fits.Column(name='VALID',format='L',array=np.ones(vac.size,bool))],name='RESPONSE')]).writeto(response)
     response.with_suffix('.json').write_text(json.dumps({'standard_sha256':'training'}))
-    extinction=flux_calib.load_extinction_data(-70.7336,-29.2584,'lasillaextinct.dat')
-    correction=flux_calib.extinction_correction(vac*u.AA,1.,extinction)
+    from pypeit.core.atmextinction import AtmosphericExtinction
+    extinction=AtmosphericExtinction.from_file('lasillaextinct.dat')
+    correction=extinction.correction_factor(vac,1.)
     # 2e-17 response, 100 s, 5 air-A bins: this photon rate implies 1e-14 cgs/air-A.
     counts=np.full(air.size,250000.)/correction
     spectrum=SimpleNamespace(OPT_WAVE=vac,OPT_COUNTS=counts,OPT_COUNTS_IVAR=np.ones(vac.size),OPT_MASK=np.ones(vac.size,bool))

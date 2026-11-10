@@ -121,7 +121,7 @@ def load_trace_data(result):
     native = Path(result['native_spec1d'])
     with fits.open(native) as hdus:
         target = hdus[result['target']['selected']]
-        data['box_radius'] = float(target.header['BOX_RADIUS'])
+        data['box_radius'] = float(target.header.get('BOX_R_PIX',target.header.get('BOX_RADIUS')))
         if not np.array_equal(target.data['TRACE_SPAT'], data['trace']):
             raise ValueError('saved detector trace differs from the extracted target')
     paths.append(native)

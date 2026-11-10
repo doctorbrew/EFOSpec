@@ -1,7 +1,7 @@
 # Desktop extraction
 
 - **Toolkit:** PySide6/Qt; real desktop windows, no web server.
-- **Engine:** the active Python 3.11 / PypeIt 1.14 environment.
+- **Engine:** the active Python 3.11 / PypeIt 3.0 environment.
 - **Nightly log:** separate, read-only webpage.
 - **Validation:** macOS Cocoa interactions tested locally; Linux XCB/Xvfb interactions pass [CI](https://github.com/sPaMFouR/EFOSpec/actions/runs/41262157980).
 

@@ -6,7 +6,7 @@
 - **Desktop GUI:** [PySide6 controls and usage](docs/desktop.md).
 - **Browser editor:** [experimental prototype and recipe replay](docs/gui.md); not the desktop app.
 - **Webpage:** read-only nightly log, separate from extraction controls.
-- **Scope:** experimental EFOSC2 archive/raw-only reduction; PypeIt 1.14.0.
+- **Scope:** experimental EFOSC2 archive/raw-only reduction; PypeIt 3.0.0.
 - **Native calibration:** [raw inputs and remaining work](docs/native-calibration.md).
 
 ## Download raw data

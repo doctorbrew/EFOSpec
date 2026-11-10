@@ -9,7 +9,7 @@
 
 EFOSC2 optical spectroscopy with a PySide6 desktop editor and a read-only nightly log.
 
-- **Runtime:** Python 3.11, PypeIt 1.14.0; no IRAF/PyRAF process required.
+- **Runtime:** Python 3.11, PypeIt 3.0.0; no IRAF/PyRAF process required.
 - **Scientific status:** experimental. The default nightly workflow still reads archived calibration products.
 - **Desktop:** spectra and failed-exposure review in one application; recipes save new revisions.
 

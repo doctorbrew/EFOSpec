@@ -110,7 +110,7 @@ def test_reviewed_background_requires_same_raw_calibration_crop_and_pixels(tmp_p
     images=tmp_path/'images.npz'
     np.savez(images,data=data,waveair=wave,found_traces=np.array([np.full(120,100.),np.full(120,135.)]))
     hashes={'raw':sha256(raw),'images':sha256(images),'manifest':sha256(manifest)}
-    recipe={'schema_version':1,'engine_version':'1.14.0','coordinates':'raw_detector_pixels_zero_based',
+    recipe={'schema_version':1,'engine_version':'3.0.0','coordinates':'raw_detector_pixels_zero_based',
         'input_sha256':hashes,'source_mode':'manual',
         'objects':[{'id':'primary','label':'standard','kind':'point','spec':310.,'spat':548.,'fwhm':4.,'radius':7.}],
         'sky':{'mode':'pypeit_local','include':[[500,530],[600,630]],'exclude':[],'degree':2,'sigma_clip':4.}}

@@ -26,7 +26,7 @@ def validate_joint_recipe(value, window, expected_inputs):
     if recipe.get('sky',{}).get('mode')!='regions':
         raise ValueError('joint extraction requires explicit background regions')
     # Validate all v1 fields and each aperture without weakening its separation gate.
-    base=deepcopy(recipe);base.update(schema_version=1,engine_version='1.14.0')
+    base=deepcopy(recipe);base.update(schema_version=1,engine_version='3.0.0')
     for obj in recipe['objects']:
         if not isinstance(obj,dict) or not isinstance(obj.get('id'),str) or not re.fullmatch(r'[a-z][a-z0-9_-]{0,31}',obj['id']):
             raise ValueError('joint object IDs must be simple identifiers')
@@ -149,7 +149,7 @@ def reextract_joint(run, product, recipe, output, reference_root=None, *, render
         objects={}
         for i,obj in enumerate(recipe['objects']):
             s=SpecObj('MultiSlit','DET01',OBJTYPE='science',SLITID=exposure.native.SLITID);s.OBJID=i+1;s.NAME=f'JOINT-{obj["id"]}';s.SPAT_PIXPOS=float(np.median(model['traces'][i])-exposure.window.origin[1])
-            s.TRACE_SPAT=model['traces'][i]-exposure.window.origin[1];s.BOX_RADIUS=obj['radius']
+            s.TRACE_SPAT=model['traces'][i]-exposure.window.origin[1];s.BOX_R_PIX=obj['radius']
             s.OPT_WAVE=airtovac(grid*u.AA).value;s.BOX_WAVE=s.OPT_WAVE.copy()
             s.OPT_COUNTS=fullflux[i];s.OPT_COUNTS_IVAR=np.divide(1,fullcov[:,i,i],out=np.zeros(nr),where=fullcov[:,i,i]>0)
             valid=np.zeros(nr,dtype=bool);valid[rows]=fit['valid'];s.OPT_MASK=valid.copy()

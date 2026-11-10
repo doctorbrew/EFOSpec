@@ -1,4 +1,4 @@
-"""EFOSC2 metadata/parameter integration tested against PypeIt 1.14.0.
+"""EFOSC2 metadata/parameter integration tested against PypeIt 3.0.0.
 
 Import only inside the PypeIt environment. No site-packages edits or registry
 patches: pass the spectrograph instance to PypeIt's public metadata interface.
@@ -124,8 +124,8 @@ Explicit frame types come from the catalogue-aware plan, avoiding PypeIt's
 different standard-star catalogue/radius. No runnable .pypeit file is emitted
 until calibration groups and wavelength solutions are validated.
 """
-    if pypeit.__version__ != "1.14.0":
-        raise ValueError(f"adapter currently tested only with PypeIt 1.14.0, found {pypeit.__version__}")
+    if pypeit.__version__ != "3.0.0":
+        raise ValueError(f"adapter currently tested only with PypeIt 3.0.0, found {pypeit.__version__}")
     if plan["profile"] != profile:
         raise ValueError("plan/profile mismatch")
     if report["errors"] or report["identity_conflicts"] or plan["invalid_inputs"]:

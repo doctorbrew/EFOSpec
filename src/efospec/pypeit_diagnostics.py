@@ -20,7 +20,7 @@ The original input inverse variance and extraction model variance stay distinct.
     model=np.zeros_like(science.image) if arrays is None else arrays[1]
     variance=science.ivar if arrays is None else arrays[2]
     mask=science.fullmask if arrays is None else arrays[3]
-    obj=Spec2DObj(sciimg=science.image,ivarraw=science.ivar,skymodel=sky,
+    obj=Spec2DObj(sciimg=science.image,ivarraw=science.ivar,skymodel=sky,bkg_redux_skymodel=None,
         objmodel=model,ivarmodel=variance,
         scaleimg=np.ones_like(science.image) if science.img_scale is None else np.broadcast_to(science.img_scale,science.image.shape).copy(),
         waveimg=wavevac,bpmmask=mask,detector=science.detector,

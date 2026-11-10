@@ -84,8 +84,8 @@ def extract_frame(frame, reference_root, output, hint, hint_info, waveair, arc_q
     import pypeit
     from .pypeit_adapter import EFOSpecEFOSC2Spectrograph
 
-    if pypeit.__version__ != '1.14.0':
-        raise ValueError('this runner is tested only with PypeIt 1.14.0')
+    if pypeit.__version__ != '3.0.0':
+        raise ValueError('this runner is tested only with PypeIt 3.0.0')
     path = Path(frame['path'])
     h, setup = frame['metadata'], frame['setup']
     stem = science_stem(h['OBJECT'], h['DATE-OBS'], setup['grism'], setup['filter'], setup['slit'])

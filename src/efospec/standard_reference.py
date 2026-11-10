@@ -12,11 +12,18 @@ L745_SHA256='49bfb6c156b85e3f8cd74b57f6c147f9d7f885125bdca43c1c86e05f986acc58'
 
 
 def standard_reference(frame, cache):
-    from pypeit.core import flux_calib
+    from pypeit.core import standard
     from pypeit.core.wave import airtovac
     h=frame['metadata']
-    if flux_calib.find_standard_file(h['RA'],h['DEC'],toler=100*u.arcsec,check=True):
-        return flux_calib.find_standard_file(h['RA'],h['DEC'],toler=100*u.arcsec)
+    # PypeIt 3 returns a Spectrum with vacuum A and flux in 1e-17 cgs units.
+    # Preserve our 100-arcsec physical-reference match; exclude model fallbacks.
+    archives=['xshooter','calspec','esofil','noao','ing','lbtmods']
+    if standard.get_archive_standard(h['RA'],h['DEC'],tol=100./60.,archives=archives,check=True):
+        spectrum=standard.get_archive_standard(h['RA'],h['DEC'],tol=100./60.,archives=archives)
+        meta=spectrum.meta
+        return dict(name=str(meta['Name']),std_ra=float(meta['ra_deg']),std_dec=float(meta['dec_deg']),
+            cal_file=str(spectrum.file),std_source=meta['source'],
+            wave=spectrum.wave*u.AA,flux=spectrum.flux*u.erg/u.s/u.cm**2/u.AA)
     position=SkyCoord(h['RA']*u.deg,h['DEC']*u.deg)
     reference=SkyCoord('07h40m20.79s','-17d24m49.2s')
     if position.separation(reference)>100*u.arcsec:

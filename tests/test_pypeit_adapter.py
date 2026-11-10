@@ -14,7 +14,7 @@ from test_planning import REFERENCE
 PYPEIT_AVAILABLE = importlib.util.find_spec("pypeit") is not None
 if PYPEIT_AVAILABLE:
     import pypeit
-    PYPEIT_AVAILABLE = pypeit.__version__ == "1.14.0"
+    PYPEIT_AVAILABLE = pypeit.__version__ == "3.0.0"
     from efospec.pypeit_adapter import EFOSpecEFOSC2Spectrograph, inspect_setup
     from pypeit.metadata import PypeItMetaData
     from astropy.table import Table
@@ -34,7 +34,7 @@ def write_raw(root, name, **changes):
     return path
 
 
-@unittest.skipUnless(PYPEIT_AVAILABLE, "requires PypeIt 1.14.0")
+@unittest.skipUnless(PYPEIT_AVAILABLE, "requires PypeIt 3.0.0")
 class PypeItAdapterTests(unittest.TestCase):
     def test_extraction_engine_imports_in_runtime(self):
         # Metadata imports alone do not exercise PypeIt's display dependency.

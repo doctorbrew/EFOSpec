@@ -73,8 +73,8 @@ def validate_recipe(value, window, expected_inputs):
     recipe = deepcopy(value)
     if type(recipe['schema_version']) is not int or recipe['schema_version'] != 1:
         raise ValueError('unsupported recipe schema version')
-    if recipe['engine_version'] != '1.14.0':
-        raise ValueError('recipe requires PypeIt 1.14.0')
+    if recipe['engine_version'] != '3.0.0':
+        raise ValueError('recipe requires PypeIt 3.0.0')
     if recipe['coordinates'] != 'raw_detector_pixels_zero_based':
         raise ValueError('recipe coordinates must be zero-based native detector pixels')
     hashes = recipe['input_sha256']

@@ -1,6 +1,25 @@
 """Shared PypeIt extraction for automatic reductions and saved manual recipes."""
+from contextlib import contextmanager
+
 import numpy as np
 from astropy import units as u
+
+
+@contextmanager
+def native_qa_context():
+    """Allow literal slit-number hashes in PypeIt 3 QA while retaining TeX.
+
+    Upstream renders the title before saving, even with show=False. Only the
+    engine call receives this TeX catcode; restore the caller's rcParams.
+    """
+    import matplotlib
+    settings={}
+    if matplotlib.rcParams['text.usetex']:
+        preamble=matplotlib.rcParams['text.latex.preamble']
+        settings['text.latex.preamble']=preamble+'\n'+r'\AtBeginDocument{\catcode35=12}'
+    with matplotlib.rc_context(settings):
+        yield
+
 
 
 class SourceSelectionError(ValueError):
@@ -60,6 +79,7 @@ def select_sources(found, target_position=None, manual=None):
     return selected
 
 
+@native_qa_context()
 def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
                     output, basename, target_position=None, manual=None, sky_input_mask=None, processed=None,
                     sky_model=None, sky_trace=None, bounded_background=False):
@@ -80,8 +100,8 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
     from .pypeit_adapter import EFOSpecEFOSC2Spectrograph
     from .sky_regions import capture_sky_selection
 
-    if pypeit.__version__ != '1.14.0':
-        raise ValueError('extraction is validated only with PypeIt 1.14.0')
+    if pypeit.__version__ != '3.0.0':
+        raise ValueError('extraction is validated only with PypeIt 3.0.0')
     data, waveair = np.asarray(data, dtype=float), np.asarray(waveair, dtype=float)
     if (data.ndim != 2 or data.shape != waveair.shape or min(data.shape) < 3
             or not np.isfinite(waveair).all() or np.any(waveair <= 0)
@@ -128,7 +148,8 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
     gain = float(detector['gain'][0])
     sci.build_mask(saturation=detector['saturation']*gain, mincounts=-1e10)
     slits = SlitTraceSet(np.zeros(ny), np.full(ny, nx-1.), 'MultiSlit',
-                        detname='DET01', nspat=nx, PYP_SPEC=inst.name, binspec=2, binspat=2)
+                        detname='DET01', nspat=nx, PYP_SPEC=inst.name, binspec=2, binspat=2,
+                        specmin=np.array([-.5]), specmax=np.array([ny-.5]))
     instruction = None
     if manual is not None:
         if not manual:
@@ -237,7 +258,10 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
     extractor = Extract.get_instance(sci, slits, found, inst, par, 'science', global_sky=sky,
                                      tilts=tilts, waveimg=airtovac(waveair*u.AA).value,
                                      show=False, basename=basename)
-    arrays = extractor.run()
+    native_arrays = extractor.run()
+    # PypeIt 3 adds the separate A-frame sky model at index 1. Preserve
+    # EFOSpec's existing [sky, object, ivar, mask, spectra, ...] contract.
+    arrays = (native_arrays[0], *native_arrays[2:])
     if fitted_background is not None:
         from .local_sky import BackgroundSupportError, side_counts
         for obj in arrays[4]:

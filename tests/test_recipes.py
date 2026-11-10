@@ -11,7 +11,7 @@ class RecipeTests(unittest.TestCase):
     def setUp(self):
         self.window = DetectorWindow((200, 141), (4, 99))
         self.inputs = {'raw': 'a'*64, 'images': 'b'*64, 'manifest': 'c'*64}
-        self.recipe = {'schema_version': 1, 'engine_version': '1.14.0',
+        self.recipe = {'schema_version': 1, 'engine_version': '3.0.0',
                        'coordinates': 'raw_detector_pixels_zero_based',
                        'input_sha256': dict(self.inputs), 'source_mode': 'manual',
                        'objects': [{'id': 'primary', 'label': 'SNtest', 'kind': 'point',

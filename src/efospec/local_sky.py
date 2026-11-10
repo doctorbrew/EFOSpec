@@ -161,8 +161,8 @@ def fit_background(data, ivar, tilts, mask, trace, *, radius, degree=1,
     """
     import pypeit
     from pypeit.core import basis, fitting
-    if pypeit.__version__ != '1.14.0':
-        raise ValueError('local background adapter requires PypeIt 1.14.0')
+    if pypeit.__version__ != '3.0.0':
+        raise ValueError('local background adapter requires PypeIt 3.0.0')
     data, ivar, tilts = (np.asarray(v, float) for v in (data, ivar, tilts))
     mask, trace = np.asarray(mask, bool), np.asarray(trace, float)
     if (data.ndim != 2 or data.shape != ivar.shape or data.shape != tilts.shape
@@ -186,12 +186,12 @@ def fit_background(data, ivar, tilts, mask, trace, *, radius, degree=1,
     spatial = np.broadcast_to(np.linspace(-1., 1., data.shape[1]), data.shape).ravel()
     # Fit all coordinates with zero weight outside the bounded sampling mask.
     # This also returns the interpolated model under the source aperture.
-    _, accepted, model, chi2, status = fitting.bspline_profile(
+    _, accepted, model, chi2, status = fitting.iterative_bspline_fit(
         pixels[order], np.where(np.isfinite(data), data, 0).ravel()[order],
         np.where(good, ivar, 0).ravel()[order],
-        basis.flegendre(spatial[order], degree+1), ingpm=good.ravel()[order],
+        basis=basis.flegendre(spatial[order], degree+1), gpm=good.ravel()[order],
         nord=4, upper=sigma_clip, lower=sigma_clip, maxiter=maxiter,
-        kwargs_bspline={'bkspace':bsp}, kwargs_reject={'groupbadpix':False, 'maxrej':10})
+        kwargs_knots={'spacing':bsp}, kwargs_reject={'groupbadpix':False, 'maxrej':10})
     if status != 0 or not np.isfinite(model).all():
         raise BackgroundSupportError(f'PypeIt spatial degree {degree} did not converge (exit status {status}); no lower-order fallback.',
                                      spatial_degree=degree, pypeit_exit_status=int(status))
@@ -203,7 +203,7 @@ def fit_background(data, ivar, tilts, mask, trace, *, radius, degree=1,
     if valid.mean() < .9:
         raise BackgroundSupportError('More than 10% of rows lost two-sided background support after rejection.',
                                      unsupported_rows=np.flatnonzero(~valid).tolist(), spatial_degree=degree)
-    summary = dict(engine='pypeit.core.fitting.bspline_profile', pypeit_version=pypeit.__version__,
+    summary = dict(engine='pypeit.core.fitting.iterative_bspline_fit', pypeit_version=pypeit.__version__,
                    spatial_degree=degree, legendre_terms=degree+1, pypeit_exit_status=int(status),
                    sigma_clip=float(sigma_clip), bspline_spacing=float(bsp),
                    maximum_iterations=maxiter,

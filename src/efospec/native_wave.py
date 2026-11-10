@@ -118,7 +118,7 @@ def identify_spectrum(spectrum, grism, *, filter_name='Free', fwhm=4.2, nonlinea
     solutions=[]
     for _,_,accepted,match in patterns[:8]:
         fit=iterative_fitting(spectrum,cent,np.flatnonzero(accepted),references[match[accepted]],
-            lines,disp=np.mean(BOUNDS[grism][1]),n_first=3,n_final=4,match_toler=.6)
+            lines,dispersion=np.mean(BOUNDS[grism][1]),n_first=3,n_final=4,match_toler=.6)
         if fit is None:
             continue
         # Revisit blue lines after the high-order fit removes the coarse
@@ -128,7 +128,7 @@ def identify_spectrum(spectrum, grism, *, filter_name='Free', fwhm=4.2, nonlinea
         nearest=delta.argmin(axis=1)
         if keep.sum()>=8 and len(set(nearest[keep]))==keep.sum():
             fit=iterative_fitting(spectrum,cent,np.flatnonzero(keep),references[nearest[keep]],
-                lines,disp=np.mean(BOUNDS[grism][1]),n_first=4,n_final=4,match_toler=.3,input_only=True)
+                lines,dispersion=np.mean(BOUNDS[grism][1]),n_first=4,n_final=4,match_toler=.3,input_only=True)
         if fit is None:
             continue
         try:

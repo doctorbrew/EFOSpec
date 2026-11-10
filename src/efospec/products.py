@@ -126,7 +126,7 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None):
     header['BANDID1']='optimal flux';header['BANDID2']='boxcar flux'
     header['BANDID3']='sky flux in optimal aperture';header['BANDID4']='optimal flux uncertainty'
     center = float(np.nanmedian(s.TRACE_SPAT)+xlo)+1  # IRAF one-based aperture coordinates
-    header['APNUM1']=f'1 1 {center-float(s.BOX_RADIUS):.3f} {center+float(s.BOX_RADIUS):.3f}'
+    header['APNUM1']=f'1 1 {center-float(s.BOX_R_PIX):.3f} {center+float(s.BOX_R_PIX):.3f}'
     if native_calibration:
         header['HISTORY']='Experimental raw bias/flat/HeAr and observed standard response.'
         header['HISTORY']='No telluric or slit-loss correction. Response uncertainty not propagated.'

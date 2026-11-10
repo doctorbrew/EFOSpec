@@ -51,11 +51,13 @@ read-only. New reductions capture the selection directly in their images NPZ.
     from pypeit.images.pypeitimage import PypeItImage
     from pypeit.slittrace import SlitTraceSet
     from .pypeit_adapter import EFOSpecEFOSC2Spectrograph
+    from .extraction import native_qa_context
 
-    if pypeit.__version__ != '1.14.0':
-        raise ValueError('sky selection replay requires the original PypeIt 1.14.0')
     run = Path(run).resolve()
     manifest = json.loads((run/'run.json').read_text())
+    if manifest.get('pypeit_version') != pypeit.__version__:
+        raise ValueError('sky selection replay requires the original PypeIt '+
+                         str(manifest.get('pypeit_version', 'unknown'))+' runtime')
     driver_digest = sha256(Path(__file__).with_name('pypeit_adapter.py'))
     if driver_digest != manifest['source_sha256']['pypeit_adapter.py']:
         raise ValueError('instrument defaults changed since this run; cannot assert an exact sky-mask replay')
@@ -89,14 +91,16 @@ read-only. New reductions capture the selection directly in their images NPZ.
     sci.build_mask(saturation=detector['saturation']*h['ESO DET OUT1 GAIN'], mincounts=-1e10)
     ny, nx = data.shape
     slits = SlitTraceSet(np.zeros(ny), np.full(ny, nx-1.), 'MultiSlit',
-                        detname='DET01', nspat=nx, PYP_SPEC=inst.name, binspec=2, binspat=2)
+                        detname='DET01', nspat=nx, PYP_SPEC=inst.name, binspec=2, binspat=2,
+                        specmin=np.array([-.5]), specmax=np.array([ny-.5]))
     with tempfile.TemporaryDirectory(prefix='efospec-sky-replay-') as directory:
         work = Path(directory)
         (work/'QA/PNGs').mkdir(parents=True)
         par['rdx']['redux_path'] = str(work)
         finder = FindObjects.get_instance(sci, slits, inst, par, 'science',
                     tilts=(wave-wave.min())/(wave.max()-wave.min()), show=False, basename=basename)
-        _, found = finder.run()
+        with native_qa_context():
+            _, found = finder.run()
         expected = {s['name']: s['trimmed_spatial_pixel'] for s in result['target']['candidates']}
         actual = {s.NAME: float(s.SPAT_PIXPOS+origin) for s in found}
         if set(expected) != set(actual) or any(abs(expected[k]-actual[k]) > 1e-5 for k in expected):

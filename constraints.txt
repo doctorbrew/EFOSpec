@@ -1,8 +1,7 @@
-# Shared runtime/CI versions. Dependencies are declared in pyproject.toml.
-numpy==1.26.4
-scipy==1.14.0
-astropy==6.1.1
-matplotlib==3.8.4
-pypeit==1.14.0
-# PypeIt 1.14 still imports pkg_resources during extraction.
+# Verified EFOSpec Python 3.11 / PypeIt 3 scientific stack.
+numpy==2.4.6
+scipy==1.17.1
+astropy==7.2.3
+matplotlib==3.11.2
+pypeit==3.0.0
 setuptools==80.9.0

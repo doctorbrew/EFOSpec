@@ -20,11 +20,50 @@ def sky_template():
     from pypeit.core.flexure import get_archive_spectrum
     from pypeit.core.wave import vactoair
     spectrum, fwhm = get_archive_spectrum('paranal_sky.fits')
-    return (vactoair(spectrum.wavelength).value, spectrum.flux.value.copy(),
+    from astropy import units as u
+    return (vactoair(spectrum.wave*u.AA).value, spectrum.flux.copy(),
             float(fwhm), 'PypeIt/paranal_sky.fits')
 
 
-def correlate_sky(waveair, sky, *, template=None, fwhm_angstrom=None, wavelength_range=(5300.,6500.)):
+def _bspline_correlation(observed, reference, template_fwhm, fwhm_pixels, max_pixels):
+    """Retain the existing diagnostic's B-spline continuum with PypeIt 3 APIs.
+
+    This is EFOSpec preprocessing, not PypeIt 3's native percentile-clipped
+    algorithm. Both paths are explicit; neither authorizes a correction.
+    """
+    from pypeit.core import flexure, fitting
+    smooth=flexure.get_fwhm_gauss_smooth(reference,observed,template_fwhm,
+                                       spec_fwhm_pix=fwhm_pixels)
+    if smooth is None:raise ValueError('cannot match sky resolution')
+    reference=reference.gauss_smooth(smooth) if smooth>0 else reference
+    reference=reference.rebin(observed.wave)
+    observed=observed.rebin(observed.wave)
+    residuals=[]
+    for spectrum in (reference,observed):
+        spectrum.flux[:2]=0.;spectrum.flux[-2:]=0.
+        spectrum.flux=np.maximum(spectrum.flux,0.)
+        mean=float(np.mean(spectrum.flux))
+        if mean<=0:raise ValueError('nonpositive sky normalization')
+        spectrum.flux=spectrum.flux/mean
+        _,_,continuum,_,status=fitting.iterative_bspline_fit(
+            spectrum.wave,spectrum.flux,nord=3,maxiter=15,upper=3.,lower=3.,
+            kwargs_knots={'stride':max(1,spectrum.npix//20)},
+            kwargs_reject={'groupbadpix':True,'maxrej':1})
+        if status!=0:raise ValueError(f'sky continuum did not converge (status {status})')
+        residuals.append(spectrum.flux-continuum)
+    corr=np.correlate(*residuals,'same');center=len(corr)//2
+    peak=np.argmax(corr[center-max_pixels:center+max_pixels])+center-max_pixels
+    points=np.arange(peak-3,peak+4)
+    if points.min()<0 or points.max()>=len(corr):raise ValueError('correlation peak at array edge')
+    fit=fitting.PypeItFit(xval=points.astype(float),yval=corr[points],
+                         func='polynomial',order=np.array([2]));fit.fit()
+    return dict(shift=float(-.5*fit.fitc[1]/fit.fitc[2]-center),polyfit=fit,
+        subpix=points,corr_cen=center,corr=corr[points],sky_spec=observed,
+        arx_spec=reference,smooth=smooth)
+
+
+def correlate_sky(waveair, sky, *, template=None, fwhm_angstrom=None, wavelength_range=(5300.,6500.),
+                  continuum_method='bspline'):
     """Compare against PypeIt's physical sky template without altering data.
 
 The comparison covers 5300--6500 air A to include the optical anchors while
@@ -34,11 +73,11 @@ reporting an additive offset. Preserve the distinction between these models.
 """
     import pypeit
     from astropy import units as u
-    from linetools.spectra.xspectrum1d import XSpectrum1D
+    from pypeit.onespec import OneSpec
     from pypeit.core import flexure
     from pypeit.core.wave import airtovac, vactoair
-    if pypeit.__version__ != '1.14.0':
-        raise ValueError('sky correlation adapter requires PypeIt 1.14.0')
+    if pypeit.__version__ != '3.0.0':
+        raise ValueError('sky correlation adapter requires PypeIt 3.0.0')
     waveair, sky = np.asarray(waveair, float), np.asarray(sky, float)
     if (waveair.ndim != 1 or sky.shape != waveair.shape or
             not np.isfinite(waveair).all() or not np.all(np.diff(waveair) > 0)):
@@ -51,13 +90,19 @@ reporting an additive offset. Preserve the distinction between these models.
     grid=np.linspace(vacuum[0],vacuum[-1],len(vacuum))
     flux=np.interp(grid,vacuum,sky[keep])
     if np.ptp(flux)<=0:raise ValueError('featureless sky spectrum')
-    observed=XSpectrum1D.from_tuple((grid,flux))
-    reference=XSpectrum1D.from_tuple((airtovac(np.asarray(tw)*u.AA).value,np.asarray(tf)))
+    observed=OneSpec(grid,None,flux,fluxed=False)
+    reference=OneSpec(airtovac(np.asarray(tw)*u.AA).value,None,np.asarray(tf).copy(),fluxed=False)
     step=float(np.median(np.diff(grid)))
     max_pixels=min(int(np.ceil(80./step)),len(grid)//2-5)
-    measured=flexure.spec_flex_shift(observed,reference,template_fwhm,
-        spec_fwhm_pix=None if fwhm_angstrom is None else fwhm_angstrom/step,
-        mxshft=max_pixels,excess_shft='crash',method='slitcen')
+    fwhm_pixels=None if fwhm_angstrom is None else fwhm_angstrom/step
+    if continuum_method=='bspline':
+        measured=_bspline_correlation(observed,reference,template_fwhm,fwhm_pixels,max_pixels)
+        method='EFOSpec.bspline_correlation_with_PypeIt3'
+    elif continuum_method=='native':
+        measured=flexure.spec_flex_shift(observed,arx_skyspec=reference,arx_fwhm_pix=template_fwhm,
+            spec_fwhm_pix=fwhm_pixels,mxshft=max_pixels,excess_shft='crash',method='slitcen')
+        method='PypeIt.spec_flex_shift'
+    else:raise ValueError('continuum_method must be bspline or native')
     if measured is None:raise ValueError('PypeIt could not measure a sky correlation')
     pixels=float(measured['shift'])
     if not np.isfinite(pixels) or abs(pixels)>=max_pixels-1:
@@ -72,15 +117,15 @@ reporting an additive offset. Preserve the distinction between these models.
         'shift_angstrom':float(np.median(offsets)),
         'offset_range_air_angstrom':[float(offsets.min()),float(offsets.max())],
         'range_air_angstrom':[float(waveair[keep][0]),float(waveair[keep][-1])],
-        'max_shift_pixels':max_pixels,'method':'PypeIt.spec_flex_shift',
+        'max_shift_pixels':max_pixels,'method':method,'continuum_method':continuum_method,
         'template_fwhm_pixels':float(template_fwhm),'observed_fwhm_angstrom':fwhm_angstrom,
         'smoothing_fwhm_pixels':float(measured['smooth']),
         'limitation':'Same sky data as the line fits; not independent validation or an accepted correction.'}
     arrays={'correlation_lags':measured['subpix']-measured['corr_cen'],
         'correlation_values':measured['corr'],
-        'correlation_wavevac':measured['sky_spec'].wavelength.value,
-        'correlation_sky':measured['sky_spec'].flux.value,
-        'correlation_template':measured['arx_spec'].flux.value}
+        'correlation_wavevac':measured['sky_spec'].wave,
+        'correlation_sky':measured['sky_spec'].flux,
+        'correlation_template':measured['arx_spec'].flux}
     return record,arrays
 
 

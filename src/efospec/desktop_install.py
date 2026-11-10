@@ -21,7 +21,7 @@ import efospec, PySide6
 root = Path(efospec.__file__).resolve().parents[2]
 assert (root / 'plot_style.py').is_file(), 'Install EFOSpec from its checkout with pip install -e .'
 assert (root / 'trunk/src/ntt').is_dir(), 'The EFOSpec reference directory is missing'
-assert version('pypeit') == '1.14.0', 'This release requires PypeIt 1.14.0'
+assert version('pypeit') == '3.0.0', 'This release requires PypeIt 3.0.0'
 from efospec import desktop, background_gui
 print(json.dumps(dict(python=sys.executable, version=sys.version.split()[0],
     source=str(root), pypeit=version('pypeit'), qt=version('PySide6-Essentials'))))

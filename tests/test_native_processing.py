@@ -78,8 +78,9 @@ def test_native_response_cgs_air_units_and_no_extrapolation(tmp_path):
         fits.Column(name='WAVE',format='D',array=vac),fits.Column(name='ZEROPOINT',format='D',array=zp),
         fits.Column(name='VALID',format='L',array=np.ones(len(vac),bool))],name='RESPONSE')]).writeto(response)
     f,good=response_factor(air,response,100.,1.)
-    ext=flux_calib.load_extinction_data(-70.7336,-29.2584,'lasillaextinct.dat')
-    corr=flux_calib.extinction_correction(vac*u.AA,1.,ext)
+    from pypeit.core.atmextinction import AtmosphericExtinction
+    ext=AtmosphericExtinction.from_file('lasillaextinct.dat')
+    corr=ext.correction_factor(vac,1.)
     np.testing.assert_allclose(f[good],2e-17*corr[good]/100/5,rtol=1e-10)
     f,m=response_factor(np.arange(3500.,8501.,5.),response,100.,1.)
     assert not m[0] and not m[-1] and np.isnan(f[0])
@@ -100,11 +101,34 @@ def test_standard_reference_may_not_be_extrapolated(tmp_path):
         build_response({'metadata':{}},spectrum,tmp_path/'response.fits',reference)
 
 
+def test_response_keeps_broad_continuum_support_and_masks_missing_counts():
+    from efospec.native_flux import fit_response_curve
+    from pypeit.core import flux_calib
+    from pypeit.core.wavecal.wvutils import get_delta_wave
+    wave=np.linspace(4000.,9200.,1000)
+    zp=20.+.15*np.sin((wave-4000.)/2400.)
+    truth=100.*(wave/6000.)**-2
+    from pypeit.core.atmextinction import AtmosphericExtinction
+    ext=AtmosphericExtinction.from_file('lasillaextinct.dat')
+    correction=ext.correction_factor(wave,1.2)
+    counts=truth/flux_calib.Nlam_to_Flam(wave,zp)*100.*get_delta_wave(wave,np.ones(1000,bool))/correction
+    rng=np.random.default_rng(73)
+    counts+=rng.normal(0,np.sqrt(counts))
+    good=np.ones(1000,bool);good[410:420]=False
+    fitted,valid,details,_,accepted=fit_response_curve(wave,counts,1./np.maximum(counts,1),good,
+        {'EXPTIME':100.,'ESO TEL AIRM START':1.2},{'wave':wave*u.AA,'flux':truth})
+    assert valid.mean()>.9
+    assert not valid[410:420].any()
+    assert not valid[wave<wave[accepted].min()].any()
+    assert not valid[wave>wave[accepted].max()].any()
+    assert np.max(abs(fitted[valid]-zp[valid]))<.025
+
+
 def test_unverified_standard_is_not_replaced_by_nearest_star(raw_group,tmp_path,monkeypatch):
     from efospec.standard_reference import standard_reference
-    from pypeit.core import flux_calib
+    from pypeit.core import standard
     f,_=raw_group;f['metadata'].update(RA=12.3,DEC=5.3)
-    monkeypatch.setattr(flux_calib,'find_standard_file',lambda *a,**k:False)
+    monkeypatch.setattr(standard,'get_archive_standard',lambda *a,**k:False)
     with pytest.raises(ValueError,match='No independently'):standard_reference(f,tmp_path/'cache')
 
 
@@ -124,10 +148,10 @@ def test_downloaded_physical_reference_is_pinned_and_reused(tmp_path,monkeypatch
     import requests
     from types import SimpleNamespace
     from efospec import standard_reference as module
-    from pypeit.core import flux_calib
+    from pypeit.core import standard
     body=b'# cgs F_lambda\n4000 1e-14\n5000 8e-15\n6000 6e-15\n'
     monkeypatch.setattr(module,'L745_SHA256',hashlib.sha256(body).hexdigest())
-    monkeypatch.setattr(flux_calib,'find_standard_file',lambda *a,**k:False)
+    monkeypatch.setattr(standard,'get_archive_standard',lambda *a,**k:False)
     calls=[]
     def get(url,**kwargs):
         calls.append(url);return SimpleNamespace(content=body,raise_for_status=lambda:None)
@@ -146,7 +170,13 @@ def test_downloaded_physical_reference_is_pinned_and_reused(tmp_path,monkeypatch
 
 def test_pypeit_physical_reference_is_used_directly(tmp_path,monkeypatch):
     from efospec.standard_reference import standard_reference
-    from pypeit.core import flux_calib
-    physical={'name':'known-physical-star'}
-    monkeypatch.setattr(flux_calib,'find_standard_file',lambda *a,**k:True if k.get('check') else physical)
-    assert standard_reference({'metadata':{'RA':0.,'DEC':0.}},tmp_path)==physical
+    from pypeit.core import standard
+    from pypeit.core.spectrum import Spectrum
+    physical=Spectrum(np.array([4000.,5000.]),np.array([100.,80.]),
+        meta=dict(Name='known-physical-star',ra_deg=0.,dec_deg=0.,source='calspec'))
+    physical.file=tmp_path/'physical.fits'
+    monkeypatch.setattr(standard,'get_archive_standard',lambda *a,**k:True if k.get('check') else physical)
+    result=standard_reference({'metadata':{'RA':0.,'DEC':0.}},tmp_path)
+    assert result['name']=='known-physical-star'
+    np.testing.assert_array_equal(result['wave'].value,[4000.,5000.])
+    np.testing.assert_array_equal(result['flux'].value,[100.,80.])

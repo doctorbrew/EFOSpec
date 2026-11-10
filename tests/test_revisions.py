@@ -53,7 +53,7 @@ def saved_exposure(tmp_path):
     np.testing.assert_array_equal(diagnostic.bpmmask.mask,engine['arrays'][3].mask)
     assert fits.getheader(result['native_spec2d'])['RAWX0']==299
     manifest = {'results':[result], 'input_dir':str(tmp_path), 'output_dir':str(run),
-        'pypeit_version':'1.14.0', 'limitations':['Synthetic calibration'], 'errors':[], 'skipped':[]}
+        'pypeit_version':__import__('pypeit').__version__, 'limitations':['Synthetic calibration'], 'errors':[], 'skipped':[]}
     (run/'run.json').write_text(json.dumps(manifest))
     return run, reference, truth
 

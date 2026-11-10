@@ -81,9 +81,9 @@ def test_nonconvergence_never_changes_polynomial_order(monkeypatch):
     from pypeit.core import fitting
     calls = []
     def failed(*args, **kwargs):
-        calls.append(args[3].shape)
+        calls.append(kwargs['basis'].shape)
         return None, np.ones_like(args[0], bool), np.zeros_like(args[0]), 1., 1
-    monkeypatch.setattr(fitting, 'bspline_profile', failed)
+    monkeypatch.setattr(fitting, 'iterative_bspline_fit', failed)
     data, variance, tilts, mask, trace, _ = curved_background()
     with pytest.raises(BackgroundSupportError, match='no lower-order fallback'):
         fit_background(data, 1/variance, tilts, mask, trace, radius=7., degree=2)
@@ -93,11 +93,11 @@ def test_nonconvergence_never_changes_polynomial_order(monkeypatch):
 def test_rejection_removing_one_side_stops_extraction(monkeypatch):
     from pypeit.core import fitting
     def one_sided(*args, **kwargs):
-        accepted = kwargs['ingpm'].copy()
+        accepted = kwargs['gpm'].copy()
         # The second Legendre term encodes the spatial coordinate.
-        accepted &= args[3][:, 1] < 0
+        accepted &= kwargs['basis'][:, 1] < 0
         return None, accepted, np.ones_like(args[0]), 1., 0
-    monkeypatch.setattr(fitting, 'bspline_profile', one_sided)
+    monkeypatch.setattr(fitting, 'iterative_bspline_fit', one_sided)
     data, variance, tilts, mask, trace, _ = curved_background()
     with pytest.raises(BackgroundSupportError, match='after rejection'):
         fit_background(data, 1/variance, tilts, mask, trace, radius=7., degree=2)

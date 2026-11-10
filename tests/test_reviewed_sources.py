@@ -14,7 +14,7 @@ from efospec.reviewed_sources import load_reviewed_sources, prepare_reviewed_ext
 @pytest.fixture
 def reviewed(tmp_path, monkeypatch):
     hashes = {k:str(i)*64 for i,k in enumerate(['raw','images','manifest'])}
-    recipe = dict(schema_version=1,engine_version='1.14.0',coordinates='raw_detector_pixels_zero_based',
+    recipe = dict(schema_version=1,engine_version='3.0.0',coordinates='raw_detector_pixels_zero_based',
         input_sha256=hashes,source_mode='manual',objects=[dict(id='primary',label='SN2026ayt_C2_trial',
         kind='point',spec=5.,spat=40.,fwhm=2.,radius=3.)],
         sky=dict(mode='pypeit_local',include=[],exclude=[],width_pixels=30,minimum_width_pixels=15,degree=2,sigma_clip=4.))

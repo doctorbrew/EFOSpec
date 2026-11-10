@@ -1,5 +1,7 @@
 # EFOSpec and observer migration
 
+Current runtime: PypeIt 3.0.0; the original 1.14 environment and source snapshot are preserved. See [the 10 November migration and validation record](../../pypeit3-migration-2026-11-10.md). The acceptance results below describe the original installation.
+
 ## Scope and name
 
 - EFOSC2 optical spectroscopy only.
@@ -21,13 +23,13 @@ python -m efospec --help
 ```
 
 - Python 3.11; dependencies come from `pyproject.toml` with the `rapid,plots` extras.
-- `constraints.txt` pins the tested numeric stack and PypeIt 1.14.0.
+- `constraints.txt` pins the tested numeric stack and PypeIt 3.0.0.
 - `constraints-ci.txt` includes the same pins for existing CI commands.
 - Conda uses conda-forge; the old AstroConda channel is not inherited.
 - This is a fresh install, not a clone of `pessto` or `pypeit`.
 - No IRAF/PyRAF, STScI bundle, SWarp, SExtractor, PyNOT, or unrelated science packages are requested.
 - PypeIt's mandatory dependencies include Qt/Ginga/IPython; keep them for a supported installation.
-- PypeIt 1.14 also needs `pkg_resources`; we pin Setuptools 80.9.0 ([removal in 82](https://setuptools.pypa.io/en/stable/deprecated/pkg_resources.html)).
+- Historical PypeIt 1.14 also needs `pkg_resources`; we pin Setuptools 80.9.0 ([removal in 82](https://setuptools.pypa.io/en/stable/deprecated/pkg_resources.html)).
 - Runtime excludes our `test` extra; tests and build tools belong in a separate development environment.
 - System requirements: `gzip` for ESO downloads; LaTeX, `dvipng`, and required fonts for plots.
 - Numeric pins are shared across platforms; this is not a complete transitive dependency lock.

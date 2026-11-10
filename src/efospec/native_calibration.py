@@ -36,6 +36,9 @@ def load_native_template(directory, setup):
     status_path = directory/'calibration.json'
     association_path = directory/'association.json'
     status = json.loads(status_path.read_text())
+    import pypeit
+    if status.get('pypeit_version') != pypeit.__version__:
+        raise ValueError('incompatible PypeIt native template; rebuild from raw inputs')
     association = json.loads(association_path.read_text())
     if status['status'] != 'calibrations_built' or status['setup'] != setup:
         raise ValueError('native template must be a successful group with the identical setup')
@@ -69,8 +72,8 @@ def build_group(exposure, output, *, template=None):
     from pypeit.wavecalib import BuildWaveCalib, WaveCalib
     from pypeit.core.wavecal import autoid
     from .pypeit_adapter import EFOSpecEFOSC2Spectrograph
-    if pypeit.__version__ != '1.14.0':
-        raise ValueError('native calibration requires tested PypeIt 1.14.0')
+    if pypeit.__version__ != '3.0.0':
+        raise ValueError('native calibration requires tested PypeIt 3.0.0')
     output = Path(output)
     setup = exposure['setup']
     if setup['grism'] not in GRISMS or setup['binx'] != 2 or setup['biny'] != 2:
@@ -94,9 +97,12 @@ def build_group(exposure, output, *, template=None):
     # This isolated group contains exactly the planner-selected inputs.
     metadata.set_calibration_groups(default=True)
     metadata.write(str(output/'frames.txt'),overwrite=False)
-    cal = Calibrations.get_instance(metadata,par['calibrations'],inst,output/'Calibrations',qadir=output,reuse_calibs=False)
-    cal.set_config(list(metadata['filename']).index(Path(exposure['path']).name),1)
-    status = {'status':'running','stage':'initialization','setup':setup,'wave_qa':[]}
+    index = list(metadata['filename']).index(Path(exposure['path']).name)
+    cal = Calibrations.get_instance(metadata,par['calibrations'],inst,output/'Calibrations',
+        metadata.find_frame_calib_groups(index)[0], index, 1, qadir=output,reuse_calibs=False)
+    cal.success = True
+    status = {'status':'running','stage':'initialization','setup':setup,'wave_qa':[],
+              'pypeit_version':pypeit.__version__}
     try:
         for step in ['bias','dark','bpm','slits','arc','tiltimg']:
             status['stage'] = step; save_json(output/'calibration.json',status)

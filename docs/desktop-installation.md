@@ -1,7 +1,7 @@
 # Desktop launchers
 
 - Use the dedicated **`efospec` environment**, shared with CLI reductions.
-- Requires the editable checkout, Python 3.11, PypeIt 1.14.0 and desktop/plot dependencies.
+- Requires the editable checkout, Python 3.11, PypeIt 3.0.0 and desktop/plot dependencies.
 - Creates a small launcher; it does **not** bundle, download or replace the scientific runtime.
 
 ```sh

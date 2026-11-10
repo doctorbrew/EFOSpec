@@ -10,6 +10,7 @@ from .native_calibration import save_json
 
 
 def validate_native_run(run_dir, output):
+    import pypeit
     from pypeit.images.buildimage import BiasImage,buildimage_fromlist
     from pypeit.flatfield import FlatImages
     from pypeit.slittrace import SlitTraceSet
@@ -22,11 +23,13 @@ def validate_native_run(run_dir, output):
     run_dir=Path(run_dir).resolve();output=Path(output).resolve();output.mkdir(parents=True,exist_ok=False)
     manifest_path=run_dir/'run.json';manifest=json.loads(manifest_path.read_text())
     if manifest['status']=='running':raise ValueError('native calibration is still running')
+    if manifest.get('pypeit_version') != pypeit.__version__:
+        raise ValueError('incompatible PypeIt calibration run; rebuild from raw inputs')
     inputs=json.loads((run_dir/'inputs.json').read_text())
     frames={f['path']:f for f in inputs['frames']}
     report={'method':'native_master_processing_and_sky_diagnostic','calibration_run':str(run_dir),
         'calibration_manifest_sha256':sha256(manifest_path),'status':'running',
-        'science_reduction_ready':False,'results':[],'errors':[],'skipped':[]}
+        'science_reduction_ready':False,'pypeit_version':pypeit.__version__,'results':[],'errors':[],'skipped':[]}
     report['source_sha256']={p.name:sha256(p) for p in Path(__file__).parent.glob('*.py')}
     save_json(output/'validation.json',report)
     inst=EFOSpecEFOSC2Spectrograph();par=inst.profile_parameters('full')

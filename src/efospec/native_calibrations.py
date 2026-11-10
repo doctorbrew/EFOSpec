@@ -60,8 +60,8 @@ def build_calibrations(frame, associations, output):
     from pypeit.wavecalib import BuildWaveCalib, WaveCalib
     from pypeit.core.wavecal.autoid import map_fwhm
     from .pypeit_adapter import EFOSpecEFOSC2Spectrograph
-    if __version__!='1.14.0':
-        raise ValueError('native calibration is tested with PypeIt 1.14.0')
+    if __version__!='3.0.0':
+        raise ValueError('native calibration is tested with PypeIt 3.0.0')
     files=validate_associations(frame,associations)
     output=Path(output).resolve()
     output.mkdir(parents=True,exist_ok=False)
@@ -81,8 +81,11 @@ def build_calibrations(frame, associations, output):
         table.set_combination_groups()
         index=int(np.flatnonzero(table.table['filename']==Path(frame['path']).name)[0])
         cal=Calibrations.get_instance(table,par['calibrations'],instrument,output/'Calibrations',
-                                     qadir=output/'QA',reuse_calibs=False)
-        cal.set_config(index,1)
+            table.find_frame_calib_groups(index)[0], index, 1,
+            qadir=output/'QA',reuse_calibs=False)
+        # PypeIt 3 run_the_steps initializes this before each get_* call.
+        # We interleave our physical arc identification with those same stages.
+        cal.success=True
         # PypeIt performs raw processing, stacking, detector masking, and edges.
         for step in ('bias','bpm','arc','tiltimg','slits'):
             if getattr(cal,'get_'+step)() is None:
@@ -159,6 +162,9 @@ def load_calibrations(directory):
     directory=Path(directory).resolve();record=json.loads((directory/'calibration.json').read_text())
     if record.get('status')!='experimental_complete' or record.get('mode')!='native_raw_only':
         raise ValueError('native calibration group is incomplete')
+    import pypeit
+    if record.get('pypeit_version') != pypeit.__version__:
+        raise ValueError('incompatible PypeIt calibration group; rebuild from raw inputs')
     for path,digest in record['raw_inputs'].items():
         if sha256(Path(path))!=digest:raise ValueError('raw calibration input changed')
     for path,digest in record['processed_files'].items():

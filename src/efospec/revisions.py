@@ -79,7 +79,7 @@ class Exposure:
 
     def default_recipe(self):
         mode='bounded' if self.result.get('processing',{}).get('sky_policy')=='bounded_two_sided_pypeit' else 'automatic'
-        return dict(schema_version=1, engine_version='1.14.0',
+        return dict(schema_version=1, engine_version='3.0.0',
             coordinates='raw_detector_pixels_zero_based', input_sha256=dict(self.hashes),
             source_mode='automatic', objects=[], sky={'mode':mode,'include':[],'exclude':[]})
 
@@ -87,7 +87,7 @@ class Exposure:
         row = self.window.shape[0]//2
         spec, spat = self.window.to_raw(row, self.native.TRACE_SPAT[row])
         return dict(id='primary', label=self.result['object'], kind='point', spec=spec, spat=spat,
-                    fwhm=float(np.nanmedian(self.native.FWHM)), radius=float(self.native.BOX_RADIUS))
+                    fwhm=float(np.nanmedian(self.native.FWHM)), radius=float(self.native.BOX_R_PIX))
 
 
 def expand_archive_window(exposure, padding):

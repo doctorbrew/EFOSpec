@@ -29,11 +29,11 @@ def render():
          'Legacy FITS / ASCII and product headers', 'Requires a configured IRAF + PyRAF installation'),
     ]
     right = [
-        ('PYPEIT 1.14.0', 'Prepare the detector image',
+        ('PYPEIT 3.0.0', 'Prepare the detector image',
          'Raw bias + flat → detector processing → crop', 'Propagated variance, flat scaling and cosmic-ray mask'),
         ('PHYSICAL LINES + PYPEIT FIT', 'Wavelength calibration',
          'Raw He–Ar fit / tilts → 5577 / 6300 Å shift', 'Physical bounds, line holdouts and independent 6363 Å'),
-        ('PYPEIT 1.14.0', 'Trace, sky, optimal + boxcar extraction',
+        ('PYPEIT 3.0.0', 'Trace, sky, optimal + boxcar extraction',
          'FindObjects → global sky → Extract local joint fit', 'Shared extraction engine; optional manual source anchors'),
         ('PYPEIT + PHYSICAL STAR REFERENCE', 'Flux calibration',
          'Observed standard → sensitivity + extinction', 'No archived response; no telluric or slit-loss correction'),

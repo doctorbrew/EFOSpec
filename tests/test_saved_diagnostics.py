@@ -40,6 +40,10 @@ def test_sky_replay_recovers_the_original_selection_and_rejects_changed_defaults
     manifest['source_sha256']['pypeit_adapter.py']='0'*64
     (run/'run.json').write_text(json.dumps(manifest))
     with pytest.raises(ValueError,match='defaults changed'):recover_sky_selection(result,run)
+    manifest['pypeit_version']='1.14.0'
+    (run/'run.json').write_text(json.dumps(manifest))
+    with pytest.raises(ValueError,match='original PypeIt 1.14.0'):
+        recover_sky_selection(result,run)
 
 
 def test_legacy_comparison_requires_same_exposure_and_unique_content(saved_exposure,tmp_path):

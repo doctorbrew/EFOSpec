@@ -82,7 +82,7 @@ class ExtractionIntegrationTests(unittest.TestCase):
                 self.assertFalse(selected[~mask].any())
                 for identity, objects in result['objects'].items():
                     obj = objects[0]
-                    self.assertEqual(float(obj.BOX_RADIUS), 7.)
+                    self.assertEqual(float(obj.BOX_R_PIX), 7.)
                     use = obj.OPT_MASK & (np.arange(160)>25) & (np.arange(160)<135)
                     self.assertGreater(use.sum(), 90)
                     bias = np.median(obj.OPT_COUNTS[use]/truth[identity][use])-1.
