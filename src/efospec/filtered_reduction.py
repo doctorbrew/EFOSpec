@@ -1,4 +1,4 @@
-"""Separate Gr13/GG495 standards: native counts and experimental responses.
+"""Separate filtered standards and red review spectra: native counts and responses.
 
 No science/standard pair, legacy calibration, second-order correction or claim
 of independent flux validation is required to retain a standard's extraction.
@@ -23,7 +23,7 @@ from .native_reduction import prepare
 def supported_counts(objects, limits):
     """Retain measured counts, but never certify wavelengths outside arc IDs."""
     if len(objects) != 1:
-        raise ValueError('filtered delivery requires exactly one selected source')
+        raise ValueError('native counts delivery requires exactly one selected source')
     low, high = np.asarray(limits, float)
     if not np.isfinite([low, high]).all() or low >= high:
         raise ValueError('invalid arc reference bracket')
@@ -101,7 +101,7 @@ def export_counts(prepared, directory):
     two_d = write_spec2d(directory/'native'/('spec2d_'+stem+'.fits'),
         diagnostics['science'], diagnostics['slits'], airtovac(prepared['waveair']*u.AA).value,
         diagnostics['tilts'], arrays[0], arrays=arrays, raw_origin=(prepared['ylo'], prepared['xlo']),
-        stage='filtered_standard_arc_only')
+        stage='red_counts_arc_only' if setup['grism']=='Gr16' else 'filtered_standard_arc_only')
     image = directory/'native'/(stem+'_images.npz')
     np.savez_compressed(image, data=prepared['data'], sky=arrays[0], object_model=arrays[1],
         ivar=arrays[2], mask=arrays[3].mask, waveair=prepared['waveair'],
@@ -147,6 +147,23 @@ def fit_standard_response(frame, objects, directory):
 
 def reduce_filtered_night(input_dir, output, *, night, position=548., spatial_half_width=100,
                           calibration_groups=(), background_reviews=None, render_report=True):
+    """Separate Gr13/GG495 standards; retain the established public interface."""
+    return _reduce_counts_night(input_dir, output, night=night, position=position,
+        spatial_half_width=spatial_half_width, calibration_groups=calibration_groups,
+        background_reviews=background_reviews, render_report=render_report)
+
+
+def reduce_red_night(input_dir, output, *, night, position=548., spatial_half_width=100,
+                     calibration_groups=(), targets=None):
+    """Gr16/OG530 review counts, explicitly without accepted flexure or flux."""
+    return _reduce_counts_night(input_dir, output, night=night, position=position,
+        spatial_half_width=spatial_half_width, calibration_groups=calibration_groups,
+        render_report=False, red_counts_only=True, targets=targets)
+
+
+def _reduce_counts_night(input_dir, output, *, night, position=548., spatial_half_width=100,
+                         calibration_groups=(), background_reviews=None, render_report=True,
+                         red_counts_only=False, targets=None):
     """One explicitly named night, a fresh revision, and standalone standards."""
     import pypeit
     from .run_record import snapshot_sources
@@ -157,11 +174,16 @@ def reduce_filtered_night(input_dir, output, *, night, position=548., spatial_ha
     readiness = assess_native_readiness(inv)
     if inv['errors'] or inv['identity_conflicts'] or readiness['invalid_inputs']:
         raise ValueError('resolve invalid raw inventory before filtered reduction')
-    frames = [f for f in inv['frames'] if f['role'] == 'standard_candidate'
-              and 'duplicate_of' not in f and f['setup']['grism'] == 'Gr13'
-              and f['setup']['filter'] == 'GG495']
+    grism, filter_name = ('Gr16','OG530') if red_counts_only else ('Gr13','GG495')
+    roles = {'science','standard_candidate'} if red_counts_only else {'standard_candidate'}
+    frames = [f for f in inv['frames'] if f['role'] in roles
+              and 'duplicate_of' not in f and f['setup']['grism'] == grism
+              and f['setup']['filter'] == filter_name
+              and (not targets or f['metadata']['OBJECT'] in targets)]
     if not frames or any(f['night'] != compact for f in frames):
-        raise ValueError('filtered standards must belong to the single requested observing night')
+        raise ValueError('selected counts exposures must belong to the single requested observing night')
+    if targets and set(targets)-{f['metadata']['OBJECT'] for f in frames}:
+        raise ValueError('one or more requested targets have no matching counts exposure')
     if not np.isfinite(position) or not 100 < position < 920:
         raise ValueError('expected position must lie inside the slit')
     if type(spatial_half_width) is not int or not 50 <= spatial_half_width <= 200:
@@ -195,6 +217,10 @@ def reduce_filtered_night(input_dir, output, *, night, position=548., spatial_ha
                'Source geometry is selected automatically; identity is not astrometrically verified.',
                'Responses remain experimental; training closure is not independent flux validation.',
                'No second-order, telluric or slit-loss correction; response uncertainty is not propagated.']}
+    if red_counts_only:
+        run.update(method='native_red_counts_diagnostic', targets=targets,
+                   science_validated=False, accepted_science_delivery=False)
+        run['limitations'][0] = 'Arc-calibrated review counts; red-sky flexure is diagnostic only and no shift is applied.'
     save_json(output/'inputs.json', inv); save_json(output/'setup-checks.json', readiness)
     save_json(output/'run.json', run)
     for frame in sorted(frames, key=lambda f: f['metadata']['MJD-OBS']):
@@ -208,11 +234,14 @@ def reduce_filtered_night(input_dir, output, *, night, position=548., spatial_ha
                 key = calibration_key(association)
                 prepared = prepare(frame, selected, directory, position, cached=cache.get(key),
                                    arc_supported_only=True, spatial_half_width=spatial_half_width,
-                                   background_review=reviews.get(Path(frame['path']).name))
+                                   background_review=reviews.get(Path(frame['path']).name),
+                                   **({'red_counts_only':True} if red_counts_only else {}))
                 cache[key] = prepared['bundle']['directory']
                 record, objects = export_counts(prepared, directory)
                 record['free_comparison_candidates'] = free_comparisons(frame, inv['frames'])
-                record['flux_response'] = fit_standard_response(frame, objects, directory)
+                record['flux_response'] = (fit_standard_response(frame, objects, directory)
+                    if frame['role']=='standard_candidate' else
+                    {'status':'not_applied', 'independent_flux_validation':False})
                 if sha256(Path(frame['path'])) != frame['sha256']:
                     raise ValueError('raw standard changed during reduction')
                 save_json(directory/'extraction.json', record)

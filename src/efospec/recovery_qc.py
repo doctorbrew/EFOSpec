@@ -9,7 +9,6 @@ from urllib.parse import quote
 
 import numpy as np
 from astropy.io import fits
-from astropy.visualization import AsinhStretch, ImageNormalize
 from astropy.wcs import WCS
 
 from .inventory import sha256
@@ -18,33 +17,14 @@ from .recipes import validate_recipe
 from .revisions import Exposure, FailedExposure, prepare_recovery, reextract
 
 from .figure_style import house_style
+from .profile_limits import _profile_limit_samples, _profile_limits
+from .image_display import image_normalization, mark_zoom_region
 
 TRACE_COLORS = ('xkcd:red', 'xkcd:dodger blue', 'xkcd:green', 'xkcd:brown')
 
+# The bounded background selection already treats these columns as off-slit.
+SLIT_EDGE_MARGIN = 3
 
-def _profile_limit_samples(values, protected):
-    """Exclude narrow negative outliers from limits only, never the plotted data."""
-    from scipy.ndimage import median_filter
-    displayed = np.array(values, dtype=float, copy=True)
-    finite = np.isfinite(displayed)
-    if finite.sum() < 7:
-        return displayed, np.zeros(displayed.shape, dtype=bool)
-    filled = np.where(finite, displayed, np.nanmedian(displayed))
-    deviation = filled-median_filter(filled, size=7, mode='nearest')
-    center = np.median(deviation[finite])
-    sigma = 1.4826*np.median(np.abs(deviation[finite]-center))
-    threshold = max(10*sigma, np.finfo(float).eps*max(1., np.max(np.abs(filled))))
-    candidates = finite & (deviation < -threshold)
-    masked = np.zeros_like(candidates)
-    # Broad depressions remain visible; only isolated one/two-column spikes
-    # qualify for exclusion from the limit calculation.
-    groups = np.split(np.flatnonzero(candidates), np.flatnonzero(np.diff(np.flatnonzero(candidates)) > 1)+1)
-    for group in groups:
-        if (0 < len(group) <= 2 and group[0] > 0 and group[-1] < len(values)-1
-                and not protected[group].any()):
-            masked[group] = True
-    displayed[masked] = np.nan
-    return displayed, masked
 
 
 def _candidate_label(ax, x, label, color):
@@ -60,21 +40,6 @@ def _candidate_label(ax, x, label, color):
                          'edgecolor':color, 'linewidth':1.2, 'alpha':.7})
 
 
-def _profile_limits(profiles, *, background_subtracted=False):
-    finite = np.concatenate(profiles)
-    finite = finite[np.isfinite(finite)]
-    if not finite.size:
-        return None
-    low, high = float(finite.min()), float(finite.max())
-    # Outward 10% padding works for positive, negative, and mixed-sign data.
-    fallback = .1*max(high-low, abs(low), abs(high), 1.)
-    if background_subtracted:
-        # Give the zero baseline and negative residuals clear space below the
-        # source peak, without allowing isolated dips to set the viewport.
-        lower_padding = max(.1*abs(low), .2*(high-low), fallback)
-        return min(0., low)-lower_padding, max(0., high)+(.1*abs(high) or fallback)
-    return low-(.1*abs(low) or fallback), high+(.1*abs(high) or fallback)
-
 
 def _compact_counts(value, position=None):
     if value == 0:
@@ -83,16 +48,12 @@ def _compact_counts(value, position=None):
     return f'{mantissa.rstrip("0").rstrip(".")}e{int(exponent)}'
 
 
-def _image(ax, data, extent=None):
-    # Overscan/vignetted borders must not set the stretch for a faint field.
-    dy,dx=[max(1,int(.03*n)) for n in data.shape]
-    core=data[dy:-dy,dx:-dx]
-    good = core[np.isfinite(core)]
-    if not good.size:good=data[np.isfinite(data)]
-    low, high = np.percentile(good, [.5, 99.5])
-    high = max(high, low+1.)
-    return ax.imshow(data, origin='lower', cmap='gray_r', aspect='auto', extent=extent,
-                     norm=ImageNormalize(vmin=low, vmax=high, stretch=AsinhStretch(.08)))
+def _image(ax, data, extent=None, *, residual=False, normalization=None, cmap='gray_r'):
+    norm, metadata = normalization or image_normalization(data, residual=residual, cmap=cmap)
+    image = ax.imshow(data, origin='lower', cmap=cmap, aspect='auto', extent=extent,
+                      norm=norm, interpolation='nearest')
+    image._efospec_display = metadata
+    return image
 
 
 def _traces(exposure):
@@ -106,7 +67,6 @@ def _traces(exposure):
 def plot_exposure(exposure, output):
     from .figure_style import save_qc
     import matplotlib.pyplot as plt
-    from matplotlib.patches import Rectangle
     raw = Path(exposure.frame['path'])
     full = fits.getdata(raw).astype(float)
     data = exposure.images['data']
@@ -130,29 +90,30 @@ def plot_exposure(exposure, output):
     title = exposure.result['object']
     fig, axes = plt.subplots(1, 2, figsize=(20, 12), constrained_layout=True)
     im = _image(axes[0], full)
-    axes[0].add_patch(Rectangle((x0-.5,y0-.5),nx,ny,fill=False,color='xkcd:neon blue',lw=3.))
-    axes[0].annotate('Zoom', (x0+nx, y0+ny), xytext=(5, -8), textcoords='offset points',
-                     color='xkcd:neon blue', fontsize=18, va='top')
     axes[0].set_title('Raw detector')
     fig.colorbar(im,ax=axes[0],label='ADU',shrink=.65)
-    _image(axes[1], data, extent)
+    window_image = _image(axes[1], data, extent)
     axes[1].set_title('Candidate traces')
     for i, trace in enumerate(traces):
         axes[1].plot(trace, rows, color=colors[i], lw=2.4)
     axes[1].set_xlim(*xlimits)
     axes[1].set_ylim(extent[2], extent[3])
+    zoom_bounds = mark_zoom_region(axes[0], axes[1])
+    image_displays = {'raw_detector':im._efospec_display,
+                      'processed_window':window_image._efospec_display,
+                      'zoom_raw_bounds_xy':zoom_bounds}
     label_row = int(.03*(ny-1))
     for i, trace in enumerate(traces):
         _candidate_label(axes[1], trace[label_row], f'C{i+1}', colors[i])
     for ax in axes:
         ax.set_xlabel('Raw x / spatial pixel')
         ax.set_ylabel('Raw y / spectral pixel')
-    fig.suptitle(title);save_qc(fig,output,'science',exposure.result['object'],tick_fontsize=27);plt.close(fig)
+    fig.suptitle(title);save_qc(fig,output,'science',exposure.result['object'],tick_fontsize=18);plt.close(fig)
 
     # A zero placeholder from a failed selection is not a fitted sky model.
     fig, (left, right) = plt.subplots(1, 2, figsize=(20,12), constrained_layout=True)
     for ax in [left,right]:
-        _image(ax,residual,extent)
+        residual_image = _image(ax,residual,extent,residual=sky_available)
         ax.set_xlabel('Raw x / spatial pixel');ax.set_ylabel('Raw y / spectral pixel')
     left.set_title('Sky residual' if sky_available else 'Window (no sky fit)')
     right.set_title('Residual + traces' if sky_available else 'Traces (no sky fit)')
@@ -167,7 +128,8 @@ def plot_exposure(exposure, output):
         _candidate_label(right, trace[label_row], f'C{i+1}', colors[i])
     subtitle = '' if sky_available else '\nSky subtraction unavailable: no fitted background'
     fig.suptitle(title+subtitle)
-    save_qc(fig,output,'traces',exposure.result['object'],tick_fontsize=27);plt.close(fig)
+    image_displays['residual'] = residual_image._efospec_display
+    save_qc(fig,output,'traces',exposure.result['object'],tick_fontsize=18);plt.close(fig)
 
     # A separate wide figure remains legible when it spans the report grid.
     from .profile_background import load_profile_background, summed_profile
@@ -196,19 +158,24 @@ def plot_exposure(exposure, output):
             (np.arange(ny//4,ny//2),'--','Second quarter'),
             (np.arange(ny//2,3*ny//4),':','Third quarter')]:
         if profile_sky_available:
-            values, row_count = summed_profile(profile_residual, indices, valid_rows)
+            values, row_count = summed_profile(profile_residual, indices, valid_rows,
+                spatial_columns=((x >= supported_xlimits[0]) & (x <= supported_xlimits[1]))
+                                if background else None)
         else:
             values, row_count = np.nanmedian(residual[indices],axis=0), len(indices)
         if background:
             values = np.where((x >= supported_xlimits[0]) & (x <= supported_xlimits[1]), values, np.nan)
-        for_limits, excluded = _profile_limit_samples(values, protected)
+        # Slit-boundary columns carry no fitted background and overwhelm the
+        # sources by an order of magnitude; keep them plotted but out of scale.
+        for_limits, excluded = _profile_limit_samples(values, protected,
+                                                      edge_margin=SLIT_EDGE_MARGIN)
         for_limits[(x < profile_xlimits[0]) | (x > profile_xlimits[1])] = np.nan
         exclusions[label] = x[excluded].tolist()
         limit_samples.append(for_limits)
         first, last = int(y0+indices[0]), int(y0+indices[-1])
         row_ranges[label] = {'raw_y_first':first, 'raw_y_last':last,
                              'bounds':'inclusive', 'rows':len(indices), 'used_rows':row_count}
-        short_label = {'All rows':'All rows', 'Second quarter':'Q2', 'Third quarter':'Q3'}[label]
+        short_label = {'All rows':'Full range', 'Second quarter':'Q2', 'Third quarter':'Q3'}[label]
         coverage = f' ({row_count}/{len(indices)} rows)' if row_count != len(indices) else ''
         profile.plot(x,values/1000.,style,lw=2.,label=f'{short_label}: y={first}--{last}'+coverage)
     # Keep every plotted sample, including spikes below the chosen viewport.
@@ -226,29 +193,35 @@ def plot_exposure(exposure, output):
     profile.set_xlabel('Spatial Pixel', fontsize=28.6)
     profile.set_ylabel((r'Summed Bkg-Subtracted Signal [$10^3\,e^{-}$]' if profile_sky_available
                        else r'Median Signal [$10^3\,e^{-}$] (sky included)'), fontsize=28.6)
-    profile.set_title('Spatial profile (summed across dispersion axis - y)' if profile_sky_available
-                      else 'Spatial profile (median across dispersion axis - y)')
+    # Summation rule and row ranges stay in profile-display.json and the report
+    # caption; the figure keeps a short title.
+    profile.set_title('Spatial profile' if profile_sky_available
+                      else 'Spatial profile (sky included)')
     if profile_sky_available:
         profile.axhline(0, color='0.5', lw=.8, zorder=0)
     profile.legend(ncol=3, fontsize=23.4);profile.grid(False)
     fig.suptitle(title)
-    save_qc(fig,output,'profiles',exposure.result['object'],tick_fontsize=27,legend_fontsize=23.4)
+    save_qc(fig,output,'profiles',exposure.result['object'],tick_fontsize=18,legend_fontsize=18)
     plt.close(fig)
     save_json(Path(output)/'profile-display.json', {
         'coordinates':'raw_detector_pixels_zero_based', 'candidate_reference_raw_y':int(y0+ny//2),
         'strength_measure':'median electrons sampled along saved trace; not detection S/N',
         'sky_subtracted':profile_sky_available,
-        'profile_statistic':('sum of pixel-wise background residuals over supported spectral rows at each fixed spatial x'
+        'profile_statistic':('sum of pixel-wise background residuals over the same common valid spectral rows at each displayed spatial x; no filling, smoothing or coverage rescaling'
                              if profile_sky_available else 'median over selected spectral rows at each fixed spatial x; no fitted background'),
         'background_source':background['provenance'] if background else None,
         'profile_x_limits':list(profile_xlimits),
         'profile_background_x_limits':list(supported_xlimits) if background else None,
         'profile_row_ranges':row_ranges,
+        'missing_pixel_policy':'exclude a row at every displayed x if any supported non-dead column is missing; fully missing columns remain NaN',
         'traces':[{'candidate':i+1,'rank':rank+1,'color':colors[i],
                    'median_electrons':strengths[i] if np.isfinite(strengths[i]) else None} for rank,i in enumerate(order)],
         'display_only':True,'all_profile_samples_plotted':True,
+        'image_display':image_displays,
         'ylim_excluded_raw_x_by_profile':exclusions,
-        'outlier_rule':'negative deviation from 7-pixel running median > 10 MAD-sigma; width <= 2; protect trace envelope +/- 3 pixels',
+        'outlier_rule':'negative deviation from 7-pixel running median >10 MAD-sigma and <=2 columns; positive spikes require >20 MAD-sigma prominence and half-prominence width <=2 pixels, with <=3-column >10-sigma core; protect every saved trace envelope +/-3 pixels; display limits only',
+        'slit_edge_margin_columns':SLIT_EDGE_MARGIN,
+        'slit_edge_rule':f'the outermost {SLIT_EDGE_MARGIN} unprotected columns on each side are excluded from the limit estimate only; they remain plotted',
         'ylim':limits, 'ylim_rule':('20 percent span below retained minimum; include zero; 10 percent above maximum'
                                   if profile_sky_available else '10 percent outward padding of retained extrema'),
         'display_signal_unit':'10^3 electrons', 'display_signal_divisor':1000.,
@@ -275,10 +248,14 @@ def acquisition_images(exposure, output):
         data = fits.getdata(path).astype(float)
         ny,nx=data.shape
         fig,axes=plt.subplots(1,2,figsize=(20,11),constrained_layout=True)
-        _image(axes[0],data);axes[0].set_title('Full acquisition detector')
         half=min(180,ny//2,nx//2);y0=ny//2-half;x0=nx//2-half
-        _image(axes[1],data[y0:y0+2*half,x0:x0+2*half],
-               [x0-.5,x0+2*half-.5,y0-.5,y0+2*half-.5])
+        zoom = data[y0:y0+2*half,x0:x0+2*half]
+        normalization = image_normalization(zoom,cmap='RdBu')
+        _image(axes[0],data,normalization=normalization,cmap='RdBu')
+        axes[0].set_title('Full acquisition detector')
+        _image(axes[1],zoom, [x0-.5,x0+2*half-.5,y0-.5,y0+2*half-.5],
+               normalization=normalization,cmap='RdBu')
+        zoom_bounds = mark_zoom_region(axes[0], axes[1])
         axes[1].set_title('Detector-centre zoom; NOT a target identification')
         for ax in axes:
             ax.set_xlabel('Acquisition raw x');ax.set_ylabel('Acquisition raw y')
@@ -288,6 +265,7 @@ def acquisition_images(exposure, output):
         filename=f'acquisition-{len(records)+1}.png'
         save_qc(fig,output,Path(filename).stem,exposure.result['object'],tick_fontsize=27);plt.close(fig)
         records.append({'path':str(path),'sha256':sha256(path),'image':filename,
+                        'zoom_raw_bounds_xy':zoom_bounds, 'image_display':normalization[1],
                         'has_celestial_wcs':celestial,'date_obs':h.get('DATE-OBS')})
     return records
 

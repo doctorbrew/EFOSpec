@@ -58,6 +58,27 @@ def test_missing_reference_records_failure_without_modifying_counts(tmp_path, mo
     assert original[0].OPT_MASK.all()
 
 
+def test_red_science_is_explicitly_review_counts_not_flux(tmp_path, monkeypatch):
+    from efospec import filtered_reduction as module
+    target = frame('AT2026twd', 'science')
+    target['setup'].update(grism='Gr16', filter='OG530')
+    monkeypatch.setattr(module, 'inventory', lambda paths: report([target]))
+    monkeypatch.setattr(module, 'validate_associations', lambda *a: None)
+    def prepare(target, associations, directory, position, **kwargs):
+        assert kwargs['red_counts_only'] and kwargs['arc_supported_only']
+        return {'bundle': {'directory':directory/'calibration'}}
+    monkeypatch.setattr(module, 'prepare', prepare)
+    monkeypatch.setattr(module, 'export_counts', lambda *a: ({'object':'AT2026twd',
+        'flux_calibrated':False, 'science_validated':False}, counts()))
+    monkeypatch.setattr(module, 'sha256', lambda p: p.stem)
+    def no_response(*args): raise AssertionError('science is not a response standard')
+    monkeypatch.setattr(module, 'fit_standard_response', no_response)
+    result = module.reduce_red_night('/unused', tmp_path/'out', night='2024-11-14')
+    assert result['status'] == 'complete'
+    assert not result['accepted_science_delivery'] and not result['science_validated']
+    assert result['results'][0]['flux_response']['status'] == 'not_applied'
+
+
 def test_wrong_night_is_rejected_before_creating_outputs(tmp_path, monkeypatch):
     from efospec.filtered_reduction import reduce_filtered_night
     target = frame('std', 'standard_candidate'); target['setup']['filter'] = 'GG495'

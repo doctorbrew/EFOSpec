@@ -11,8 +11,8 @@ def archive_setup_issue(setup):
     if setup.get('binx') != 2 or setup.get('biny') != 2:
         return 'Archive reduction requires the inspected 2x2 detector binning.'
     if grism == 'Gr16' and filter_name == 'OG530':
-        return ('Gr16/OG530 is not enabled in the archive reduction: native extraction, '
-                'red-sky flexure validation and a matching flux response are required.')
+        return ('Gr16/OG530 is not enabled in the archive reduction: reduce-red provides experimental review counts, '
+                'while red-sky flexure validation and a matching flux response are still required for science delivery.')
     if grism in {'Gr11', 'Gr13'} and filter_name == 'GG495':
         return (f'{grism}/GG495 is not enabled in the archive reduction: the filtered '
                 'native extraction and response need validation and nightly integration.')
@@ -36,7 +36,7 @@ def setup_support(setup):
         development.append('Implement and validate native detector geometry and raw wavelength calibration for this setup.')
     if red:
         development.extend([
-            'Connect Gr16 native masters to extraction, variance propagation and export.',
+            'Use reduce-red for native Gr16/OG530 review counts with propagated variance; these are not accepted science products.',
             'Validate red-sky flexure with held-out features; 5577 A is outside Gr16 coverage. Existing correlation is diagnostic only.',
             'Register the observed standard against a physical flux reference and validate an OG530 response.',
             'Measure red fringing and define supported wavelength/telluric masks.',
@@ -58,6 +58,7 @@ def setup_support(setup):
         'native_masters': 'experimental' if masters else 'not_enabled',
         'native_pair': 'experimental' if paired else 'not_enabled',
         'separate_filtered_standards': 'experimental' if paired and grism == 'Gr13' and filter_name == 'GG495' else 'not_enabled',
+        'red_counts_diagnostic': 'experimental' if binned and red and setup.get('slit') in {'slit1.0','slit1.5'} else 'not_enabled',
         'scientifically_validated': False,
         'development_required': development,
         'validation_required': [

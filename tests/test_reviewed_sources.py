@@ -77,3 +77,46 @@ def test_background_review_does_not_claim_target_identification(reviewed):
     selected=load_reviewed_sources(path,[frame])['raw.fits']
     _,identity,_=prepare_reviewed_extraction(selected,frame,data,wave,(0,0),output)
     assert identity['association']=='UNVERIFIED_target_association'
+
+
+def test_native_reselection_retains_raw_anchor_but_refits_background(reviewed):
+    from pathlib import Path
+    from efospec.reviewed_sources import native_review_arguments
+    selection,frame,data,wave,output=reviewed
+    raw=Path(frame['path']);raw.write_bytes(b'unchanged raw exposure')
+    selection['raw_sha256']=frame['sha256']=sha256(raw)
+    path=Path(selection['recipe_path']);recipe=json.loads(path.read_text())
+    recipe['sky']['include']=[[10.,25.],[55.,70.]]
+    path.write_text(json.dumps(recipe));selection['recipe_sha256']=sha256(path)
+    args,evidence=native_review_arguments(selection,frame,data.shape,(0,0),output/'native')
+    assert args['manual'][0]['spat']==40.
+    assert evidence['identity']['candidate']==2
+    assert evidence['original_background_reused'] is False
+    assert args['sky_input_mask'][:,10:25].all()
+    assert not args['sky_input_mask'][:,25:55].any()
+    with pytest.raises(ValueError,match='outside native'):
+        native_review_arguments(selection,frame,(10,20),(0,0),output/'invalid')
+    raw.write_bytes(b'a different exposure')
+    with pytest.raises(ValueError,match='changed'):
+        native_review_arguments(selection,frame,data.shape,(0,0),output/'changed')
+
+
+def test_nearest_native_background_uses_hash_bound_curved_trace(reviewed):
+    from pathlib import Path
+    from efospec.reviewed_sources import native_review_arguments
+    selection,frame,data,wave,output=reviewed
+    raw=Path(frame['path']);raw.write_bytes(b'raw exposure')
+    selection['raw_sha256']=frame['sha256']=sha256(raw)
+    source=output/'images.npz';trace=40+np.linspace(-2,2,10)
+    np.savez(source,data=data,trace=trace,raw_y_origin=0,spatial_origin=-99,found_names=np.array([]),found_traces=np.empty((0,10)))
+    p=Path(selection['recipe_path']);recipe=json.loads(p.read_text())
+    recipe['sky'].update(placement='nearest_to_aperture',core_fwhm_pixels=2.,
+        trace_reference=dict(path=str(source),sha256=sha256(source),raw_sha256=frame['sha256']))
+    p.write_text(json.dumps(recipe));selection['recipe_sha256']=sha256(p)
+    args,evidence=native_review_arguments(selection,frame,data.shape,(0,0),output/'native-nearest')
+    assert np.array_equal(args['sky_trace'],trace)
+    assert np.ptp(np.argmax(args['sky_input_mask'],axis=1))>1
+    assert evidence['proximity']['maximum_gap_beyond_guard_pixels']<=1.
+    source.write_bytes(b'changed reference')
+    with pytest.raises(ValueError,match='trace reference changed'):
+        native_review_arguments(selection,frame,data.shape,(0,0),output/'invalid-reference')

@@ -31,7 +31,7 @@ class PreparedExposure:
     processed: dict = None
 
 
-def export_spectrum(context, engine, identity, output, basename, *, label=None):
+def export_spectrum(context, engine, identity, output, basename, *, label=None, primary_extraction='optimal'):
     """Write one requested source; retain primary naming and all four flux bands."""
     import pypeit
     from pypeit.specobjs import SpecObjs
@@ -45,6 +45,13 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None):
     if (output/'products'/filename).exists():
         raise FileExistsError('product already exists; choose a fresh revision directory')
     native_calibration = context.calibration is not None
+    if primary_extraction not in {'optimal','boxcar'}:
+        raise ValueError('primary extraction must be optimal or boxcar')
+    primary = 0 if primary_extraction=='optimal' else 1
+    secondary = 1-primary
+    provisional = native_calibration and context.calibration.get('wavelength_policy')=='provisional_arc_only'
+    if provisional and (context.shift!=0 or context.sky_qa.get('held_out_6363_pass') is not False):
+        raise ValueError('provisional arc-only export requires zero shift and an explicit failed sky check')
     joint = engine.get('method') == 'fixed_profile_joint_extraction'
     frame = context.frame
     path = Path(frame['path'])
@@ -70,6 +77,8 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None):
     subheader.update({'TARGET':h['OBJECT'],'PYP_SPEC':inst.name,'PYPELINE':'MultiSlit',
                      'WAVEMED':'vacuum','SPECSYS':'TOPOCENT','EPSTATUS':'EXPERIMENTAL',
                      'EXTRACT':'JOINTFIX' if joint else 'PYPEIT'})
+    if provisional:
+        subheader.update(EPSTATUS='PROVISIONAL',WAVEVAL=False,FLEXURE='UNVALIDATED')
     objects.write_to_fits(subheader,str(native),overwrite=False)
     check = SpecObjs.from_fitsfile(str(native))
     if len(check)!=1 or not np.array_equal(check[0].OPT_COUNTS,s.OPT_COUNTS,equal_nan=True):
@@ -108,9 +117,9 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None):
         good = valid & s[kind+'_MASK'] & (ivar>0) & (kw>=low) & (kw<=high)
         flux, variance, mask = rebin_density(kw,s[kind+'_COUNTS']*factor,var*factor**2,good,grid)
         bands.append(flux); variances.append(variance); masks.append(mask)
-        if kind=='OPT':
-            sky_flux,_,sky_mask = rebin_density(kw,s.OPT_COUNTS_SKY*factor,var*factor**2,good,grid)
-    products = np.array([bands[0],bands[1],sky_flux,np.sqrt(variances[0])])[:,None,:]
+        if kind==('OPT' if primary==0 else 'BOX'):
+            sky_flux,_,sky_mask = rebin_density(kw,s[kind+'_COUNTS_SKY']*factor,var*factor**2,good,grid)
+    products = np.array([bands[primary],bands[secondary],sky_flux,np.sqrt(variances[primary])])[:,None,:]
     header = fits.Header(subheader)
     header['ORIGOBJ']=frame['metadata']['OBJECT']
     header['OBJECT']=h['OBJECT']; header['CRVAL1']=float(grid[0]); header['CRPIX1']=1.
@@ -123,8 +132,14 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None):
     header['QUALITY']='Rapid';header['PYPEITV']=pypeit.__version__
     header['SENSFUN']=sensitivity.name;header['ARCREF']=Path(arc_qa['arc']).name
     header['WAVSHIFT']=shift;header['FLUXCAL']='NATIVE' if native_calibration else 'ARCHIVE';header['TELLURIC']='NONE'
-    header['BANDID1']='optimal flux';header['BANDID2']='boxcar flux'
-    header['BANDID3']='sky flux in optimal aperture';header['BANDID4']='optimal flux uncertainty'
+    other='boxcar' if primary==0 else 'optimal'
+    header['EXTRPRI']=primary_extraction.upper()
+    header['BANDID1']=primary_extraction+' flux';header['BANDID2']=other+' flux'
+    header['BANDID3']='sky flux in '+primary_extraction+' aperture';header['BANDID4']=primary_extraction+' flux uncertainty'
+    if provisional:
+        header['QUALITY']='Provisional';header['FLXVALID']=False
+        header['HISTORY']='Science sky-line validation failed. Arc-only wavelengths; no flexure applied.'
+        header['HISTORY']='Flux calibration applied provisionally; wavelength systematic error unquantified.'
     center = float(np.nanmedian(s.TRACE_SPAT)+xlo)+1  # IRAF one-based aperture coordinates
     header['APNUM1']=f'1 1 {center-float(s.BOX_R_PIX):.3f} {center+float(s.BOX_R_PIX):.3f}'
     if native_calibration:
@@ -138,10 +153,12 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None):
     header['HISTORY']='Bin-overlap resampling; inter-wavelength covariance not stored.'
     final = output/'products'/filename
     fits.HDUList([fits.PrimaryHDU(products,header),
-                  fits.ImageHDU(np.array([masks[0],masks[1],sky_mask,masks[0]],dtype=np.uint8),name='VALID')]
+                  fits.ImageHDU(np.array([masks[primary],masks[secondary],sky_mask,masks[primary]],dtype=np.uint8),name='VALID')]
                  ).writeto(final,checksum=True)
-    np.savetxt(final.with_suffix('.asci'),np.column_stack([grid,bands[0]]),fmt='%.8e')
-    snmask = s.OPT_MASK & (s.OPT_COUNTS_IVAR>0) & (wave>4000)&(wave<8500)
+    np.savetxt(final.with_suffix('.asci'),np.column_stack([grid,bands[primary]]),fmt='%.8e',
+        **({'header':'PROVISIONAL: unshifted arc wavelengths; science sky validation failed.\nair_wavelength_A flux_erg_s-1_cm-2_A-1; statistical errors exclude wavelength and response systematics.'} if provisional else {}))
+    prefix='OPT' if primary==0 else 'BOX'
+    snmask = s[prefix+'_MASK'] & (s[prefix+'_COUNTS_IVAR']>0) & (wave>4000)&(wave<8500)
     qa = {'raw':str(path),'raw_sha256':frame['sha256'],'object':h['OBJECT'],
           'role':frame['role'],'grism':setup['grism'],'slit':setup['slit'],
           'date_obs':h['DATE-OBS'],'exptime_s':h['EXPTIME'],
@@ -161,10 +178,14 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None):
                         'sky_bspline_spacing':1.0,'findobj_snr_threshold':5.,'findobj_maxnumber':3,
                         'native_counts_unit':'electrons per spectral pixel',
                         'output_step_angstrom':step},
-          'median_native_snr_4000_8500':float(np.median(s.OPT_COUNTS[snmask]*np.sqrt(s.OPT_COUNTS_IVAR[snmask]))),
-          'valid_flux_fraction':float(np.mean(masks[0])), 'flux_band_order':['optimal','boxcar','sky','sigma'],
+          'median_native_snr_4000_8500':float(np.median(s[prefix+'_COUNTS'][snmask]*np.sqrt(s[prefix+'_COUNTS_IVAR'][snmask]))),
+          'valid_flux_fraction':float(np.mean(masks[primary])), 'flux_band_order':[primary_extraction,other,'sky','sigma'],
+          'primary_extraction':primary_extraction,
           'output_wavelength_medium':'air','native_wavelength_medium':'vacuum','reference_frame':'topocentric',
           'status':'EXPERIMENTAL','raw_unchanged':sha256(path)==frame['sha256']}
+    if provisional:
+        qa.update(status='PROVISIONAL',wavelength_validated=False,independent_flux_validation=False,
+            wavelength_warning='Science sky-line validation failed; unshifted arc wavelengths. Wavelength systematic uncertainty is not quantified.')
     if diagnostic_path:
         qa['native_spec2d']=diagnostic_path
         qa['native_spec2d_sha256']=sha256(Path(diagnostic_path))

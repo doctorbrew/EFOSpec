@@ -32,9 +32,11 @@ def validate_associations(frame, associations):
     if frame['role'] not in ('science','standard_candidate') or validate_frame(frame):
         raise ValueError('native reduction needs valid raw EFOSC2 science or standard metadata')
     setup=frame['setup']
-    if (setup['grism'] not in ('Gr11','Gr13') or setup['filter'] not in ('Free','GG495')
+    optical = setup['grism'] in ('Gr11','Gr13') and setup['filter'] in ('Free','GG495')
+    red = setup['grism'] == 'Gr16' and setup['filter'] == 'OG530'
+    if (not (optical or red)
             or setup['binx']!=2 or setup['biny']!=2 or setup['slit'] not in ('slit1.0','slit1.5')):
-        raise ValueError('native calibration currently enables centered Gr11/Gr13, 2x2, slit1.0/slit1.5 only')
+        raise ValueError('native calibration enables Gr11/Gr13 Free/GG495 or Gr16/OG530, 2x2, slit1.0/slit1.5 only')
     files={frame['path']:'science' if frame['role']=='science' else 'standard'}
     for role in ('bias','flat','arc'):
         record=associations.get(role,{})
@@ -95,15 +97,35 @@ def build_calibrations(frame, associations, output):
         builder=BuildWaveCalib(cal.msarc,cal.slits,instrument,par['calibrations']['wavelengths'],
                                ['HeI','ArI'],det=1,qa_path=output/'QA')
         spectra,bad=builder.extract_arcs()
+        arc_radius=3.
+        if frame['setup']['grism']=='Gr11':
+            # The six-column default leaves weak blue Gr11 lines sensitive to
+            # individual detector pixels. Integrate a fixed 30-pixel spatial
+            # band about the same slit trace, retaining masks and clipping.
+            from pypeit.core.arc import get_censpec
+            arc_radius=15.
+            spectra,_,bad=get_censpec(builder.slitcen,builder.slitmask,cal.msarc.image,
+                gpm=builder.gpm,box_rad=arc_radius,slit_bpm=builder.wvc_bpm)
         if bad.any():
             raise ValueError('raw arc central extraction failed')
         fwhm_map=map_fwhm(cal.msarc.image,builder.gpm,builder.slits_left,builder.slits_right,
                           builder.slitmask,nsample=10,slit_bpm=builder.wvc_bpm,specord=1,spatord=1)
         fwhm=float(fwhm_map[0].eval(cal.msarc.image.shape[0]//2,.5))
-        fit,qa=identify_spectrum(spectra[:,0],frame['setup']['grism'],fwhm=fwhm,
-                                 filter_name=frame['setup']['filter'],
-                                 nonlinear_counts=float(builder.nonlinear_counts))
+        if frame['setup']['grism'] in {'Gr11','Gr16'}:
+            # The full physical atlas also covers weak blue Gr11 IDs missing
+            # from the older restricted pattern list.
+            # Keep its range, line-coverage and held-out residual gates intact.
+            from .native_wavelength import fit_raw_arc_spectrum
+            fit, acceptance = fit_raw_arc_spectrum(spectra[:,0], frame['setup']['grism'], fwhm=fwhm,
+                filter_name=frame['setup']['filter'], nonlinear_counts=float(builder.nonlinear_counts))
+            qa = dict(acceptance, shared_acceptance=acceptance,
+                      reference_lines_vacuum=acceptance['reference_vacuum_angstrom'])
+        else:
+            fit,qa=identify_spectrum(spectra[:,0],frame['setup']['grism'],fwhm=fwhm,
+                                     filter_name=frame['setup']['filter'],
+                                     nonlinear_counts=float(builder.nonlinear_counts))
         fit.spat_id=int(cal.slits.spat_id[0]);fit.fwhm=fwhm
+        qa['arc_extraction_half_width_spatial_pixels']=arc_radius
         wavecal=WaveCalib(wv_fits=np.array([fit],dtype=object),fwhm_map=fwhm_map,
             nslits=1,spat_ids=cal.slits.spat_id,PYP_SPEC=instrument.name,
             strpar=json.dumps(par['calibrations']['wavelengths'].data),

@@ -35,6 +35,20 @@ def test_raw_associations_cannot_accept_processed_or_changed_inputs(raw_group,tm
     with pytest.raises(ValueError,match='Gr11/Gr13'):validate_associations(invalid,a)
 
 
+def test_gr16_og530_associations_are_checked_against_raw_headers(raw_group, tmp_path):
+    from efospec.native_calibrations import validate_associations
+    for path in tmp_path.glob('*.fits'):
+        with fits.open(path, mode='update') as hdus:
+            hdus[0].header['ESO INS GRIS1 NAME'] = 'Gr#16'
+            hdus[0].header['ESO INS FILT1 NAME'] = 'OG530'
+    frame = inspect_file(tmp_path/'science.fits')
+    selected = assess_native_readiness(inventory([str(tmp_path)]))['exposures'][0]['raw_calibrations']
+    assert len(validate_associations(frame, selected)) == 8
+    changed = deepcopy(selected); changed['flat']['sha256'][0] = '0'*64
+    with pytest.raises(ValueError, match='changed raw flat'):
+        validate_associations(frame, changed)
+
+
 def test_processing_preserves_flat_corrected_noise(raw_group,tmp_path):
     from efospec.native_calibrations import native_parameters,process_exposure
     from efospec.pypeit_adapter import EFOSpecEFOSC2Spectrograph

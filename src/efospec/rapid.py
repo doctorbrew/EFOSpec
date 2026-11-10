@@ -80,7 +80,7 @@ def select_archive(frame, reference_root):
 
 
 def extract_frame(frame, reference_root, output, hint, hint_info, waveair, arc_qa,
-                  sensitivity, shift, sky_qa, *, reviewed_source=None):
+                  sensitivity, shift, sky_qa, *, reviewed_source=None, spatial_half_width=70):
     import pypeit
     from .pypeit_adapter import EFOSpecEFOSC2Spectrograph
 
@@ -97,7 +97,9 @@ def extract_frame(frame, reference_root, output, hint, hint_info, waveair, arc_q
     inst = EFOSpecEFOSC2Spectrograph()
     ny, nx = waveair.shape
     ymin = 4 if setup['grism']=='Gr11' else 0
-    xlo, xhi = max(0,int(hint)-70), min(nx,int(hint)+71)
+    if type(spatial_half_width) is not int or not 70 <= spatial_half_width <= 200:
+        raise ValueError('archive spatial half-width must be 70 to 200 detector pixels')
+    xlo, xhi = max(0,int(hint)-spatial_half_width), min(nx,int(hint)+spatial_half_width+1)
     with fits.open(path) as hdus:
         det = inst.get_detector_par(1,hdus)
         data = hdus[0].data[ymin:1015,99+xlo:99+xhi].astype(float)*h['ESO DET OUT1 GAIN']

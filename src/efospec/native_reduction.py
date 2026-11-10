@@ -23,10 +23,16 @@ def arc_supported_rows(wavevac, limits):
 
 
 def prepare(frame, associations, directory, position, cached=None, *, arc_supported_only=False,
-            spatial_half_width=100, background_review=None):
+            spatial_half_width=100, background_review=None, red_counts_only=False,
+            reviewed_source=None, arc_only_review=False):
     """Preserve the calibrated PypeIt noise model in a bounded raw-pixel window."""
     from pypeit.core.wave import vactoair
     from .extraction import extract_spectra
+    if red_counts_only and (frame['setup']['grism'], frame['setup']['filter']) != ('Gr16','OG530'):
+        raise ValueError('red counts-only diagnostics require Gr16/OG530')
+    if arc_only_review and (frame['role']!='science' or frame['setup']['grism'] not in {'Gr11','Gr13'}
+                            or frame['setup']['filter']!='Free'):
+        raise ValueError('optical arc-only review requires a Free-filter science exposure')
     if cached is None:
         bundle=build_calibrations(frame,associations,directory/'calibration')
     else:
@@ -66,9 +72,43 @@ def prepare(frame, associations, directory, position, cached=None, *, arc_suppor
     # don't reuse a science shift taken at a different pointing/time.
     sky={'shift_angstrom':0.,'policy':'raw_arc_only; science sky check required',
          'held_out_6363_pass':False,'lines':[]}
-    if frame['role']=='science':
-        from .native_sky import measure_flexure as sky_flexure
-        shift,sky=sky_flexure(data,waveair)
+    if red_counts_only:
+        from .reduction_checks import check_red_sky
+        diagnostic = check_red_sky(data, waveair, directory/'red-sky',
+            {'raw':frame['path'], 'raw_sha256':frame['sha256'], 'setup':frame['setup'],
+             'data_unit':'electron', 'raw_pixel_origin_yx':[ylo,xlo]})
+        sky.update(policy='raw_arc_only; red-sky correlation is diagnostic, no correction applied',
+                   status='unvalidated', applied_shift_angstrom=None,
+                   review_file=str(directory/'red-sky/check.json'), correlation=diagnostic['correlation'])
+    elif arc_only_review:
+        sky.update(policy='raw_arc_only; failed science wavelength validation; review counts only',
+                   status='unvalidated',applied_shift_angstrom=None)
+    elif frame['role']=='science':
+        from .native_sky import measure_flexure as sky_flexure, SkyValidationError
+        slit_pixels=float(frame['setup']['slit'].removeprefix('slit'))/(float(image.detector['platescale'])*frame['setup']['binx'])
+        # Wavelength measurements can use the long slit without changing the
+        # bounded background model used for source extraction. Exclude slit
+        # edges, detector masks and the target core before spatial clipping.
+        cols=np.flatnonzero(np.all(bundle['slitmask'][ylo:yhi]>=0,axis=0))
+        margin=max(10,int(.1*len(cols)))
+        sky_xlo,sky_xhi=int(cols[margin]),int(cols[-margin-1])+1
+        sky_cut=np.s_[ylo:yhi,sky_xlo:sky_xhi]
+        sky_wave=vactoair(bundle['wavevac'][sky_cut]*u.AA).value
+        sky_good=~image.fullmask.flagged()[sky_cut]
+        sky_good &= abs(np.arange(sky_xlo,sky_xhi)[None,:]-position)>30.
+        try:
+            shift,sky=sky_flexure(image.image[sky_cut],sky_wave,slit_width_pixels=slit_pixels,
+                                  good_pixels=sky_good)
+        except SkyValidationError as exc:
+            from .native_calibration import save_json
+            directory.mkdir(parents=True,exist_ok=True)
+            check=directory/'sky-check-failed.json'
+            save_json(check,dict(raw=frame['path'],raw_sha256=frame['sha256'],error=str(exc),
+                measurement_raw_bounds_yx=[ylo,yhi,sky_xlo,sky_xhi],**exc.diagnostics))
+            exc.diagnostics['review_file']=str(check)
+            raise
+        sky['measurement_raw_bounds_yx']=[ylo,yhi,sky_xlo,sky_xhi]
+        sky['target_exclusion_radius_pixels']=30.
         if not sky['held_out_6363_pass']:
             raise ValueError('native science requires an independent 6363-A sky-line check')
         sky['policy']='two sky lines plus independent 6363-A check'
@@ -78,6 +118,11 @@ def prepare(frame, associations, directory, position, cached=None, *, arc_suppor
     h=frame['metadata'];setup=frame['setup']
     basename=product_name(science_stem(h['OBJECT'],h['DATE-OBS'],setup['grism'],setup['filter'],setup['slit']),h['DATE-OBS'],{},'_f')[:-7]
     arguments = {'bounded_background': True}
+    if reviewed_source is not None:
+        if background_review is not None:raise ValueError('select one native background recipe')
+        from .reviewed_sources import native_review_arguments
+        arguments,source_evidence=native_review_arguments(reviewed_source,frame,data.shape,
+                                                         (ylo,xlo),directory)
     if background_review is not None:
         from .filtered_background import review_arguments
         arguments, background_evidence = review_arguments(background_review, frame, data, waveair,
@@ -86,6 +131,17 @@ def prepare(frame, associations, directory, position, cached=None, *, arc_suppor
     engine=extract_spectra(data,waveair,image.detector,exposure_time=h['EXPTIME'],
         read_noise=h['ESO DET OUT1 RON'],output=directory,basename=basename,
         target_position=position-xlo,processed=planes,**arguments)
+    if reviewed_source is not None:
+        requested=arguments['manual'][0]
+        spectrum=engine['objects']['primary'][0]
+        anchor=float(np.interp(requested['spec'],np.arange(len(spectrum.TRACE_SPAT)),spectrum.TRACE_SPAT))
+        if abs(anchor-requested['spat'])>requested['radius']:
+            raise ValueError('native trace does not match the reviewed raw source position')
+        engine['source_selection']=dict(method='reviewed_raw_coordinate_reselection',
+            identity_confirmed=reviewed_source['identity']['method']=='operator_visual',
+            identity=reviewed_source['identity'],review=source_evidence,
+            fitted_anchor_raw_pixel=anchor+xlo)
+        engine['background_fit']['selection']=source_evidence
     if background_review is not None:
         engine['background_fit']['selection'] = background_evidence
         engine['source_selection'] = {'method': 'reviewed_background_geometry', 'identity_confirmed': False,
