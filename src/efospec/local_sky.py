@@ -39,6 +39,52 @@ def validate_bounded_mask(mask, trace, radius, *, maximum_width=50):
                 raise BackgroundSupportError('Background band is too far from the source aperture.', row=row)
 
 
+def closest_mask(shape, trace, *, radius, fwhm, width_pixels=30, minimum_width=15,
+                 neighbours=(), max_gap_pixels=5., aperture_padding=.5):
+    """Prioritize proximity, then width, for two trace-following clean bands.
+
+    The protected core follows the existing 1.5-FWHM/aperture rule. A short
+    nearby clean run wins over a wider distant run. No one-sided fallback.
+    """
+    trace=np.asarray(trace,float);ny,nx=shape
+    if trace.shape!=(ny,) or not np.isfinite(trace).all():raise ValueError('invalid background trace')
+    if not 15<=minimum_width<=width_pixels<=50:raise ValueError('background widths must be 15–50 pixels')
+    if not np.isfinite([radius,fwhm,max_gap_pixels]).all() or min(radius,fwhm)<=0 or max_gap_pixels<0:
+        raise ValueError('invalid nearest-background geometry')
+    if not np.isfinite(aperture_padding) or aperture_padding<.5:raise ValueError('aperture padding must be at least half a pixel')
+    x=np.arange(nx);guard=max(radius+aperture_padding,1.5*fwhm)
+    clean=np.broadcast_to((x>=3)&(x<nx-3),shape).copy()
+    clean &= abs(x[None,:]-trace[:,None])>guard
+    for other,fw,rad in neighbours:
+        other=np.asarray(other,float)
+        if other.shape!=(ny,) or not np.isfinite(other).all() or min(fw,rad)<=0:
+            raise ValueError('invalid neighbouring source')
+        clean &= abs(x[None,:]-other[:,None])>max(rad+.5,1.5*fw)
+    mask=np.zeros(shape,bool);bounds=np.full((ny,2,2),-1,int);gaps=np.full((ny,2),np.nan)
+    for row,center in enumerate(trace):
+        for side in (0,1):
+            allowed=clean[row]&(x<center-guard if side==0 else x>center+guard)
+            indices=np.flatnonzero(allowed)
+            runs=np.split(indices,np.flatnonzero(np.diff(indices)>1)+1)
+            choices=[r for r in runs if len(r)>=minimum_width]
+            if not choices:continue
+            chosen=choices[-1] if side==0 else choices[0]
+            chosen=chosen[-width_pixels:] if side==0 else chosen[:width_pixels]
+            gap=center-guard-chosen[-1] if side==0 else chosen[0]-center-guard
+            if gap>max_gap_pixels:continue
+            mask[row,chosen]=True;bounds[row,side]=chosen[0],chosen[-1]+1;gaps[row,side]=gap
+    if np.any(bounds<0):
+        raise BackgroundSupportError('Cannot place nearby two-sided bands without crossing source guards.',
+            unsupported_rows=np.flatnonzero(np.any(bounds[:,:,0]<0,axis=1)).tolist())
+    validate_bounded_mask(mask,trace,radius)
+    return mask,bounds,dict(policy='nearest clean run first, then widest within that run',
+        source_guard_pixels=float(guard),core_fwhm_pixels=float(fwhm),
+        aperture_padding_pixels=float(aperture_padding),
+        maximum_gap_beyond_guard_pixels=float(np.max(gaps)),
+        minimum_actual_width_pixels=int(np.min(bounds[:,:,1]-bounds[:,:,0])),
+        maximum_actual_width_pixels=int(np.max(bounds[:,:,1]-bounds[:,:,0])))
+
+
 def nearby_mask(shape, trace, *, radius, fwhm, width_pixels, neighbours=(),
                 max_gap_pixels=None, allowed_mask=None):
     """Find the nearest clean contiguous band of the requested width per side.
@@ -91,7 +137,14 @@ def nearby_mask(shape, trace, *, radius, fwhm, width_pixels, neighbours=(),
             f'Cannot place {width_pixels}-pixel local bands on both sides in {len(invalid)}/{shape[0]} rows; '
             'review neighbours or prepare a wider calibrated window.',
             width_spatial_pixels=width_pixels, unsupported_rows=invalid.tolist(),
-            window_shape=list(shape), max_gap_pixels=max_gap)
+            window_shape=list(shape), max_gap_pixels=max_gap,
+            source_guard_pixels=float(guard), source_fwhm_pixels=float(fwhm),
+            source_radius_pixels=float(radius), source_trace_median=float(np.median(trace)),
+            neighbour_guards=[dict(trace_median=float(np.median(t)),
+                fwhm_pixels=float(fw), radius_pixels=float(rad),
+                guard_pixels=float(max(rad+.5,1.5*fw))) for t,fw,rad in neighbours],
+            unsupported_left_rows=int(np.sum(bounds[:,0,0]<0)),
+            unsupported_right_rows=int(np.sum(bounds[:,1,0]<0)))
     return mask, bounds
 
 
@@ -148,8 +201,379 @@ def exposure_sky_inputs(exposure, recipe):
     return mask, trace, info
 
 
+# Automatic selection ladder. Width 30 with spatial degree 2 reproduces the
+# previously validated default exactly and is always tried first; narrower
+# bands sit closer to the aperture because each band is placed on the nearest
+# clean run on its side. Degree 1 is offered because a freer spatial term is
+# unconstrained across the unsampled aperture gap.
+BACKGROUND_WIDTHS = (30, 25, 20, 15, 35, 40, 45, 50)
+BACKGROUND_DEGREES = (2, 1, 3)
+# Columns withheld from every trial fit, immediately outside the measured
+# source extent. Four is enough to average down the noise without reaching
+# back into the wings or out past the inner band edge.
+HOLDOUT_WIDTH = 4
+# How much a rival geometry must reduce the measured error beside the source,
+# in units of the per-pixel noise, before the validated default is replaced.
+# Measured over 2026-10-28: every well-behaved exposure gains at most 0.09,
+# while the two genuinely misfitted ones gain 0.59 and 0.72.
+REQUIRED_IMPROVEMENT_SIGMA = 0.3
+# A correctly described background leaves normalized residuals of about one
+# robust sigma over its sampled bands.
+ADEQUATE_BAND_RESIDUAL_SIGMA = 1.15
+
+
+def band_residual_sigma(data, ivar, sky, mask, valid_rows):
+    """Robust normalized residual of a fitted model over its sampled bands.
+
+    Uses the input selection rather than the post-rejection mask: an underfit
+    gradient shows up exactly where sigma clipping would discard it. The median
+    absolute deviate is scaled so that Gaussian noise returns about 1.0, which
+    keeps cosmic rays from deciding the spatial degree.
+    """
+    data, ivar, sky = (np.asarray(v, float) for v in (data, ivar, sky))
+    use = (np.asarray(mask, bool) & np.asarray(valid_rows, bool)[:, None]
+           & np.isfinite(data) & np.isfinite(sky) & np.isfinite(ivar) & (ivar > 0))
+    if use.sum() < 20:
+        raise ValueError('too few sampled background pixels to assess a fit')
+    normalized = (data[use]-sky[use])*np.sqrt(ivar[use])
+    return float(1.4826*np.median(np.abs(normalized)))
+
+
+def radial_background_profile(data, ivar, trace):
+    """Row-median spatial profile about the trace, with its own noise scale.
+
+    Returns the profile, the matching signed offset from the trace and the
+    expected noise on that median. Measuring against the row median rather
+    than a single row keeps a cosmic ray or a sky line out of the geometry
+    decision.
+    """
+    data, ivar, trace = (np.asarray(v, float) for v in (data, ivar, trace))
+    good = np.isfinite(data) & np.isfinite(ivar) & (ivar > 0)
+    if good.sum() < 100:
+        raise ValueError('too few usable pixels to measure a spatial profile')
+    columns = np.arange(data.shape[1])
+    offset = np.median(columns[None, :]-trace[:, None], axis=0)
+    profile = np.array([np.median(data[good[:, c], c]) if good[:, c].any() else np.nan
+                        for c in columns])
+    rows = max(int(np.median(np.maximum(good.sum(0), 1))), 1)
+    noise = float(np.median(1/np.sqrt(ivar[good]))/np.sqrt(rows))
+    return profile, offset, noise
+
+
+def _core_radius(profile, offset, noise):
+    """Radius at which a Gaussian core of the measured width falls under the noise."""
+    outer = (np.abs(offset) >= 16) & (np.abs(offset) <= 24) & np.isfinite(profile)
+    if outer.sum() < 4:
+        return 0
+    base = np.interp(offset, [-20., 20.],
+                     [float(np.mean(profile[outer & (offset < 0)])) if (outer & (offset < 0)).any() else 0.,
+                      float(np.mean(profile[outer & (offset > 0)])) if (outer & (offset > 0)).any() else 0.])
+    excess = profile-base
+    near = np.abs(offset) <= 8
+    if not near.any() or not np.isfinite(excess[near]).any():
+        return 0
+    peak = int(np.nanargmax(np.where(near, excess, -np.inf)))
+    amplitude = excess[peak]
+    if not np.isfinite(amplitude) or amplitude <= 0:
+        return 0
+    half = amplitude/2
+    left = np.arange(max(peak-12, 0), peak+1)
+    right = np.arange(peak, min(peak+13, len(offset)))
+    if len(left) < 2 or len(right) < 2:
+        return 0
+    low = np.interp(half, excess[left], offset[left])
+    high = np.interp(-half, -excess[right], offset[right])
+    width = high-low
+    if not np.isfinite(width) or width <= 0:
+        return 0
+    sigma = width/2.3548
+    ratio = max(amplitude/max(0.5*noise, 1e-9), 1.0001)
+    return int(np.ceil(sigma*np.sqrt(2*np.log(ratio))))
+
+
+def _wing_radius(profile, offset, noise, *, window=16, tolerance=3.):
+    """Radius beyond which the profile stops climbing above a LOCAL straight line.
+
+    Sky, and a host galaxy, vary smoothly, so over a short span either is close
+    to linear; a source wing is convex and rises above that line. Nothing global
+    is assumed, so a galaxy gradient cannot be mistaken for source light nor the
+    reverse. Returns None when no radius qualifies -- a bright halo that never
+    dies inside the saved window.
+    """
+    found = 0
+    for side in (-1, 1):
+        same = np.sign(offset) == side
+        limit = int(np.nanmax(np.abs(offset[same])))-window-2 if same.any() else 0
+        radius = None
+        for test in range(3, max(limit, 4)):
+            fit = same & (np.abs(offset) >= test+2) & (np.abs(offset) <= test+2+window) & np.isfinite(profile)
+            near = same & (np.abs(offset) >= test) & (np.abs(offset) < test+2) & np.isfinite(profile)
+            if fit.sum() < 8 or not near.any():
+                continue
+            line = np.polyfit(np.abs(offset[fit]), profile[fit], 1)
+            scatter = max(float(np.std(profile[fit]-np.polyval(line, np.abs(offset[fit])))), noise)
+            if float(np.mean(profile[near]-np.polyval(line, np.abs(offset[near])))) < tolerance*scatter:
+                radius = test
+                break
+        if radius is None:
+            return None
+        found = max(found, radius)
+    return found
+
+
+def clean_background_radius(data, ivar, trace):
+    """Smallest offset beyond which source light no longer biases the background.
+
+    Two independent estimates are combined and the larger taken. The first
+    extrapolates a Gaussian core of the measured FWHM down to half the profile
+    noise, which catches a bright compact source. The second asks where the
+    profile stops rising above a local straight line, which catches the
+    power-law halo of a standard star that a Gaussian badly underestimates.
+    Returns None when no such radius exists inside the saved window.
+    """
+    profile, offset, noise = radial_background_profile(data, ivar, trace)
+    wing = _wing_radius(profile, offset, noise)
+    if wing is None:
+        return None, noise
+    return max(int(wing), int(_core_radius(profile, offset, noise))), noise
+
+
+def holdout_residual(data, ivar, sky, holdout, valid_rows):
+    """Mean model error over source-free columns that the fit never sampled.
+
+    This is the only direct measurement available of whether a background model
+    extrapolates correctly towards the source. It is signed: negative means the
+    model sits above the data and the background is being over-subtracted.
+    """
+    data, ivar, sky = (np.asarray(v, float) for v in (data, ivar, sky))
+    use = (np.asarray(holdout, bool) & np.asarray(valid_rows, bool)[:, None]
+           & np.isfinite(data) & np.isfinite(sky) & np.isfinite(ivar) & (ivar > 0))
+    if use.sum() < 50:
+        return None, None
+    deviation = data[use]-sky[use]
+    return float(np.mean(deviation)), float(np.std(deviation)/np.sqrt(deviation.size))
+
+
+def select_bounded_background(data, ivar, tilts, trace, *, radius, fwhm, neighbours=(),
+                              allowed_mask=None, max_gap_pixels=60, sigma_clip=4.,
+                              widths=BACKGROUND_WIDTHS, degrees=BACKGROUND_DEGREES,
+                              holdout_width=HOLDOUT_WIDTH,
+                              improvement_sigma=REQUIRED_IMPROVEMENT_SIGMA, maxiter=500):
+    """Choose the band width and spatial degree by measuring, not by assumption.
+
+    Two bands constrain the background either side of the source and nothing
+    measures it underneath, so the band geometry decides how the model behaves
+    exactly where it is used and cannot be checked. It can be checked here,
+    because between the source wings and the inner band edge there is a ring of
+    columns carrying background but no source light. Those columns are withheld
+    from every trial fit and used to score it: the mean of data minus model over
+    them is a direct measurement of the error the model is making beside the
+    source, with a negative value meaning over-subtraction.
+
+    Where that ring sits is measured per exposure, not assumed. A faint
+    supernova on a bright host is clean a few pixels out; the power-law halo of
+    a standard star is not clean anywhere inside the slit, and that exposure
+    keeps its default geometry rather than letting the selector chase the halo.
+
+    The previously validated default is kept unless some other geometry actually
+    reduces the measured error by a worthwhile margin, so a well-behaved
+    exposure is never churned. When nothing achieves that, the default is kept
+    and the residual error is recorded rather than hidden: an asymmetric host,
+    or a neighbour inside the bands, is a reduction for a human to look at, not
+    something a width and a degree can repair.
+
+    Every trial stays bounded and two-sided; no one-sided, full-slit or constant
+    fallback is reachable. This selects a background description, not a host
+    model, and a small score is evidence about the ring that was measured, not
+    proof that the background under the aperture is known.
+    """
+    if not widths or not degrees:
+        raise ValueError('background selection needs at least one width and degree')
+    if type(holdout_width) is not int or holdout_width < 2:
+        raise ValueError('the withheld ring must be at least two pixels wide')
+    if not np.isfinite(improvement_sigma) or improvement_sigma <= 0:
+        raise ValueError('the required improvement must be positive')
+    finite = np.isfinite(ivar) & (ivar > 0)
+    if not finite.any():
+        raise BackgroundSupportError('No pixel carries a usable inverse variance.')
+    pixel_noise = float(np.median(1/np.sqrt(np.asarray(ivar, float)[finite])))
+    clean, profile_noise = clean_background_radius(data, ivar, trace)
+    columns = np.arange(np.shape(data)[1])
+    offset = columns[None, :]-np.asarray(trace, float)[:, None]
+    trials, fits, masks = [], {}, {}
+
+    def place(width, inner):
+        key = (width, inner)
+        if key not in masks:
+            try:
+                masks[key] = nearby_mask(data.shape, trace, radius=float(inner), fwhm=fwhm,
+                    width_pixels=int(width), neighbours=neighbours,
+                    allowed_mask=allowed_mask, max_gap_pixels=max_gap_pixels)[0]
+            except BackgroundSupportError as exc:
+                masks[key] = None
+                trials.append(dict(width_spatial_pixels=int(width), spatial_degree=None,
+                                   status='geometry_unavailable', reason=str(exc)))
+        return masks[key]
+
+    def attempt(width, degree, inner, holdout, label):
+        key = (width, degree, inner, label)
+        if key in fits:
+            return fits[key]
+        fits[key] = None
+        mask = place(width, inner)
+        if mask is None:
+            return None
+        sampled = mask & ~holdout if holdout is not None else mask
+        try:
+            fit = fit_background(data, ivar, tilts, sampled, trace, radius=radius,
+                                 degree=int(degree), sigma_clip=sigma_clip, maxiter=maxiter)
+            band = band_residual_sigma(data, ivar, fit['sky'], sampled, fit['valid_rows'])
+        except (BackgroundSupportError, ValueError) as exc:
+            trials.append(dict(width_spatial_pixels=int(width), spatial_degree=int(degree),
+                               role=label, status='fit_failed', reason=str(exc)))
+            return None
+        score, error = (holdout_residual(data, ivar, fit['sky'], holdout, fit['valid_rows'])
+                        if holdout is not None else (None, None))
+        record = dict(width_spatial_pixels=int(width), spatial_degree=int(degree), role=label,
+                      status='fitted', band_residual_sigma=band,
+                      inner_edge_spatial_pixels=int(inner),
+                      holdout_residual_counts=score,
+                      holdout_residual_error_counts=error,
+                      holdout_residual_pixel_sigma=(None if score is None
+                                                    else float(score/pixel_noise)),
+                      reduced_chi2=fit['summary']['reduced_chi2'],
+                      minimum_side_samples=fit['summary']['minimum_side_samples'])
+        trials.append(record)
+        fits[key] = (mask, fit, record)
+        return fits[key]
+
+    default_width, default_degree = widths[0], degrees[0]
+    # The validated default keeps its own inner edge: the ring is withheld from
+    # it as well, but its geometry is not moved in order to be measured.
+    aperture = int(np.ceil(radius))
+    measurable = clean is not None
+    inner = None
+    holdout = None
+    if measurable:
+        # A band may never start inside the aperture, nor inside the ring.
+        inner = max(aperture, int(clean)+int(holdout_width))
+        holdout = np.broadcast_to((np.abs(offset) >= clean)
+                                  & (np.abs(offset) < clean+holdout_width), np.shape(data))
+        # Leave room for the narrowest permitted band outside the withheld ring.
+        if inner+min(int(w) for w in widths) > int(np.max(np.abs(offset))):
+            measurable = False
+
+    # The ring is only a hold-out if the validated default never samples it.
+    # When the source is still bright where that band already begins, either
+    # the clean radius is optimistic or the bands are as close as they can get;
+    # either way the comparison would be between a model interpolating across a
+    # hole and one extrapolating towards it, decided by source light rather
+    # than by the background. Measure the default's own inner edge and require
+    # the ring to fall inside the gap it leaves.
+    default_inner = None
+    if measurable:
+        placed = place(default_width, aperture)
+        if placed is None:
+            measurable = False
+        else:
+            reach = np.abs(offset)[placed]
+            default_inner = int(np.floor(reach.min())) if reach.size else 0
+            if int(clean)+int(holdout_width) > default_inner:
+                measurable = False
+
+    scored, chosen, reason, unresolved = [], None, None, False
+    if measurable:
+        attempt(default_width, default_degree, aperture, holdout, 'default')
+        for width in widths:
+            for degree in degrees:
+                attempt(width, degree, inner, holdout, 'trial')
+        scored = [v for v in fits.values()
+                  if v is not None and v[2]['holdout_residual_counts'] is not None]
+    if not scored:
+        # Nothing could be measured, so keep the previously validated behaviour:
+        # the widest offered band that can actually be placed and fitted, at the
+        # default spatial degree. A crowded slit has always narrowed this way.
+        selected = next((v for v in (attempt(width, default_degree, radius, None, 'default')
+                                     for width in widths) if v is not None), None)
+        if selected is None:
+            raise BackgroundSupportError(
+                'No bounded two-sided background converged for any offered width at the '
+                'default spatial degree.', trials=trials)
+        chosen, unresolved = selected, True
+        reason = ('default retained: no ring of columns inside this slit carries background '
+                  'without source light, so no geometry could be measured'
+                  if clean is None else
+                  'default retained: the source stays bright out to the inner edge of the '
+                  'default band, so no withheld ring of clean background lies in the gap it '
+                  'leaves and no geometry could be measured against it')
+    else:
+        best = min(scored, key=lambda v: abs(v[2]['holdout_residual_counts']))
+        default = next((v for v in scored if v[2]['role'] == 'default'), None)
+        if default is None:
+            chosen = best
+            reason = ('the default geometry could not be fitted; the smallest measured error '
+                      'beside the source was taken')
+        else:
+            gain = abs(default[2]['holdout_residual_counts'])-abs(best[2]['holdout_residual_counts'])
+            if gain <= improvement_sigma*pixel_noise:
+                chosen = default
+                reason = ('default retained: no offered width or spatial degree reduced the '
+                          'measured error beside the source by a worthwhile margin')
+                unresolved = abs(default[2]['holdout_residual_counts']) > improvement_sigma*pixel_noise
+            else:
+                # Among geometries that measure as well as the best, keep the one
+                # closest to the validated default rather than the extreme of the grid.
+                tolerance = max(3*(best[2]['holdout_residual_error_counts'] or 0.), .3)
+                near = [v for v in scored
+                        if abs(v[2]['holdout_residual_counts'])
+                        <= abs(best[2]['holdout_residual_counts'])+tolerance]
+                chosen = min(near, key=lambda v: (
+                    abs(v[2]['width_spatial_pixels']-default_width),
+                    abs(v[2]['spatial_degree']-default_degree),
+                    v[2]['inner_edge_spatial_pixels'],
+                    abs(v[2]['holdout_residual_counts'])))
+                reason = ('measured: this width and spatial degree reduced the model error over '
+                          'the withheld source-free ring beside the source')
+    mask, fit, record = chosen
+    # The withheld ring is ordinary background; only the choice needed it held
+    # out. Refit the selected geometry using every column it is entitled to.
+    final = attempt(record['width_spatial_pixels'], record['spatial_degree'],
+                    record['inner_edge_spatial_pixels'], None, 'final')
+    if final is not None:
+        mask, fit = final[0], final[1]
+    selection = dict(policy='bounded two-sided background chosen by withheld-ring measurement',
+        selected_width_spatial_pixels=record['width_spatial_pixels'],
+        selected_spatial_degree=record['spatial_degree'],
+        selected_inner_edge_spatial_pixels=record['inner_edge_spatial_pixels'],
+        clean_background_radius_pixels=(None if clean is None else int(clean)),
+        default_band_inner_edge_spatial_pixels=default_inner,
+        holdout_ring_pixels=(None if not measurable else [int(clean), int(clean)+holdout_width-1]),
+        holdout_residual_counts=record['holdout_residual_counts'],
+        holdout_residual_error_counts=record['holdout_residual_error_counts'],
+        holdout_residual_pixel_sigma=record['holdout_residual_pixel_sigma'],
+        band_residual_sigma=record['band_residual_sigma'],
+        pixel_noise_counts=pixel_noise, profile_noise_counts=profile_noise,
+        required_improvement_pixel_sigma=float(improvement_sigma),
+        geometry_unresolved=bool(unresolved),
+        reason=reason,
+        offered_widths=[int(w) for w in widths], offered_degrees=[int(d) for d in degrees],
+        residual_statistic='1.4826 x median |(data-sky) sqrt(ivar)| over the input bands and supported rows',
+        holdout_statistic='mean of data minus fitted model over withheld source-free columns '
+                          'between the source wings and the inner band edge; negative means the '
+                          'background is being over-subtracted beside the source',
+        holdout_scope='measures the model error over the ring that was withheld, which is the '
+                      'closest measurable proxy for the unsampled aperture gap; it is not proof '
+                      'that the background under the aperture is known',
+        clean_radius_statistic='larger of a Gaussian core extrapolated to half the profile noise '
+                               'and the radius where the profile stops rising above a local line',
+        escalated=(record['width_spatial_pixels'] != default_width
+                   or record['spatial_degree'] != default_degree),
+        identity_inferred=False, trials=trials)
+    return mask, fit, selection
+
+
 def fit_background(data, ivar, tilts, mask, trace, *, radius, degree=1,
-                   sigma_clip=4., bsp=1., maxiter=100):
+                   sigma_clip=4., bsp=1., maxiter=500):
     """Use PypeIt's B-spline × Legendre fit, retaining its convergence evidence.
 
     ``degree=2`` supplies three Legendre terms. Unlike global_skysub in 1.14,
@@ -178,9 +602,13 @@ def fit_background(data, ivar, tilts, mask, trace, *, radius, degree=1,
     good = mask & np.isfinite(data) & np.isfinite(ivar) & (ivar > 0)
     validate_bounded_mask(mask, trace, radius)
     counts = side_counts(good, trace, radius)
-    if np.any(counts < 5):
-        raise BackgroundSupportError('Background needs at least five usable pixels on each side before fitting.',
-                                     unsupported_rows=np.flatnonzero(np.any(counts < 5, axis=0)).tolist())
+    initial_valid=np.all(counts>=5,axis=0)
+    if initial_valid.mean()<.9:
+        raise BackgroundSupportError('More than 10% of rows lack five usable background pixels on each side before fitting.',
+                                     unsupported_rows=np.flatnonzero(~initial_valid).tolist())
+    # Losing a few rows to detector masks must not reject a whole exposure.
+    # Remove both sides of each unsupported row and never deliver it as valid.
+    good &= initial_valid[:,None]
     pixels = (tilts*(len(data)-1)).ravel()
     order = np.argsort(pixels)
     spatial = np.broadcast_to(np.linspace(-1., 1., data.shape[1]), data.shape).ravel()
@@ -199,7 +627,7 @@ def fit_background(data, ivar, tilts, mask, trace, *, radius, degree=1,
     sky[order], used[order] = model, accepted
     sky, used = sky.reshape(data.shape), used.reshape(data.shape) & good
     final_counts = side_counts(used, trace, radius)
-    valid = np.all(final_counts >= 5, axis=0)
+    valid = initial_valid & np.all(final_counts >= 5, axis=0)
     if valid.mean() < .9:
         raise BackgroundSupportError('More than 10% of rows lost two-sided background support after rejection.',
                                      unsupported_rows=np.flatnonzero(~valid).tolist(), spatial_degree=degree)
@@ -207,6 +635,7 @@ def fit_background(data, ivar, tilts, mask, trace, *, radius, degree=1,
                    spatial_degree=degree, legendre_terms=degree+1, pypeit_exit_status=int(status),
                    sigma_clip=float(sigma_clip), bspline_spacing=float(bsp),
                    maximum_iterations=maxiter,
+                   pre_fit_invalid_rows=np.flatnonzero(~initial_valid).tolist(),
                    reduced_chi2=float(chi2), invalid_rows=np.flatnonzero(~valid).tolist(),
                    accepted_fraction=float(used.sum()/good.sum()),
                    minimum_side_samples=int(final_counts[:, valid].min()),

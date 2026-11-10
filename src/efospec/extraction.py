@@ -113,7 +113,8 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
         sky_input_mask = np.asarray(sky_input_mask, dtype=bool)
         if sky_input_mask.shape != data.shape or np.any(sky_input_mask.sum(axis=1) < 8):
             raise ValueError('sky mask must match the image and retain eight pixels per row')
-    if bounded_background and (sky_model is not None or sky_input_mask is not None or manual is not None):
+    if bounded_background and (sky_model is not None or sky_input_mask is not None or
+                               (manual is not None and (len(manual)!=1 or manual[0]['id']!='primary'))):
         raise ValueError('automatic bounded background cannot ignore an explicit recipe')
     if sky_model is not None and (sky_input_mask is None or manual is None or len(manual) != 1):
         raise ValueError('bounded PypeIt background needs one explicit source and two selected bands')
@@ -186,39 +187,91 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
             stage='source_selection_failed' if isinstance(exc,SourceSelectionError) else 'background_support_failed')
 
     fitted_background = None
+    # An automatic selection already fitted its winning configuration; reuse it
+    # rather than repeating the same PypeIt solve.
+    selected_background = None
     background_radius=manual[0]['radius'] if sky_model is not None else None
     auto_info=None
     unresolved=False
+    detection_ivar=sci.ivar
+    detection_support=None
+    def find_in_supported_background(image):
+        # PypeIt's collapsed spatial profile uses the image mask as well as
+        # inverse variance. Zero ivar alone does not exclude extrapolated sky.
+        saved_mask=sci.fullmask.mask.copy()
+        try:
+            if detection_support is not None:
+                sci.update_mask('BPM',indx=~detection_support)
+            return finder.find_objects(image,detection_ivar)
+        finally:
+            sci.fullmask.mask[:]=saved_mask
     if bounded_background:
         from .local_sky import nearby_mask, BackgroundSupportError
         # Find traces without making a full-slit sky model. Ambiguity is still
         # handled by the diagnostic-writing selection gate below.
         found,finder.nobj=finder.find_objects(data,sci.ivar)
         try:
-            first_names=select_sources(found,target_position)
+            first_names=select_sources(found,target_position,manual)
         except SourceSelectionError:
             unresolved=True;sky=np.zeros_like(data)
         if not unresolved:
             primary=next(s for s in found if s.NAME==first_names['primary'])
+            # PypeIt object finding expects a sky-subtracted frame. A raw
+            # collapsed background pedestal can masquerade as a very broad
+            # neighbour and veto every sky band. Bootstrap with finite bands,
+            # then find sources again before choosing the final sampling bands.
+            # This provisional model never becomes the delivered background.
+            from .local_sky import fit_background
+            initial_found = [{'window_pixel':float(s.SPAT_PIXPOS),
+                              'fwhm_pixels':float(np.nanmedian(s.FWHM))} for s in found]
+            seed_trace=primary.TRACE_SPAT
+            seed_radius=max(15.,1.5*float(np.nanmedian(primary.FWHM)))
+            try:
+                seed_mask,_=nearby_mask(data.shape,seed_trace,radius=seed_radius,
+                    fwhm=float(np.nanmedian(primary.FWHM)),width_pixels=30,max_gap_pixels=60)
+                seed=fit_background(data,np.where(sci.select_flag(invert=True),sci.ivar,0.),tilts,seed_mask,
+                    seed_trace,radius=seed_radius,degree=2,sigma_clip=4.)
+                # A polynomial sky model is only constrained between its
+                # sampling bands. Never detect neighbours in its extrapolation.
+                x=np.arange(nx)[None,:]
+                left=np.min(np.where(seed_mask,x,nx),axis=1)
+                right=np.max(np.where(seed_mask,x,-1),axis=1)
+                detection_support=(x>=left[:,None])&(x<=right[:,None])
+                detection_ivar=np.where(detection_support,sci.ivar,0.)
+                found,finder.nobj=find_in_supported_background(data-seed['sky'])
+                first_names=select_sources(found,target_position,manual)
+                primary=next(s for s in found if s.NAME==first_names['primary'])
+            except (SourceSelectionError,BackgroundSupportError) as exc:
+                save_detection_failure(exc,found,np.zeros_like(data))
+                raise
             sky_trace=primary.TRACE_SPAT
             fwhm=float(np.nanmedian(primary.FWHM))
-            background_radius=float(par['reduce']['extraction']['boxcar_radius'])/(float(detector['platescale'])*2)
+            background_radius=(float(manual[0]['radius']) if manual is not None else
+                float(par['reduce']['extraction']['boxcar_radius'])/(float(detector['platescale'])*2))
             neighbours=[(s.TRACE_SPAT,float(np.nanmedian(s.FWHM)),background_radius)
                         for s in found if s.NAME!=primary.NAME]
-            for width in range(30,14,-1):
-                try:
-                    sky_input_mask,_=nearby_mask(data.shape,sky_trace,radius=background_radius,
-                        fwhm=fwhm,width_pixels=width,neighbours=neighbours,max_gap_pixels=60)
-                    break
-                except BackgroundSupportError as exc:
-                    if width==15:
-                        save_detection_failure(exc,found,np.zeros_like(data))
-                        raise
+            # Let the sampled residuals choose the band width and spatial
+            # degree. A steeply varying background under the slit is not
+            # described by the default wide band and quadratic term.
+            from .local_sky import select_bounded_background
+            try:
+                sky_input_mask,selected_background,auto_selection=select_bounded_background(
+                    data,np.where(sci.select_flag(invert=True),sci.ivar,0.),tilts,sky_trace,
+                    radius=background_radius,fwhm=fwhm,neighbours=neighbours,
+                    allowed_mask=detection_support,max_gap_pixels=60,sigma_clip=4.)
+            except BackgroundSupportError as exc:
+                save_detection_failure(exc,found,np.zeros_like(data))
+                raise
             finder.initial_skymask=sky_input_mask
-            sky_model={'degree':2,'sigma_clip':4.}
+            sky_model={'degree':auto_selection['selected_spatial_degree'],'sigma_clip':4.}
             auto_info={'requested_width_spatial_pixels':30,'minimum_width_spatial_pixels':15,
-                       'actual_width_spatial_pixels':width,'selection':'nearest_clean_two_sided_bands',
-                       'host_identity_inferred':False}
+                       'actual_width_spatial_pixels':auto_selection['selected_width_spatial_pixels'],
+                       'selection':'nearest_clean_two_sided_bands',
+                       'automatic_background_selection':auto_selection,
+                       'host_identity_inferred':False,
+                       'preliminary_detection_background':seed['summary'],
+                       'preliminary_source_candidates':initial_found,
+                       'detection_sequence':'raw seed trace, bounded preliminary sky, source finding, bounded final sky'}
     if sky_model is None and not unresolved:
         sky, found = finder.run()
     elif sky_model is not None:
@@ -226,19 +279,22 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
         if set(sky_model) != {'degree', 'sigma_clip'}:
             raise ValueError('bounded PypeIt background requires degree and sigma_clip')
         trace = (np.full(ny, manual[0]['spat']) if sky_trace is None else np.asarray(sky_trace, float))
-        try:
-            fitted_background = fit_background(data, sci.ivar, tilts,
-                sky_input_mask & sci.select_flag(invert=True), trace,
-                radius=background_radius, **sky_model)
-        except BackgroundSupportError as exc:
-            if bounded_background:save_detection_failure(exc,found,np.zeros_like(data))
-            raise
+        if selected_background is not None:
+            fitted_background = selected_background
+        else:
+            try:
+                fitted_background = fit_background(data, np.where(sci.select_flag(invert=True),sci.ivar,0.), tilts,
+                    sky_input_mask, trace,
+                    radius=background_radius, **sky_model)
+            except BackgroundSupportError as exc:
+                if bounded_background:save_detection_failure(exc,found,np.zeros_like(data))
+                raise
         if auto_info is not None:fitted_background['summary']['selection']=auto_info
         sky = fitted_background['sky']
         sci.update_mask('BPM', indx=np.broadcast_to(~fitted_background['valid_rows'][:, None], data.shape))
         # FindObjects.run would fit the sky again. Use its public object-finding
         # stage with our audited PypeIt model, then hold it during extraction.
-        found, finder.nobj = finder.find_objects(data-sky, sci.ivar)
+        found, finder.nobj = find_in_supported_background(data-sky)
     selection = capture_sky_selection(finder, found)
     if unresolved:
         selection.update(sky_input_mask=np.zeros_like(data,dtype=bool),
@@ -276,6 +332,7 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
             if np.any((~supported | overlap) & fitted_background['valid_rows']):
                 exc=BackgroundSupportError('Fitted source trace moved outside the two-sided background support; review bands.',
                     initial_trace_median=float(np.median(trace)),fitted_trace_median=float(np.median(obj.TRACE_SPAT)),
+                    maximum_trace_change_pixels=float(np.max(abs(obj.TRACE_SPAT-trace))),
                     unsupported_rows=np.flatnonzero((~supported|overlap)&fitted_background['valid_rows']).tolist())
                 save_detection_failure(exc,found,sky,selection)
                 raise exc

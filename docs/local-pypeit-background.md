@@ -16,6 +16,8 @@ New automatic recipes use `bounded`; anchored recipes use `pypeit_local`.
 - Degrees 1, 2 and 3 select a slope, quadratic or cubic spatial model. A smooth,
   uneven host background can motivate curvature; nearby peaks alone do not
   establish that it is a galaxy. Compare residuals before accepting an order.
+- Nightly reductions choose the width and spatial degree automatically; see
+  [automatic selection](#automatic-width-and-degree-selection).
 - The actual fit uses PypeIt 1.14.0 `bspline_profile`: spectral B-splines times
   `degree+1` spatial Legendre terms, followed by PypeIt optimal extraction with
   `no_local_sky=True`. This mode is distinct from the existing NumPy polynomial
@@ -31,6 +33,69 @@ New automatic recipes use `bounded`; anchored recipes use `pypeit_local`.
 - Fixed-sky PypeIt uncertainties do not propagate fitted background covariance.
   This is not validated SN/host deblending. Saved candidate guards are
   conservative: old records lack neighbour FWHM measurements.
+
+## Automatic width and degree selection
+
+`efospec.local_sky.select_bounded_background` chooses the band width and the
+spatial degree from the exposure instead of fixing 30 pixels and a quadratic.
+
+Two bands constrain the background on either side of the source; nothing
+measures it underneath. A quadratic fitted to two wide, distant bands can arch
+across that gap and over-subtract beside the source while still fitting its own
+sampled pixels perfectly. A statistic computed over the fitted bands cannot see
+this, because the error lives exactly where no pixel was used. The selection
+therefore measures the model where it is not fitted:
+
+- **Clean background radius**: the larger of a Gaussian core extrapolated out to
+  half the profile noise and the radius at which the row-median spatial profile
+  stops rising above a local straight line. The second test catches power-law
+  halos that a Gaussian core underestimates, as a bright standard star has.
+- **Withheld ring**: `HOLDOUT_WIDTH` columns immediately outside that radius, on
+  both sides, excluded from every trial fit. Each trial is scored by the mean of
+  `data - sky` there. Negative means the background is being over-subtracted
+  beside the source. The chosen geometry is then refitted with the ring included.
+- **Band residual**: `1.4826 x median |(data-sky) sqrt(ivar)|` over the input
+  bands and supported rows, as a secondary check that the model describes what it
+  did sample. The input selection is used, not the post-rejection mask, so an
+  underfit gradient shows up where sigma clipping would have discarded it.
+
+The default 30-pixel band with degree 2 is fitted and scored first. It is
+replaced only when some other offered geometry reduces the measured ring error
+by more than `REQUIRED_IMPROVEMENT_SIGMA` (0.3) times the per-pixel noise;
+among geometries within noise of the best, the one closest to the default is
+preferred. Widths 30/25/20/15/35/40/45/50 and degrees 2/1/3 are offered. Every
+trial stays bounded and two-sided; no one-sided, full-slit or constant fallback
+is reachable.
+
+`background_fit.selection` records the chosen width, degree and inner edge, the
+clean radius, the ring, every statistic and threshold, the reason and all
+trials.
+
+### When no ring can be measured
+
+The ring must lie in the gap the default band leaves: the clean radius plus the
+ring width must fall inside the default band's inner edge. When it does not, no
+geometry can be compared against anything, `geometry_unresolved` is recorded and
+the default is retained. If the default width cannot be placed at all, the width
+ladder is walked at the default degree until one fits.
+
+**This is currently the case for every exposure in the nightly path.** In the
+28 October reduction the bands are placed much closer to the source than the
+clean radius: for L745a Gr13 slit1.0 the clean radius is 14 pixels while the
+default band's inner edge is 9 and the fitted band begins at 6. The source is
+still bright where the background is being measured, so no clean ring exists and
+the selector returns the default unmeasured. The band placement — driven by
+`aperture_padding_pixels` in the recipe — has to be reconciled with the measured
+clean radius before this selection does anything in production.
+
+Measured off-line on the 2026-10-28 exposures with bands placed outside the
+clean radius, the ring is measurable for all 14 and 12 keep width 30 degree 2
+with ring errors of -0.40 to +0.31 per-pixel sigma. AT2026agvs Gr13 slit1.5
+moves to width 15 degree 1 (-0.02 sigma, from a default that over-subtracts),
+and vma2 Gr13 slit1.5 to degree 3.
+
+A small ring error is not evidence that the background under the aperture is
+known, and this selection chooses a background description, not a host model.
 
 ## One date, explicit targets
 

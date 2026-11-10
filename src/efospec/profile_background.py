@@ -57,11 +57,25 @@ def _bounded_arrays(source):
             'provenance':None}
 
 
-def summed_profile(residual, indices, valid_rows):
-    """Sum the same supported y rows at every x; no median or recentering."""
+def summed_profile(residual, indices, valid_rows, *, spatial_columns=None):
+    """Sum common valid y rows across the displayed support, without imputation.
+
+    An isolated masked pixel excludes its row from every displayed column,
+    rather than erasing that column's entire sum. Fully missing columns remain
+    missing and do not prevent valid neighbouring columns from being plotted.
+    This is a diagnostic only; it does not alter the extraction mask or counts.
+    """
+    residual = np.asarray(residual, dtype=float)
+    values = np.full(residual.shape[1], np.nan)
     selected = indices[np.asarray(valid_rows, bool)[indices]]
     if not len(selected):
-        return np.full(residual.shape[1], np.nan), 0
-    # np.sum deliberately leaves a missing pixel missing, rather than silently
-    # treating it as zero or mixing different row counts across the profile.
-    return np.sum(residual[selected], axis=0), len(selected)
+        return values, 0
+    columns = (np.ones(residual.shape[1], dtype=bool) if spatial_columns is None
+               else np.asarray(spatial_columns, bool).copy())
+    columns &= np.any(np.isfinite(residual[selected]), axis=0)
+    if not columns.any():
+        return values, 0
+    selected = selected[np.all(np.isfinite(residual[selected][:, columns]), axis=1)]
+    if len(selected):
+        values[columns] = np.sum(residual[selected], axis=0)[columns]
+    return values, len(selected)

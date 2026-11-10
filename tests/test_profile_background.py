@@ -7,12 +7,28 @@ import pytest
 from efospec.profile_background import summed_profile, load_profile_background
 
 
-def test_sum_is_not_median_and_does_not_recenter_or_zero_missing_pixels():
+def test_sum_uses_same_complete_rows_without_filling_missing_pixels():
     residual = np.array([[1., 5., np.nan], [2., 6., 8.], [9., 20., 30.]])
     values, used = summed_profile(residual, np.arange(3), [True,True,False])
-    np.testing.assert_array_equal(values, [3.,11.,np.nan])
-    assert used == 2
+    np.testing.assert_array_equal(values, [2.,6.,8.])
+    assert used == 1
     values, used = summed_profile(residual, np.arange(3), [False]*3)
+    assert np.isnan(values).all() and used == 0
+
+
+def test_profile_uses_only_displayed_support_and_keeps_dead_columns_missing():
+    residual = np.array([[np.nan, 1., 10., np.nan, 100.],
+                         [np.nan, 2., np.nan, np.nan, 200.],
+                         [np.nan, 3., 30., np.nan, 300.]])
+    values, used = summed_profile(residual, np.arange(3), [True]*3,
+                                  spatial_columns=[False,True,True,True,False])
+    np.testing.assert_array_equal(values, [np.nan,4.,40.,np.nan,np.nan])
+    assert used == 2
+
+
+def test_profile_with_no_common_valid_rows_stays_missing():
+    values, used = summed_profile(np.array([[1.,np.nan],[np.nan,2.]]),
+                                  np.arange(2), [True,True])
     assert np.isnan(values).all() and used == 0
 
 

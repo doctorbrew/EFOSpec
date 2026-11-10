@@ -103,7 +103,7 @@ def run_trials(night, targets, project_root, *, width_pixels=None, degrees=(1,2)
         for record in manifest.get(key,[]):
             name=record.get('object','')
             if name.removeprefix('SN').removeprefix('AT') not in names:continue
-            if failed and record.get('code')!='source_selection_required':
+            if failed and record.get('code') not in {'source_selection_required', 'background_support_required'}:
                 raise ValueError(f'{name}: cannot start a background trial before {record.get("code")} is resolved')
             product=Path(record['path'] if failed else record['product']).name
             matches.append(((FailedExposure if failed else Exposure)(run,product),product,failed))
