@@ -174,6 +174,33 @@ is separate from reduction; rebuilding the report uses only saved results.
 - Write new results inside dated revisions.
 - Older compatibility links are read-only destinations for existing recipes/records.
 
+## QC cleanup after the PypeIt 3 reruns
+
+On 11 November 2026, the authorized cleanup removed 45 superseded generated QC
+folders (4,994,157,498 bytes) across the two October nights. This includes early
+daily-reduction trials, obsolete sky/background probes, redundant report backups
+and the old single-engine overview plots. It does not remove pipeline validation
+code or weaken rejection thresholds.
+
+| Observing date | Removed folders | Removed files | Bytes removed | Retained files hash-verified |
+| --- | ---: | ---: | ---: | ---: |
+| 2026-10-28 | 28 | 1,517 | 984,363,405 | 3,652 |
+| 2026-10-29 | 17 | 1,634 | 4,009,794,093 | 2,202 |
+
+Each date has `archive/qc-cleanup-20261111/manifest.json`, containing the exact
+removed-file inventory, sizes, historical documentation references, retained
+dependencies and protected SHA-256 values. The scripts and original comparison
+baseline hashes accompany it. Historical debugging notes retain their original
+paths as provenance; a removed diagnostic is no longer an available output.
+
+All nightly and rescue revisions, selected-source recipes, active catalogue and
+redshift dependencies, current filtered/red count diagnostics, the PypeIt migration
+benchmark and final `QC/pypeit3-overlay-20261110-v1/` comparisons remain. In
+particular, catalogue parent records and backgrounds referenced by retained rescue
+products are dependencies, even when their folder names look old. The current
+reports, spectra, comparison baselines and retained QC files passed before/after
+hash checks. Raw data and the preserved legacy checkout were outside deletion scope.
+
 ## Status and limits
 
 - [Integrated reduction checks](reduction-checks.md) now save sky-line fits,

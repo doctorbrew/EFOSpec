@@ -1,5 +1,10 @@
 # EFOSpec daily standard calibration
 
+> Historical diagnostics: superseded QC outputs cited below were removed in the
+> authorized 11 November cleanup. Retained reductions and their dependencies remain.
+> See the [cleanup inventory and policy](epoch-workflow.md#qc-cleanup-after-the-pypeit-3-reruns)
+> for which generated paths were retired; these historical paths are not current deliveries.
+
 Latest follow-up: the [9 November rescue record](rescue-2026-11-09.md) delivers
 four additional **provisional** 28 October spectra. Two background failures are
 resolved; the science wavelength checks still fail. The accepted nightly

@@ -207,7 +207,7 @@ failure.
 
 The migration commit contains the PypeIt 3 compatibility changes, the response
 spline needed by that port, tests and migration documentation. Earlier uncommitted
-nightly-report, background-selection, redshift and rescue work stays local.
+nightly-report, background-selection, redshift and rescue work was initially kept local.
 The 399-test full-suite result and observed-data benchmark above describe the
 complete working checkout saved in the evidence snapshot; they are not a claim
 that its other pending changes are included in the migration commit. The scoped
@@ -216,3 +216,48 @@ extraction/response/replay checks, 35 adapter/recipe/desktop/rapid checks and
 8 raw-calibration/end-to-end checks. `git diff --cached --check` is clean. Observed data,
 calibration products, environment clones and local `runs/` evidence are not
 published to GitHub.
+
+## Full nightly reductions and follow-up publication
+
+Fresh PypeIt 3.0.0 raw calibrations, extraction and same-night standard responses
+were subsequently run in separate dated invocations:
+
+| Observing date | Selected revision | Science flux exports | Reduction errors |
+| --- | --- | ---: | ---: |
+| 2026-10-28 | `20261110T170405Z-b97078` | 4 | 4 |
+| 2026-10-29 | `20261110T171353Z-aa76fb` | 6 | 0 |
+
+Both reports are complete; both reduction manifests remain explicitly partial
+because six filtered/red exposures per night are unsupported by this flux route.
+On 28 October, SN2026ayt C2 additionally fails fitted-trace background support;
+its preserved 1.14 spectrum is shown alone in the comparison. The other failures
+remain background convergence or sky-line consistency failures. An exported
+SN2026aebl spectrum still carries the independent wavelength uncertainty discussed
+above. Successful execution does not resolve that scientific concern.
+
+The reproducible plotter is `scripts/compare_pypeit_reductions.py`. It takes one
+date, explicit old/new reduction directories and a fresh output directory. It
+matches raw-exposure hashes, plots the delivered air-wavelength grids without
+extra shifts or normalization, uses actual exposure time and median SNR in each
+title, and reduces horizontal panel spacing by 10%. Final PDF/JPG pairs and
+provenance are retained in each date's `QC/pypeit3-overlay-20261110-v1/`.
+All 881 files in the two comparison baseline revisions were unchanged after
+the new reductions.
+
+The follow-up package publication includes the same-night workflow, bounded
+background selection, report assets, redshift evidence, provisional rescue route,
+comparison plotter and their tests. Scientific rejection checks remain active.
+The authorized cleanup concerns superseded generated QC outputs, not those
+checks or accepted spectra; see the dated cleanup record in
+[the epoch workflow](epoch-workflow.md#qc-cleanup-after-the-pypeit-3-reruns).
+
+Publication verification on 11 November: wheel and source archive builds succeed,
+`pip check` is clean, and added-line whitespace and changed documentation links
+pass. The full suite completed with **402 passed and one failed** in 718 s:
+the macOS launcher subprocess crashed in Qt's native directory dialog. That test
+passed alone; all **15 desktop/CLI/launcher tests** then passed together with the
+documented `MPLBACKEND=Agg` test environment. The crash was not reproduced, and
+this is not a claim that the initial full-suite run was clean. A first subset
+invocation without the required plotting backend hit Tk/Qt fixture-setup errors;
+the corrected invocation above passed. No launcher implementation was changed.
+Logs are retained in each date's `archive/qc-cleanup-20261111/`.

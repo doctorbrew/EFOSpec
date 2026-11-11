@@ -89,4 +89,3 @@ def _profile_limits(profiles, *, background_subtracted=False):
         lower_padding = max(.1*abs(low), .2*(high-low), fallback)
         return min(0., low)-lower_padding, max(0., high)+(.1*abs(high) or fallback)
     return low-(.1*abs(low) or fallback), high+(.1*abs(high) or fallback)
-

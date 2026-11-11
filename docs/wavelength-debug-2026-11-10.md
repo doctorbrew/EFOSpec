@@ -1,5 +1,10 @@
 # EFOSpec / 28 October 2026 / Wavelength debugging
 
+> Historical diagnostics: superseded QC outputs cited below were removed in the
+> authorized 11 November cleanup. Retained reductions and their dependencies remain.
+> See the [cleanup inventory and policy](epoch-workflow.md#qc-cleanup-after-the-pypeit-3-reruns)
+> for which generated paths were retired; these historical paths are not current deliveries.
+
 ## Finding from the 10 November audit
 
 The current red PypeIt/Paranal correlations are not reliable exposure-flexure
@@ -7,10 +12,10 @@ checks for the three Gr13 rescue exposures. This weakens the earlier argument
 that those correlations contradict the optical anchors. It does **not** validate
 the anchor shifts or establish the cause of the underlying wavelength errors.
 
-Diagnostic revision:
-[`manual-wavelength-audit-20261110T121755Z`](../runs/2026-10-28/QC/manual-wavelength-audit-20261110T121755Z/audit.json).
-The saved `audit.py` replays existing estimators without changing their thresholds.
-It records input/profile/script hashes and unchanged nightly/rescue pointer hashes.
+Historical diagnostic revision: `manual-wavelength-audit-20261110T121755Z`
+(retired in the cleanup cited above). Its `audit.py` replayed existing estimators
+without changing their thresholds and recorded input/profile/script hashes and
+unchanged nightly/rescue pointer hashes.
 All four raw exposures were processed using their current native calibrations;
 no wavelength correction, extracted product, report or pointer was replaced.
 
@@ -36,9 +41,9 @@ translation test, an absolute accuracy measurement or a noise-coverage test.
 The detailed cause (e.g. continuum removal, profile mismatch, sampling, edge
 effects or insufficient line signal) is not yet isolated.
 
-Figure: [PDF](../runs/2026-10-28/QC/manual-wavelength-audit-20261110T121755Z/correlation-sensitivity.pdf),
-[JPG](../runs/2026-10-28/QC/manual-wavelength-audit-20261110T121755Z/correlation-sensitivity.jpg).
-Generated with root `plot_style.py`, LaTeX, inward ticks and 300-dpi JPG.
+The former `correlation-sensitivity.pdf` and `.jpg` figures were removed with
+that diagnostic revision. They used root `plot_style.py`, LaTeX, inward ticks
+and a 300-dpi JPG.
 
 ### Spatial partitions
 

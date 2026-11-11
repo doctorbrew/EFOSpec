@@ -361,4 +361,3 @@ def test_the_clean_radius_grows_with_the_brightness_of_a_compact_source():
         assert radius is not None and noise > 0
         radii.append(radius)
     assert radii[1] > radii[0]
-

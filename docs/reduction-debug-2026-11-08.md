@@ -1,5 +1,10 @@
 # EFOSpec reduction debugging — 8 November 2026
 
+> Historical diagnostics: superseded QC outputs cited below were removed in the
+> authorized 11 November cleanup. Retained reductions and their dependencies remain.
+> See the [cleanup inventory and policy](epoch-workflow.md#qc-cleanup-after-the-pypeit-3-reruns)
+> for which generated paths were retired; these historical paths are not current deliveries.
+
 Latest status: see the [9 November rescue record](rescue-2026-11-09.md) for two
 resolved background failures and four provisional same-night flux spectra.
 Their science wavelength checks remain unresolved; the dated account below
