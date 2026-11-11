@@ -447,6 +447,19 @@ def select_bounded_background(data, ivar, tilts, trace, *, radius, fwhm, neighbo
         fits[key] = (mask, fit, record)
         return fits[key]
 
+    # A 15--29 pixel clean band beside the source beats a distant 30-pixel
+    # band. Rank offered widths by their worst inner-edge distance first.
+    proximity = []
+    for width in widths:
+        candidate = place(width, radius)
+        if candidate is not None:
+            distances = np.where(candidate, abs(offset), np.inf)
+            left = np.min(np.where(offset < 0, distances, np.inf), axis=1)
+            right = np.min(np.where(offset > 0, distances, np.inf), axis=1)
+            proximity.append((float(np.max([left, right])), abs(width-30), width))
+    if proximity:
+        preferred = min(proximity)[2]
+        widths = (preferred,) + tuple(w for w in widths if w != preferred)
     default_width, default_degree = widths[0], degrees[0]
     # The validated default keeps its own inner edge: the ring is withheld from
     # it as well, but its geometry is not moved in order to be measured.

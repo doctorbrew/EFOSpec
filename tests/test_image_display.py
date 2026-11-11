@@ -59,6 +59,8 @@ def test_acquisition_has_exact_zoom_box_and_shared_clipped_stretch(tmp_path, mon
     full, zoom = figures[0].axes
     assert full.images[0].get_cmap().name == zoom.images[0].get_cmap().name == 'RdBu'
     assert full.images[0].norm is zoom.images[0].norm
+    assert record['slit_orientation']['kind'] == 'orientation_only'
+    assert record['slit_overlay_on_zoom_only'] is True
     assert record['zoom_raw_bounds_xy'] == [119.5,479.5,69.5,429.5]
     assert full.patches[0].get_width() == full.patches[0].get_height() == 360
 
@@ -90,3 +92,22 @@ def test_bright_percentile_extends_only_the_upper_limit_for_a_saturating_trace()
     for bad in (50., 0., 101., np.nan):
         with pytest.raises(ValueError, match='bright percentile'):
             image_normalization(image, residual=True, bright_percentile=bad)
+
+
+def test_documented_slit_direction_is_confined_to_separate_acquisition_zoom(tmp_path, monkeypatch):
+    raw=tmp_path/'acquisition.fits'
+    # Sky position angle must not rotate the slit on unrotated detector pixels.
+    header=fits.Header({'ESO OBS ID':42,'ESO TPL ID':'EFOSC_img_acq_MoveToSlit',
+                        'ESO ADA POSANG':67.})
+    fits.writeto(raw,np.random.default_rng(7).normal(100,2,(500,600)),header)
+    figures=[]
+    monkeypatch.setattr('efospec.figure_style.save_qc',lambda fig,*a,**kw:figures.append(fig))
+    record, = acquisition_images(SimpleNamespace(frame={'path':str(raw)},result={'object':'SNtest'}),tmp_path)
+    full,zoom=figures[0].axes
+    assert not full.artists and len(zoom.artists)==1
+    assert not full.lines and not zoom.lines
+    assert full.get_subplotspec().colspan.start == 0
+    assert zoom.get_subplotspec().colspan.start == 1
+    assert record['slit_orientation']['detector_angle_deg']==0.
+    assert zoom.get_xlim()==(119.5,479.5)
+    assert zoom.get_ylim()==(69.5,429.5)

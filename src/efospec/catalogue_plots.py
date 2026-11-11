@@ -23,7 +23,8 @@ def place_labels(fig):
                 if ax.bbox.contains(x, y):
                     markers.append(Bbox.from_extents(x-8*point, y-8*point,
                                                      x+8*point, y+8*point))
-        placed = []
+        placed = [artist.get_window_extent(renderer).padded(3*point)
+                  for artist in ax.artists if artist.get_gid()=='efosc2-slit-orientation']
         for label in labels:
             preferred = -1 if label.get_position()[0] < 0 else 1
             line_step = label.get_fontsize() * 1.6
@@ -53,6 +54,7 @@ def plot_catalogue_field(data, field, output):
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
     from .recovery_qc import _image
+    from .acquisition_slit import draw_slit_orientation
     ny, nx = data.shape
     galaxies = [s for s in field['sources'] if s['galaxy_candidate']]
     labels = galaxy_labels(field['sources'])
@@ -82,6 +84,7 @@ def plot_catalogue_field(data, field, output):
                         va='center',
                         color=GALAXY_COLOR, fontsize=15, clip_on=True)
         ax.set(xlim=limits[:2], ylim=limits[2:], xlabel='Acquisition x pixel', ylabel='Acquisition y pixel', title=title)
+    field['slit_orientation'] = draw_slit_orientation(axes[1])
     catalogues = list(dict.fromkeys(s['catalogue'] for s in galaxies))
     legend_title = ' / '.join(catalogues or ['NED']) + ' galaxy candidates'
     handles = [Line2D([], [], linestyle='none', marker='o' if s['catalogue']=='NED' else 's',

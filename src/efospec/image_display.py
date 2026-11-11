@@ -68,7 +68,7 @@ def image_normalization(data, *, residual=False, samples=None, cmap='gray_r',
         vmin=float(norm.vmin), vmax=float(norm.vmax))
 
 
-def mark_zoom_region(full_ax, zoom_ax):
+def mark_zoom_region(full_ax, zoom_ax, *, label="Zoom at right"):
     """Outline the exact displayed pixel bounds of the companion zoom axes."""
     from matplotlib.patches import Rectangle
     from matplotlib import patheffects
@@ -79,7 +79,7 @@ def mark_zoom_region(full_ax, zoom_ax):
     box.set_path_effects([patheffects.Stroke(linewidth=4.5, foreground='black'),
                           patheffects.Normal()])
     full_ax.add_patch(box)
-    full_ax.annotate('Zoom at right', (x0, y1), xytext=(5, -6),
+    full_ax.annotate(label, (x0, y1), xytext=(5, -6),
                      textcoords='offset points', color='black', fontsize=18,
                      va='top', zorder=9, bbox=dict(facecolor='white', alpha=.8,
                                                  edgecolor='none', pad=2))

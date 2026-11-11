@@ -20,6 +20,8 @@ from .figure_style import house_style
 from .profile_limits import _profile_limit_samples, _profile_limits
 from .image_display import image_normalization, mark_zoom_region
 
+from .trace_geometry import TRACE_STYLES, TRACE_LINEWIDTH
+
 TRACE_COLORS = ('xkcd:red', 'xkcd:dodger blue', 'xkcd:green', 'xkcd:brown')
 
 # The bounded background selection already treats these columns as off-slit.
@@ -83,7 +85,7 @@ def plot_exposure(exposure, output):
     strengths = [float(np.nanmedian([np.interp(t-x0, np.arange(nx), row)
                   for t, row in zip(trace, residual)])) for trace in traces]
     order = sorted(range(len(traces)), key=lambda i: (-strengths[i] if np.isfinite(strengths[i]) else np.inf, i))
-    colors = {i: TRACE_COLORS[rank % len(TRACE_COLORS)] for rank, i in enumerate(order)}
+    colors = {i: TRACE_COLORS[0] for i in range(len(traces))}
     finite_traces = np.concatenate([t[np.isfinite(t)] for t in traces]) if traces else np.array([])
     xlimits = (min(extent[0], finite_traces.min()-1) if finite_traces.size else extent[0],
                max(extent[1], finite_traces.max()+1) if finite_traces.size else extent[1])
@@ -95,7 +97,7 @@ def plot_exposure(exposure, output):
     window_image = _image(axes[1], data, extent)
     axes[1].set_title('Candidate traces')
     for i, trace in enumerate(traces):
-        axes[1].plot(trace, rows, color=colors[i], lw=2.4)
+        axes[1].plot(trace, rows, color=colors[i], ls=TRACE_STYLES[i%4], lw=TRACE_LINEWIDTH)
     axes[1].set_xlim(*xlimits)
     axes[1].set_ylim(extent[2], extent[3])
     zoom_bounds = mark_zoom_region(axes[0], axes[1])
@@ -108,7 +110,7 @@ def plot_exposure(exposure, output):
     for ax in axes:
         ax.set_xlabel('Raw x / spatial pixel')
         ax.set_ylabel('Raw y / spectral pixel')
-    fig.suptitle(title);save_qc(fig,output,'science',exposure.result['object'],tick_fontsize=18);plt.close(fig)
+    fig.suptitle(title);save_qc(fig,output,'science',exposure.result['object'],tick_fontsize=24,title_fontsize=26,label_fontsize=28.6);plt.close(fig)
 
     # A zero placeholder from a failed selection is not a fitted sky model.
     fig, (left, right) = plt.subplots(1, 2, figsize=(20,12), constrained_layout=True)
@@ -118,7 +120,7 @@ def plot_exposure(exposure, output):
     left.set_title('Sky residual' if sky_available else 'Window (no sky fit)')
     right.set_title('Residual + traces' if sky_available else 'Traces (no sky fit)')
     for i, trace in enumerate(traces):
-        right.plot(trace,rows,color=colors[i],lw=2.4)
+        right.plot(trace,rows,color=colors[i],ls=TRACE_STYLES[i%4],lw=TRACE_LINEWIDTH)
     # Keep both residual views on the same detector bounds, including traces
     # that extend beyond the saved window. No candidate is silently cropped.
     for ax in [left, right]:
@@ -129,7 +131,7 @@ def plot_exposure(exposure, output):
     subtitle = '' if sky_available else '\nSky subtraction unavailable: no fitted background'
     fig.suptitle(title+subtitle)
     image_displays['residual'] = residual_image._efospec_display
-    save_qc(fig,output,'traces',exposure.result['object'],tick_fontsize=18);plt.close(fig)
+    save_qc(fig,output,'traces',exposure.result['object'],tick_fontsize=24,title_fontsize=26,label_fontsize=28.6);plt.close(fig)
 
     # A separate wide figure remains legible when it spans the report grid.
     from .profile_background import load_profile_background, summed_profile
@@ -146,7 +148,7 @@ def plot_exposure(exposure, output):
                        max([supported_xlimits[1]]+[x+3 for x in anchors]))
     fig, profile = plt.subplots(figsize=(20,8.5), constrained_layout=True)
     for i, trace in enumerate(traces):
-        profile.axvline(trace[ny//2],color=colors[i],lw=2.2)
+        profile.axvline(trace[ny//2],color=colors[i],ls=TRACE_STYLES[i%4],lw=4.2)
     x = np.arange(nx)+x0
     protected = np.zeros(nx, dtype=bool)
     for trace in traces:
@@ -214,7 +216,7 @@ def plot_exposure(exposure, output):
         'profile_background_x_limits':list(supported_xlimits) if background else None,
         'profile_row_ranges':row_ranges,
         'missing_pixel_policy':'exclude a row at every displayed x if any supported non-dead column is missing; fully missing columns remain NaN',
-        'traces':[{'candidate':i+1,'rank':rank+1,'color':colors[i],
+        'traces':[{'candidate':i+1,'rank':rank+1,'color':colors[i],'linestyle':TRACE_STYLES[i%4],
                    'median_electrons':strengths[i] if np.isfinite(strengths[i]) else None} for rank,i in enumerate(order)],
         'display_only':True,'all_profile_samples_plotted':True,
         'image_display':image_displays,
@@ -231,42 +233,38 @@ def plot_exposure(exposure, output):
 
 @house_style
 def acquisition_images(exposure, output):
-    """Show same-OB acquisition frames without pretending they are registered."""
-    from .figure_style import COLORS, save_qc
+    """Full acquisition and separate zoom, with the documented slit direction."""
+    from .figure_style import save_qc
+    from .acquisition_slit import draw_slit_orientation
     import matplotlib.pyplot as plt
-    raw = Path(exposure.frame['path'])
-    header = fits.getheader(raw)
+    raw = Path(exposure.frame['path']); header = fits.getheader(raw)
     records = []
     if header.get('ESO OBS ID') is None:
         return records
     for path in sorted(raw.parent.glob('*.fits')):
         h = fits.getheader(path)
         if (h.get('ESO OBS ID') != header['ESO OBS ID']
-                or h.get('ESO TPL ID') != 'EFOSC_img_acq_MoveToSlit'
-                or h.get('NAXIS') != 2):
+                or h.get('ESO TPL ID') != 'EFOSC_img_acq_MoveToSlit' or h.get('NAXIS') != 2):
             continue
-        data = fits.getdata(path).astype(float)
-        ny,nx=data.shape
-        fig,axes=plt.subplots(1,2,figsize=(20,11),constrained_layout=True)
+        data = fits.getdata(path).astype(float); ny,nx=data.shape
+        fig,(full,detail)=plt.subplots(1,2,figsize=(20,11),constrained_layout=True)
         half=min(180,ny//2,nx//2);y0=ny//2-half;x0=nx//2-half
-        zoom = data[y0:y0+2*half,x0:x0+2*half]
-        normalization = image_normalization(zoom,cmap='RdBu')
-        _image(axes[0],data,normalization=normalization,cmap='RdBu')
-        axes[0].set_title('Full acquisition detector')
-        _image(axes[1],zoom, [x0-.5,x0+2*half-.5,y0-.5,y0+2*half-.5],
-               normalization=normalization,cmap='RdBu')
-        zoom_bounds = mark_zoom_region(axes[0], axes[1])
-        axes[1].set_title('Detector-centre zoom; NOT a target identification')
-        for ax in axes:
+        zoom=data[y0:y0+2*half,x0:x0+2*half]
+        normalization=image_normalization(zoom,cmap='RdBu')
+        _image(full,data,normalization=normalization,cmap='RdBu')
+        _image(detail,zoom,[x0-.5,x0+2*half-.5,y0-.5,y0+2*half-.5],normalization=normalization,cmap='RdBu')
+        zoom_bounds=mark_zoom_region(full,detail)
+        detail.set_title('Acquisition zoom')
+        full.set_title('Acquisition detector')
+        orientation=draw_slit_orientation(detail)
+        for ax in (full,detail):
             ax.set_xlabel('Acquisition raw x');ax.set_ylabel('Acquisition raw y')
-        celestial=bool(WCS(h).has_celestial)
-        fig.suptitle(f"{path.name}\nFilter={h.get('ESO INS FILT1 NAME','?')}; slit={h.get('ESO INS SLIT1 NAME','?')}; "
-                     f"EXPTIME={h.get('EXPTIME','?')} s\nNo registration to spectral detector; celestial WCS present={celestial}",fontsize=11)
+        fig.suptitle(f"{exposure.result['object']} -- {path.name}",fontsize=20)
         filename=f'acquisition-{len(records)+1}.png'
         save_qc(fig,output,Path(filename).stem,exposure.result['object'],tick_fontsize=27);plt.close(fig)
-        records.append({'path':str(path),'sha256':sha256(path),'image':filename,
-                        'zoom_raw_bounds_xy':zoom_bounds, 'image_display':normalization[1],
-                        'has_celestial_wcs':celestial,'date_obs':h.get('DATE-OBS')})
+        records.append(dict(path=str(path),sha256=sha256(path),image=filename,
+            zoom_raw_bounds_xy=zoom_bounds,image_display=normalization[1],slit_orientation=orientation,
+            slit_overlay_on_zoom_only=True,has_celestial_wcs=bool(WCS(h).has_celestial),date_obs=h.get('DATE-OBS')))
     return records
 
 

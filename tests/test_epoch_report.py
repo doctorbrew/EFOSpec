@@ -118,7 +118,7 @@ def test_rescue_report_keeps_failed_wavelength_status_and_parent_identity(epoch_
             assert 'id="spectrum-0"' in html
         else:
             assert 'id="rescue-spectrum-0"' not in html
-            assert any('earlier reduction' in w for w in result['warnings'])
+            assert 'Retained provisional rescue belongs' not in html
     assert sha256(parent)==before and product.read_bytes()==b'saved spectrum\x00\x01'
 
 
@@ -302,6 +302,8 @@ def test_log_stage_with_retained_rescue_does_not_require_new_reduction_manifest(
     parent.unlink()
     before=sha256(product)
     result=build_epoch_page('2026-10-28',project)
-    assert any('earlier reduction' in w for w in result['warnings'])
+    html=(root/'index.html').read_text()
+    assert 'Retained provisional rescue belongs' not in html
+    assert 'Provisional rescue spectra' not in html
     assert sha256(product)==before
     assert not parent.exists()

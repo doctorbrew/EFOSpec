@@ -34,24 +34,41 @@ def plot_geometry(exposure, directory):
         import matplotlib.pyplot as plt
         from astropy.visualization import ImageNormalize, AsinhStretch
         data=exposure.images['data'];ny,nx=data.shape;y0,x0=exposure.window.origin
+        from .trace_geometry import TRACE_STYLES, background_limits
         x=np.arange(nx)+x0
         fig,(profile,image)=plt.subplots(2,1,figsize=(18,14),gridspec_kw={'height_ratios':[1,1.4]})
         profile.plot(x,np.nanmedian(data,axis=0),color=COLORS[0],label='Raw electrons: median over rows')
-        profile.plot(x,np.nanmedian(exposure.images['sky'],axis=0),color=COLORS[1],ls='--',label='Previous background model')
+        profile.plot(x,np.nanmedian(exposure.images['sky'],axis=0),color=COLORS[1],ls='--',label='Saved background model')
+        bounds, display = background_limits(np.nanmedian(data, axis=0),
+            np.nanmedian(exposure.images['sky'], axis=0),
+            np.asarray(exposure.images.get('sky_input_mask', np.ones_like(data, bool))).any(axis=0))
+        profile.set_ylim(*bounds)
+        (Path(directory)/'geometry-display.json').write_text(json.dumps(display, indent=2)+'\n')
         lo,hi=np.nanpercentile(data,[2,99])
         image.imshow(data,origin='lower',aspect='auto',cmap='gray_r',
                      norm=ImageNormalize(vmin=lo,vmax=hi,stretch=AsinhStretch()),
                      extent=[x0-.5,x0+nx-.5,y0-.5,y0+ny-.5])
+        if 'sky_input_mask' in exposure.images:
+            from matplotlib.colors import ListedColormap
+            image.imshow(np.where(exposure.images['sky_input_mask'],1.,np.nan),
+                origin='lower',aspect='auto',cmap=ListedColormap([COLORS[1]]),alpha=.2,
+                interpolation='nearest',extent=[x0-.5,x0+nx-.5,y0-.5,y0+ny-.5])
         traces=exposure.images.get('found_traces',np.asarray([exposure.images.get('trace')]))
         for i,trace in enumerate(traces):
-            position=float(trace[ny//2]+x0);color=COLORS[i%len(COLORS)]
-            profile.axvline(position,color=color,ls=':',label=f'C{i+1}: x={position:.1f} (unverified)')
-            image.plot(trace+x0,np.arange(ny)+y0,color=color,lw=1.2)
+            position=float(trace[ny//2]+x0);color=COLORS[0]; linestyle=TRACE_STYLES[i%len(TRACE_STYLES)]
+            profile.axvline(position,color=color,ls=linestyle,lw=3.5,label=f"C{exposure.result.get('candidate_ids', list(range(1,len(traces)+1)))[i]}: x={position:.1f} (unverified)")
+            image.plot(trace+x0,np.arange(ny)+y0,color=color,ls=linestyle,lw=3.2)
+            radius=exposure.result.get('aperture_radius')
+            if radius is not None and len(traces)==1:
+                image.fill_betweenx(np.arange(ny)+y0,trace+x0-radius,trace+x0+radius,
+                                    color=COLORS[2],alpha=.12)
+                image.set_title('Measured aperture (red) and sampled background (blue)')
         for ax in (profile,image):ax.set_xlim(x0,x0+nx-1);ax.set_xlabel('Raw spatial detector pixel x')
         profile.set_ylabel('Electrons per pixel');image.set_ylabel('Raw spectral detector row y')
         profile.set_title(exposure.result['object']+' -- local background geometry')
-        fig.subplots_adjust(hspace=.58,bottom=.08,top=.95)
-        save_qc(fig,directory,'local-background-geometry',exposure.result['object'])
+        fig.subplots_adjust(hspace=.72,bottom=.10,top=.94)
+        save_qc(fig,directory,'local-background-geometry',exposure.result['object'],
+                tick_fontsize=24,legend_fontsize=22,title_fontsize=26,label_fontsize=28.6)
         plt.close(fig)
     draw()
 
@@ -69,7 +86,13 @@ def plot_extraction(directory,exposure,obj,degree):
             profile=np.nanmedian(data[rows],axis=0);model=np.nanmedian(sky[rows],axis=0)
             ax.plot(x,profile,color=COLORS[0],label='Data')
             ax.plot(x,model,color=COLORS[1],label=f'PypeIt background, degree {degree}')
-            ax.fill_between(x,0,mask[rows].mean(axis=0),transform=ax.get_xaxis_transform(),alpha=.15,color=COLORS[0],label='Selected background')
+            fractions=mask[rows].mean(axis=0)
+            first=True
+            for pixel,fraction in zip(x,fractions):
+                if fraction>0:
+                    ax.axvspan(pixel-.5,pixel+.5,alpha=.15*fraction,color=COLORS[0],lw=0,
+                               label='Background occupancy' if first else None)
+                    first=False
             center=float(np.median(trace[rows]))+exposure.window.origin[1]
             ax.axvspan(center-obj['radius'],center+obj['radius'],alpha=.15,color=COLORS[2],label='Source aperture')
             # Display only the sampled region and aperture; the model outside

@@ -36,7 +36,7 @@ def plain_tex(text):
 
 
 @house_style
-def save_qc(fig, directory, kind, object_name, *, tick_fontsize=18, legend_fontsize=18):
+def save_qc(fig, directory, kind, object_name, *, tick_fontsize=18, legend_fontsize=18, title_fontsize=20, label_fontsize=None):
     """Export house-style figures; tick_fontsize is the base before the 1.3 factor."""
     from matplotlib.ticker import MaxNLocator,FixedLocator,NullLocator
     from matplotlib.text import Text
@@ -56,7 +56,10 @@ def save_qc(fig, directory, kind, object_name, *, tick_fontsize=18, legend_fonts
         style.set_plotparams(ax,xticks=(step,step/4),yticks=None,grid=False,fs=tick_fontsize)
         if isinstance(fixed,FixedLocator):
             ax.xaxis.set_major_locator(fixed);ax.xaxis.set_minor_locator(NullLocator())
-        ax.title.set_fontsize(20)
+        ax.title.set_fontsize(title_fontsize)
+        if label_fontsize is not None:
+            ax.xaxis.label.set_fontsize(label_fontsize)
+            ax.yaxis.label.set_fontsize(label_fontsize)
         handles,labels=ax.get_legend_handles_labels()
         if handles:
             style.styled_legend(ax,ncol=min(3,len(handles)),loc='upper center',

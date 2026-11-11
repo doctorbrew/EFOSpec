@@ -224,6 +224,9 @@ class EpochPage:
             if raw not in current:
                 continue
             title = review.get('object', raw)
+            historical = Path(review.get('parent_run', '')).resolve() != (revision/'reduction').resolve()
+            provenance = ('Retained historical candidate geometry; IDs do not refer to the current reduction. '
+                          if historical else 'Candidate geometry from this reduction. ')
             original = self.root/'QC'/Path(raw).stem
             cards = []
             for suffix, label in [('science', '2D Spectrum'), ('traces', 'Sky-subtracted 2D spectrum'),
@@ -247,6 +250,7 @@ class EpochPage:
                 profile_description += 'Curves are shown only within the supported background interval; candidate markers can lie outside it. '
             sections.append((source_order(review), f'<article class="exposure"><h3>{_text(title)}</h3>'
                 f'<p class="caption">{_text(raw)} · Identity {_text(review.get("identity", "unverified").lower())}</p>'
+                f'<p class="caption">{_text(provenance)}</p>'
                 f'<p>{_text(candidates)} <span class="caption">(raw detector pixels)</span></p>'
                 '<p class="caption">Raw detector: full frame and extraction window. Candidate traces: saved source paths. '
                 'Sky residual: background-subtracted window, shown without and with those paths. '
@@ -254,9 +258,9 @@ class EpochPage:
                 + profile_description +
                 'Q2 and Q3 are the second and third quarters of the extraction window along y; '
                 'the legend gives inclusive raw-pixel ranges. '
-                'Colored markers locate candidates at the middle row.</p>'
+                'Line-style markers locate candidates at the middle row.</p>'
                 f'<div class="qc-plots">{"".join(cards)}</div>'
-                + ('<p class="caption">Trace colors follow decreasing median signal: red, blue, green, brown. '
+                + ('<p class="caption">Candidate line styles: solid, dashed, dash-dot, dotted. '
                    'Candidate IDs remain fixed. '
                    + self.download(folder/'profile-display.json', 'Profile display details')+'</p>'
                    if (folder/'profile-display.json').is_file() else '')+'</article>'))
@@ -286,9 +290,45 @@ class EpochPage:
                     + '<div class="qc-plots">'+''.join(background_cards)+'</div></article>')
         from .catalogue_report import catalogue_qc
         sections.extend(catalogue_qc(self, run))
-        return (''.join(html for _, html in sorted(sections, key=lambda item:item[0])) or '<p>No source-review packets for this revision.</p>',
+        return (self.trace_geometry_review(revision)+''.join(html for _, html in sorted(sections, key=lambda item:item[0])) or '<p>No source-review packets for this revision.</p>',
                 (''.join(backgrounds)+self.local_background_checks(revision,run))
                 or '<p>No retained polynomial background experiments for these exposures.</p>')
+
+    def trace_geometry_review(self, revision):
+        """Render an explicitly selected, hash-bound diagnostic revision."""
+        pointer=self.read(self.root/'QC/trace-geometry-current.json')
+        if not pointer or not pointer.get('enabled', False):return ''
+        manifest=revision/'reduction/run.json'
+        if pointer.get('parent_manifest_sha256')!=sha256(manifest):return ''
+        directory=(self.root/pointer['directory']).resolve()
+        directory.relative_to(self.root.resolve())
+        audit=directory/'audit.json'
+        if not audit.is_file() or sha256(audit)!=pointer.get('audit_sha256'):
+            self.warnings.append('Trace geometry review changed; not displayed')
+            return ''
+        sections=[]
+        for target in self.read(audit):
+            name=target['object'];folder=directory/name;rows=[];cards=[]
+            for candidate in target['candidates']:
+                check=candidate['calibrated_pixel_check']
+                rows.append([f'C{candidate["candidate"]}',f'{candidate["raw_x"]:.2f}',
+                    f'{check["positive_bins"]} / {len(check["bins"])}',
+                    'Persistent local peak; identity unverified' if check['accepted'] else 'Not supported as a persistent trace'])
+            for filename,digest in target.get('figures',{}).items():
+                image=folder/filename
+                if image.is_file() and sha256(image)==digest:
+                    cards.append(self.figure(image,name+' / '+filename.removesuffix('.jpg').split('_')[-1]))
+                else:self.warnings.append(name+': trace review figure changed')
+            sections.append('<article class="exposure"><h3>'+_text(name)+' / Trace geometry review</h3>'
+                '<p class="note">Historical C-labels are retained here. Their paths were checked against '
+                'the current bias/flat-corrected pixels in six independent spectral sections. '
+                'At least three sections need local contrast S/N ≥3. A passing check is not target identification. '
+                'The historical trial FWHM of 4 pixels is used for this comparison.</p>'
+                +_table(['Historical candidate','Raw x','Positive sections','Evidence'],rows)
+                +'<p class="caption">The saved historical curves are shown unchanged: solid C1, dashed C2, '
+                'dash-dot C3, with thicker lines. These diagnostics do not establish on-slit centring.</p>'
+                +'<div class="qc-plots">'+''.join(cards)+'</div></article>')
+        return ''.join(sections)
 
     def local_background_checks(self, revision, run):
         """Keep geometry-only checks separate from extraction/identity claims."""
@@ -505,8 +545,6 @@ def build_epoch_page(night, project_root='.'):
                 for path,digest in result['product_sha256'].items():
                     if sha256(Path(path))!=digest:raise ValueError('provisional product changed')
             rescue=candidate
-        else:
-            page.warnings.append('Retained provisional rescue belongs to an earlier reduction; it is not shown as current.')
     qc, background = page.qc(revision, run)
     if rescue:
         audit=page.read(rescue_path/'verification.json')
@@ -559,8 +597,8 @@ def build_epoch_page(night, project_root='.'):
     scope = ('<p class="caption">Selected targets: '+_text(', '.join(state['targets']))
              +'. Other exposures are listed for context; earlier results remain in Reduction Archive.</p>') if state.get('targets') else ''
     html = f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ePESSTO+ · {night} · EFOSpec</title><style>{CSS}{EPOCH_CSS}</style></head><body><main>
-<header class="masthead"><span class="brand">ePESSTO+ / EFOSpec</span><span class="eyebrow">EFOSC2 · {night}</span></header>
+<title>Nightly LOG - NTT/EFOSC2 (ePESSTO+) · {night} · EFOSpec</title><style>{CSS}{EPOCH_CSS}</style></head><body><main>
+<header class="masthead"><span class="brand">Nightly LOG - NTT/EFOSC2 (ePESSTO+)</span><span class="eyebrow">EFOSC2 · {night}</span></header>
 <div class="intro"><div><span class="eyebrow">Observing night</span><h1>{night}</h1></div><p>{stats}</p></div>
 {scope}
 <nav class="tabs" aria-label="Report sections">{''.join(f'<a href="#{a}">{t}</a>' for a,t in titles)}</nav>
@@ -640,8 +678,8 @@ def build_filtered_page(run_dir):
     sections = ''.join(f'<section class="target" id="{a}"><h2>{t}</h2>{b}</section>'
                        for (a,t),b in zip(titles,bodies))
     html = f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ePESSTO+ · {night} · {purpose}</title><style>{CSS}{EPOCH_CSS}</style></head><body><main>
-<header class="masthead"><span class="brand">ePESSTO+ / EFOSpec</span><span class="eyebrow">EFOSC2 · {night}</span></header>
+<title>Nightly LOG - NTT/EFOSC2 (ePESSTO+) · {night} · {purpose}</title><style>{CSS}{EPOCH_CSS}</style></head><body><main>
+<header class="masthead"><span class="brand">Nightly LOG - NTT/EFOSC2 (ePESSTO+)</span><span class="eyebrow">EFOSC2 · {night}</span></header>
 <div class="intro"><div><span class="eyebrow">{purpose}</span><h1>{night}</h1></div><p>{len(run['results'])} extracted · {len(run['errors'])} failed</p></div>
 <p class="qc-status-bad">Experimental arc-calibrated counts. Flux calibration and exposure-specific flexure remain unvalidated.</p>
 <nav class="tabs" aria-label="Report sections">{''.join(f'<a href="#{a}">{t}</a>' for a,t in titles)}</nav>

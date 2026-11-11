@@ -17,7 +17,6 @@ def load_redshifts(page, parent, rescue=None):
     expected={str(parent/'run.json'):sha256(parent/'run.json')}
     if rescue:expected[str(rescue/'run.json')]=sha256(rescue/'run.json')
     if manifest['night']!=page.root.name or manifest['parent_run_sha256']!=expected:
-        page.warnings.append('Redshift measurements belong to different reductions and are not shown as current.')
         return {}
     records={}
     for item in manifest['results']:

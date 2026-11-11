@@ -1,6 +1,7 @@
 """House-style inspection shared by the desktop editor and saved experiments."""
 import numpy as np
 from .figure_style import COLORS,style,plain_tex,save_qc,house_style
+from .trace_geometry import TRACE_STYLES
 
 
 @house_style
@@ -10,7 +11,7 @@ def draw_candidates(fig,exposure):
     profile=np.nanmedian(exposure.images['data']-exposure.images['sky'],axis=0)
     ax.plot(x,profile,color=COLORS[0],label='Saved sky-subtracted spatial profile')
     for i,trace in enumerate(exposure.images['found_traces']):
-        ax.axvline(trace[len(trace)//2]+exposure.window.origin[1],color=COLORS[i%3],ls='--',label=f'C{i+1} (unverified)')
+        ax.axvline(trace[len(trace)//2]+exposure.window.origin[1],color=COLORS[0],ls=TRACE_STYLES[i%4],lw=3.5,label=f'C{i+1} (unverified)')
     ax.set_xlim(x[2],x[-3]);ax.set_ylim(np.min(profile[2:-2])*1.1,np.max(profile[2:-2])*1.1)
     ax.set_xlabel('Raw spatial pixel x (zero based)');ax.set_ylabel('Median residual electrons')
     ax.set_title(plain_tex(exposure.result['object']+' -- select source and background bands'))

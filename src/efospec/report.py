@@ -195,9 +195,9 @@ def write_report(run_directory, *, generation_error=None):
     if (run/'setup-checks.json').exists():
         check_links.insert(0,'<p><a href="setup-checks.json">Raw calibration readiness by exposure</a></p>')
     page = f'''<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1"><title>ePESSTO+ · {night}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Nightly LOG - NTT/EFOSC2 (ePESSTO+) · {night}</title>
 <style>{CSS}</style></head><body><main>
-<div class="masthead"><span class="brand">ePESSTO+ / EFOSpec</span>
+<div class="masthead"><span class="brand">Nightly LOG - NTT/EFOSC2 (ePESSTO+)</span>
 <span class="eyebrow">EFOSC2 · reduction notebook</span></div>
 <div class="intro"><div><span class="eyebrow">Observing night / {night}</span><h1>The night's spectra.</h1></div>
 <p><span class="badge">Experimental reduction</span> &nbsp; {len(manifest['results'])} reduced · {len(errors)} failed · {len(skips)} skipped</p></div>

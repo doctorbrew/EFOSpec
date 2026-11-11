@@ -55,7 +55,9 @@ def test_all_three_candidates_and_median_curves_are_visible(tmp_path, monkeypatc
             assert line.get_ydata()[5] < low
         assert np.nanmax(line.get_ydata()) < high
     assert [line.get_xdata()[0] for line in profile.lines[:3]] == [115., 170., 225.]
-    assert [line.get_color() for line in profile.lines[:3]] == ['xkcd:green','xkcd:dodger blue','xkcd:red']
+    assert [line.get_color() for line in profile.lines[:3]] == ['xkcd:red']*3
+    assert [line.get_linestyle() for line in profile.lines[:3]] == ['-', '--', '-.']
+    assert all(line.get_linewidth() == 4.2 for line in profile.lines[:3])
     assert profile.get_legend_handles_labels()[1] == ['Full range: y=10--49','Q2: y=20--29','Q3: y=30--39']
     assert profile.get_legend()._ncols == 3
     for ax in [figures['science'].axes[1], figures['traces'].axes[1], profile]:

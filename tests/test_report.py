@@ -63,7 +63,7 @@ class ReportTests(unittest.TestCase):
         result = write_report(self.run)
         self.assertEqual(result['status'], 'complete')
         html = (self.run/'index.html').read_text()
-        self.assertIn('<title>ePESSTO+', html)
+        self.assertIn('<title>Nightly LOG - NTT/EFOSC2 (ePESSTO+)', html)
         self.assertNotIn('Fieldnotes', html)
         self.assertLess(html.index('id="observations"'), html.index('class="target"'))
         self.assertIn('SN&lt;one&gt;', html)
