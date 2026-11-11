@@ -52,6 +52,11 @@ use `index-portable.html`, also linked from the footer. It can exceed 100 MB;
 open it in a browser rather than a chat file preview.
 Both versions are written by the same renderer without re-extracting spectra.
 
+For links opened inside T3, use the returned `viewer_path` (`index-view-<hash>.html`).
+This identical copy stays beside `report-assets/` and is never overwritten.
+Rebuilding `index.html` can invalidate T3's cached file-identity URL; a new report
+gets a new viewer filename, while existing viewer links keep working.
+
 Spatial-profile figures show the summed data and saved PypeIt sky model beside
 the sky-subtracted profile in each wavelength bin. The three curves use identical
 native pixels, with linear electron units. The spatial degree comes from the saved
@@ -220,6 +225,52 @@ hash checks. Raw data and the preserved legacy checkout were outside deletion sc
 - New revisions default to `--flux-calibration same-night`: native raw bias/flat/arc processing and contemporary responses. `--flux-calibration archive` explicitly replays the archived bridge. Existing revisions without a recorded policy retain archive replay. Policy changes require a new revision.
 - Candidate QC prepares inspection materials; it does not identify or extract a target automatically.
 - Recovery recipes remain bound to exposure/input hashes. A previous source's bands are never global defaults.
+
+## GUI revisions and nightly publication
+
+- **Save recipe** and **Extract new revision** create separate inspection products;
+  neither replaces `nightly/current.json` nor automatically updates the daily log.
+- `nightly/current.json` selects a workflow revision, not an individual GUI spectrum.
+  Do not point it at a GUI extraction folder or copy a product over a nightly export.
+- To use reviewed geometry in a new nightly reduction, prepare a `--reviewed-sources`
+  JSON record using the contract in `src/efospec/reviewed_sources.py`: raw basename,
+  raw SHA-256, exact OBJECT, absolute parent-run/recipe paths, recipe SHA-256 and
+  explicit operator identification/background-review evidence. The native route
+  currently accepts one manually selected source with a `pypeit_local` recipe in
+  unchanged raw detector coordinates; arbitrary GUI recipes are not promotable.
+- Run `efospec night DATE --reviewed-sources /absolute/path/reviewed-sources.json`.
+  This creates and selects a new workflow revision, re-extracts on native calibrated
+  pixels and regenerates the report. Review its failures and scientific status;
+  selection is not scientific acceptance. Earlier revisions remain available.
+- For a report refresh of the **already selected** revision, run
+  `python -m efospec.epoch_report DATE`. This reads saved products and does not
+  re-extract, change selection, or import standalone GUI revisions.
+
+## Optional IRAF comparison
+
+- `efospec night DATE --iraf-comparison` enables a read-only comparison after
+  reduction. Add `--stage report` to compare an existing selected reduction.
+- Search is recursive within `data/DATE/`. Only header-identified PESSTO/IRAF
+  flux-calibrated FITS multispectra (`FILETYPE=22208`) are considered. Counts,
+  2D images, ASCII files and ZIP archives are not treated as flux spectra.
+- Match a unique raw exposure using provenance plus OBJECT, setup, exposure time
+  and observation time. Without raw identifiers, all metadata must still identify
+  one exposure. Byte-identical files are deduplicated with aliases retained;
+  distinct reductions are compared separately. Combined or ambiguous exposures
+  require review and are not silently paired.
+- Preserve delivered linear wavelength grids, physical flux units and native
+  validity masks. No shift, normalization, interpolation or science acceptance
+  decision is made. IRAF wavelength medium/frame omissions remain explicit.
+- Results, input hashes and PDF/JPG overlays live in new revision-local
+  `iraf-comparison/<processing-id>/` folders. Its `current.json` selects the
+  comparison for that workflow revision; the report rejects stale parent hashes.
+- The existing renderer adds an **IRAF comparison** tab and a separate linked
+  `iraf-comparison.html` (with `iraf-comparison-portable.html` for single-file export).
+  The main nightly spectrum panels show PypeIt only. Comparison y-limits include
+  both spectra; explicitly requested legacy spectrum panels also include the
+  native uncertainty band. Missing native products
+  and unsupported comparisons stay visible. A failed comparison makes the report
+  stage partial without changing reduction products or its scientific checks.
 
 ## Reviewed targets and targeted reruns
 

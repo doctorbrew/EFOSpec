@@ -102,14 +102,27 @@ def write_report_bundle(destination, html):
           'Figures are included in this page. For file downloads, open the report '
           'in Chrome or Safari with its report-assets folder alongside.</p>')
     compact=compact.replace('</footer>',note+'</footer>',1) if '</footer>' in compact else compact.replace('</body>',note+'</body>',1)
+    # T3 binds out-of-workspace previews to a file's device/inode. Replacing
+    # index.html invalidates cached URLs, even when the HTML itself is valid.
+    # Keep a content-named copy beside the assets for stable viewer links.
+    viewer_bytes=compact.encode()
+    viewer_digest=hashlib.sha256(viewer_bytes).hexdigest()
+    viewer=destination.with_name(destination.stem+'-view-'+viewer_digest[:12]+'.html')
+    if viewer.exists():
+        if viewer.read_bytes()!=viewer_bytes:
+            raise ValueError('saved report viewer copy changed: '+viewer.name)
+    else:
+        with viewer.open('xb') as stream:
+            stream.write(viewer_bytes)
     # Portable and manifest writes complete before replacing the entry point.
     temp=portable.with_suffix('.html.tmp');temp.write_text(html);temp.replace(portable)
     manifest=assets/(destination.stem+'-manifest.json')
     manifest.write_text(json.dumps(dict(portable_html=portable.name,
-        portable_sha256=hashlib.sha256(html.encode()).hexdigest(),assets=records),indent=2)+'\n')
+        portable_sha256=hashlib.sha256(html.encode()).hexdigest(),
+        viewer_html=viewer.name,viewer_sha256=viewer_digest,assets=records),indent=2)+'\n')
     temp=destination.with_suffix('.html.tmp');temp.write_text(compact);temp.replace(destination)
     return dict(path=str(destination),bytes=destination.stat().st_size,portable_path=str(portable),
-                portable_bytes=portable.stat().st_size,assets=len(records))
+                portable_bytes=portable.stat().st_size,viewer_path=str(viewer),assets=len(records))
 
 
 def compact_existing_report(night, *, project_root='.'):

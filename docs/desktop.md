@@ -40,6 +40,13 @@ sudo apt-get install libegl1 libopengl0 libxcb-cursor0 libxkbcommon-x11-0 \
 - Recipes bind to input hashes; CLI replay uses the same worker.
 - Archived runs still require their archived references; native runs use their recorded raw calibration and response.
 
+## Host and redshift review
+
+The **Host & redshift** tab edits revision-bound host candidates and adopted
+redshift metadata. Explicit acceptance is required; metadata saves never run
+extraction or classification. See [metadata workflow](typing-metadata.md) for
+review controls, the CLI, revision history and HTML refresh.
+
 ## Source review
 
 - The second tab lists QC packets bound to the opened reduction.

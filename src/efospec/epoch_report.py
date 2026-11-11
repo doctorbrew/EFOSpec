@@ -5,12 +5,14 @@ from collections import Counter
 from datetime import date
 from html import escape
 import json
+import math
 from io import BytesIO
 from pathlib import Path
 
 from .inventory import sha256
 from .naming import source_order
 from .report import CSS
+from .review_handoff import failure_reason, recovery_advice, review_url, review_command
 
 
 def _text(value):
@@ -57,7 +59,7 @@ class EpochPage:
                 '.log':'text/plain', '.pdf':'application/pdf'}.get(path.suffix, 'application/octet-stream')
         return f'<a download="{_text(path.name)}" href="{self.data(path, mime)}">{_text(label)}</a>'
 
-    def figure(self, path, title, *, full_width=False):
+    def figure(self, path, title, *, full_width=False, aspect_ratio=None):
         if not path or not path.is_file():
             return '<p class="note">'+_text(title)+': figure unavailable.</p>'
         self.images += 1
@@ -72,13 +74,37 @@ class EpochPage:
             preview.save(encoded, format='JPEG', quality=85, optimize=True)
         url = 'data:image/jpeg;base64,'+base64.b64encode(encoded.getvalue()).decode('ascii')
         css_class = 'plot full-width' if full_width else 'plot'
+        button_class = 'enlarge fixed-ratio' if aspect_ratio is not None else 'enlarge'
+        sizing = f' style="aspect-ratio:{aspect_ratio:g}"' if aspect_ratio is not None else ''
         return (f'<figure class="{css_class}"><figcaption>{_text(title)}</figcaption>'
-                f'<button class="enlarge" type="button" aria-label="Enlarge {_text(title)}">'
+                f'<button class="{button_class}"{sizing} type="button" aria-label="Enlarge {_text(title)}">'
                 f'<img loading="lazy" src="{url}" alt="{_text(title)}"></button></figure>')
+
+    def failure_notice(self, run_dir, item):
+        raw = Path(item.get('path', '')).name
+        launch = (f'<button type="button" class="review-launch" data-review-url="{_text(review_url(run_dir, raw))}">Open in EFOSpec GUI</button>'
+                  if raw else '')
+        log = self.download(Path(item['traceback']), 'Error log') if item.get('traceback') else ''
+        return ('<p class="qc-status-bad">'+_text(item.get('code', 'Reduction failed'))
+                +': '+_text(failure_reason(item))+'</p><p>'+_text(recovery_advice(item))+'</p>'
+                +'<p>'+ ' · '.join(filter(None, [launch, log]))+'</p>'
+                +('<details class="review-help"><summary>Desktop launch help</summary><p class="launch-status" role="status"></p><p>Requires EFOSpec on this computer '
+                   'and access to the original run. If this viewer blocks desktop apps, open the report in Safari or run this command in Terminal:</p><pre>'
+                   +_text(review_command(run_dir, raw))+'</pre></details>' if raw else ''))
+
+    def exposure_time(self, result, frames):
+        raw = Path(result.get('raw', result.get('path', ''))).name
+        seconds = result.get('exptime_s', frames.get(raw, {}).get('metadata', {}).get('EXPTIME'))
+        try:
+            seconds = float(seconds)
+            if not math.isfinite(seconds) or seconds < 0:return ''
+        except (ValueError, TypeError):return ''
+        return f' · {seconds:g} s'
 
     def spectra(self, run_dir, run, *, id_prefix='spectrum'):
         records = [self.read(p) for p in sorted((run_dir/'style-preview').glob('FitSpectrum_*.json'))]
-        sections = []
+        frames = {Path(f['path']).name: f for f in self.read(run_dir.parent/'observing-log.json').get('frames', [])}
+        sections = []; section_order = []
         for i, result in sorted(enumerate(run.get('results', [])), key=lambda item: source_order(item[1])):
             product = run_dir/'products'/Path(result.get('product', '')).name
             digest = sha256(product) if product.is_file() else None
@@ -86,7 +112,8 @@ class EpochPage:
                 Path(p).name == product.name and h == digest for p, h in r.get('input_sha256', {}).items())]
             record = matches[-1] if matches else {}
             outputs = [run_dir/'style-preview'/Path(p).name for p in record.get('outputs', [])]
-            title = f"{result.get('object', 'Unknown')} · {result.get('grism', '')} · {result.get('slit', '')}"
+            title = ' · '.join(filter(None, [result.get('object', 'Unknown'), result.get('grism'), result.get('slit')]))
+            title += self.exposure_time(result, frames)
             cards = []
             for prefix, name in [('FitSpectrum_', 'Spectrum'), ('FitTrace_', '2D spectrum before and after sky subtraction'), ('FitSpatialProfile_', 'Spatial profile')]:
                 images = [p for p in outputs if p.name.startswith(prefix) and p.suffix == '.jpg']
@@ -100,6 +127,7 @@ class EpochPage:
             if result.get('status')=='PROVISIONAL':
                 identity += ' · <strong class="qc-status-bad">Provisional: wavelength unvalidated</strong>'
                 identity += ' · '+_text(result.get('interpretation',''))
+            section_order.append(source_order(result))
             sections.append(f'<article class="exposure" id="{_text(id_prefix)}-{i}"><h3>{_text(title)}</h3>'
                 f'<p class="caption">{_text(result.get("date_obs", ""))} UTC{identity} · {downloads}</p>'
                 f'<div class="plots">{"".join(cards)}</div></article>')
@@ -107,13 +135,25 @@ class EpochPage:
             for path,digest in result['product_sha256'].items():
                 if sha256(Path(path))!=digest:raise ValueError('review counts changed')
             plots=Path(result['product']).parent.parent/'plots'
-            title=result['object']+' / '+result['setup']['grism']+' / Review counts'
+            title=' · '.join(filter(None, [result['object'], result['setup']['grism'], result['setup'].get('slit'), 'Review counts']))
+            title += self.exposure_time(result, frames)
             links=' · '.join([self.download(Path(result['product']),'Counts FITS'),self.download(Path(result['ascii']),'Counts ASCII')])
+            section_order.append(source_order(result))
             sections.append('<article class="exposure"><h3>'+_text(title)+'</h3>'
                 '<p class="qc-status-bad">Wavelength validation failed; unshifted arc wavelengths, no flux calibration.</p>'
                 '<p>'+links+'</p><div class="plots">'+''.join(self.figure(plots/(kind+'.png'),title+' / '+kind)
                     for kind in ('counts','traces','profiles'))+'</div></article>')
-        return ''.join(sections) or '<p>No spectra recorded in this revision.</p>'
+        for group in ('errors', 'skipped'):
+            for i, item in sorted(enumerate(run.get(group, [])), key=lambda pair: source_order(pair[1])):
+                setup = item.get('setup', {})
+                title = ' · '.join(filter(None, [item.get('object', 'Unknown'), setup.get('grism'),
+                                                setup.get('filter'), setup.get('slit')]))
+                title += self.exposure_time(item, frames)
+                section_order.append(source_order(item))
+                sections.append(f'<article class="exposure" id="{_text(id_prefix)}-{group}-{i}">'
+                    f'<h3>{_text(title)}</h3>'+self.failure_notice(run_dir, item)
+                    +'<p class="caption">'+_text(Path(item.get('path', '')).name)+'</p></article>')
+        return ''.join(html for _, html in sorted(zip(section_order, sections), key=lambda pair: pair[0])) or '<p>No spectra recorded in this revision.</p>'
 
     def observations(self, revision, run, provisional=None, redshifts=None):
         targets = self.read(revision/'night.json').get('targets')
@@ -124,12 +164,15 @@ class EpochPage:
                 reason = {'sky_flexure_unreliable':'Sky-line check', 'source_selection_required':'Choose source',
                           'background_support_required':'Review background',
                           'unsupported_setup':'Unsupported setup'}.get(result.get('code'), label)
-                outcomes[raw] = f'<a href="#spectrum-{i}">Spectrum ↓</a>' if group == 'results' else _text(reason)
+                outcomes[raw] = f'<a href="#spectrum-{i}">Spectrum ↓</a>' if group == 'results' else f'<a class="qc-status-bad" href="#spectrum-{group}-{i}">{_text(reason)} ↓</a>'
         for standard in run.get('standards', []):
             raw = Path(standard['frame']['path']).name
             outcomes.setdefault(raw, 'Standard counts; response unvalidated')
         for result in run.get('review_counts',[]):
-            outcomes[Path(result['raw']).name]='Review counts; wavelength unvalidated'
+            raw = Path(result['raw']).name
+            index = next((i for i, e in enumerate(run.get('errors', [])) if Path(e.get('path', '')).name == raw), None)
+            outcomes[raw] = (f'<a class="qc-status-bad" href="#spectrum-errors-{index}">Review counts; wavelength unvalidated ↓</a>'
+                             if index is not None else '<span class="qc-status-bad">Review counts; wavelength unvalidated</span>')
         for i,result in enumerate((provisional or {}).get('results',[])):
             outcomes[Path(result['raw']).name]=f'<a class="qc-status-bad" href="#rescue-spectrum-{i}">Provisional flux; wavelength unvalidated ↓</a>'
         rows = []
@@ -144,13 +187,20 @@ class EpochPage:
             except (ValueError, TypeError, OverflowError):
                 seconds = h.get('EXPTIME', 'Unknown')
             from .redshift_report import redshift_cells
-            cells=redshift_cells((redshifts or {}).get(raw),standard=frame['role']=='standard_candidate')
-            rows.append([_text(h.get('OBJECT', '')), _text(start),
+            cells=redshift_cells((redshifts or {}).get(raw),standard=frame['role']=='standard_candidate',
+                                 previous_revision=raw in getattr(self,'previous_redshift_raws',set()))
+            target = _text(h.get('OBJECT', ''))
+            rows.append([target, _text(start),
                 'Standard' if frame['role'] == 'standard_candidate' else 'Science',
                 _text(setup.get('grism', ''))+' / '+_text(setup.get('filter', '')),
                 _text(setup.get('slit', '')), _text(seconds),
                 outcomes.get(raw, 'Outside selected targets' if targets and h.get('OBJECT') not in targets else 'Not reduced'),*cells])
-        return _table(['Target', 'UTC start', 'Role', 'Setup', 'Slit', 'Seconds', 'Result', 'z (NED)', 'z (spectral)'], rows)
+        note = {
+            'not_run':'Redshift measurements are a separate post-reduction step; no saved run is available for this observing night.',
+            'previous_revision':'Saved redshifts belong to an earlier reduction revision. Rerun the redshift step for the current spectra; earlier values have not been reused.'
+        }.get(getattr(self,'redshift_status',None), '')
+        return (_table(['Target', 'UTC start', 'Role', 'Setup', 'Slit', 'Seconds', 'Result', 'z (NED)', 'z (spectral)'], rows)
+                + ('<p class="caption">'+_text(note)+'</p>' if note else ''))
 
     def problems(self, run, run_dir=None):
         groups = {}
@@ -234,7 +284,9 @@ class EpochPage:
                                   ('acquisition-1', 'Acquisition 1'), ('acquisition-2', 'Acquisition 2')]:
                 matches = sorted(folder.glob(f'FitQC_*_{suffix}.jpg'))
                 if matches:
-                    cards.append(self.figure(matches[0], title+' / '+label, full_width=suffix=='profiles'))
+                    ratio = 2 if suffix=='profiles' else 5/3 if suffix in ('science','traces') else None
+                    cards.append(self.figure(matches[0], title+' / '+label,
+                                             full_width=suffix=='profiles', aspect_ratio=ratio))
             candidates = ', '.join(f'C{c.get("number", i+1)}: x={c.get("anchor_raw_x", c.get("raw_spatial_pixel", 0)):.2f}'
                                    for i, c in enumerate(review.get('candidates', [])))
             profile_info = self.read(folder/'profile-display.json')
@@ -488,6 +540,18 @@ class EpochPage:
 
 
 SCRIPT = """
+document.querySelectorAll('.review-launch').forEach(button => button.addEventListener('click', () => {
+  const help = button.closest('.exposure').querySelector('.review-help');
+  help.open = true;
+  help.querySelector('.launch-status').textContent = 'Desktop launch requested. If no window appears, use the command below.';
+  // Keep the log in place even when the embedding viewer rejects custom protocols.
+  let bridge = document.getElementById('desktop-launch-bridge');
+  if (!bridge) {
+    bridge = document.createElement('iframe'); bridge.id = 'desktop-launch-bridge';
+    bridge.hidden = true; bridge.title = 'Desktop application launch'; document.body.appendChild(bridge);
+  }
+  bridge.src = button.dataset.reviewUrl;
+}));
 const dialog = document.querySelector('dialog');
 document.querySelectorAll('.enlarge').forEach(button => button.addEventListener('click', () => {
   const source = button.querySelector('img');
@@ -502,10 +566,12 @@ dialog.addEventListener('click', event => { if(event.target === dialog) dialog.c
 
 EPOCH_CSS = """
     main{max-width:1480px}.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0}.tabs a{padding:7px 12px;border:1px solid var(--line);border-radius:5px;text-decoration:none;background:var(--panel)}
-    .target>h2{margin-bottom:18px}.exposure{margin:24px 0 32px}.qc-plots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .target>h2{margin-bottom:18px}.exposure{margin:24px 0 32px}.exposure~.exposure{border-top:1px solid #bcc5b8;padding-top:28px}
+    .review-launch{font:inherit;color:var(--forest);background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:7px 12px;cursor:pointer}.review-help pre{white-space:pre-wrap;overflow-wrap:anywhere}.qc-plots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
     #archive code{overflow-wrap:anywhere}
     .qc-plots>.full-width{grid-column:1 / -1}
     .enlarge{display:block;padding:0;border:0;background:transparent;width:100%;cursor:zoom-in}.enlarge:focus-visible{outline:3px solid var(--forest)}
+    .enlarge.fixed-ratio{background:white}.enlarge.fixed-ratio img{width:100%;height:100%;object-fit:contain}
     .plots .plot-image{aspect-ratio:auto}td{white-space:normal}dialog{max-width:95vw;max-height:95vh;padding:10px;border:1px solid var(--line);border-radius:8px}dialog img{display:block;max-width:100%;height:auto}dialog button{position:sticky;top:0;padding:10px 18px;cursor:pointer}dialog::backdrop{background:#172c43bb}
     @media(max-width:800px){.plots{grid-template-columns:1fr;overflow:visible}.qc-plots{grid-template-columns:1fr}.plot{min-width:0}h1{font-size:30px}.intro{display:block}}
     """
@@ -545,6 +611,9 @@ def build_epoch_page(night, project_root='.'):
                 for path,digest in result['product_sha256'].items():
                     if sha256(Path(path))!=digest:raise ValueError('provisional product changed')
             rescue=candidate
+    from .typing_report import records_for_run, verification_section, HOST_CSS
+    page.typing_run = revision/'reduction'
+    page.typing_annotations = records_for_run(page.typing_run) if (page.typing_run/'typing-metadata.json').exists() else {}
     qc, background = page.qc(revision, run)
     if rescue:
         audit=page.read(rescue_path/'verification.json')
@@ -588,6 +657,19 @@ def build_epoch_page(night, project_root='.'):
                background, calibration_content, page.archive(revision)+page.archive_folders_and_logs(revision)]
     if redshift_content:
         content.insert(4, redshift_content)
+    from .iraf_report import comparison_section, write_comparison_page
+    iraf_page=EpochPage(root)
+    iraf_content=comparison_section(iraf_page,revision)
+    page.warnings.extend(iraf_page.warnings)
+    if iraf_content:
+        write_comparison_page(iraf_page,revision,iraf_content)
+        iraf_content='<p><a href="iraf-comparison.html">Open separate IRAF comparison report</a>. The nightly spectra above show PypeIt only.</p>'
+        titles.insert(2,('iraf-comparison','IRAF comparison'))
+        content.insert(2,iraf_content)
+    verification = verification_section(page)
+    if verification:
+        titles.append(('host-verification', 'Host verification'))
+        content.append(verification)
     sections = ''.join(f'<section class="target" id="{anchor}"><h2>{title}</h2>{body}</section>'
                        for (anchor, title), body in zip(titles, content))
     stats = ' · '.join(f'{len(run.get(k, []))} {label}' for k, label in [('results','spectra'), ('errors','failed'), ('skipped','unsupported')])
@@ -597,7 +679,7 @@ def build_epoch_page(night, project_root='.'):
     scope = ('<p class="caption">Selected targets: '+_text(', '.join(state['targets']))
              +'. Other exposures are listed for context; earlier results remain in Reduction Archive.</p>') if state.get('targets') else ''
     html = f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Nightly LOG - NTT/EFOSC2 (ePESSTO+) · {night} · EFOSpec</title><style>{CSS}{EPOCH_CSS}</style></head><body><main>
+<title>Nightly LOG - NTT/EFOSC2 (ePESSTO+) · {night} · EFOSpec</title><style>{CSS}{EPOCH_CSS}{HOST_CSS}</style></head><body><main>
 <header class="masthead"><span class="brand">Nightly LOG - NTT/EFOSC2 (ePESSTO+)</span><span class="eyebrow">EFOSC2 · {night}</span></header>
 <div class="intro"><div><span class="eyebrow">Observing night</span><h1>{night}</h1></div><p>{stats}</p></div>
 {scope}

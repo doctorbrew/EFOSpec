@@ -64,6 +64,20 @@ def test_partial_reduction_still_presents_one_dated_report_and_qc(epoch,monkeypa
     assert json.loads((output/'night.json').read_text())['daily_log']==str(daily_log)
 
 
+def test_iraf_comparison_is_optional_and_report_only(epoch,monkeypatch):
+    root,_=epoch;worker(monkeypatch);comparison_calls=[]
+    def subprocess_run(args,**kwargs):
+        comparison_calls.append(args)
+        return SimpleNamespace(returncode=1)
+    monkeypatch.setattr(nightly.subprocess,'run',subprocess_run)
+    state=nightly.run_epoch('2026-10-28',project_root=root,iraf_comparison=True)
+    assert state['iraf_comparison'] is True
+    assert state['stages']['reduce']['status']=='complete'
+    assert state['stages']['report']['iraf_comparison_error'] is True
+    assert state['status']=='partial'
+    assert len(comparison_calls)==1 and comparison_calls[0][1:3]==['-m','efospec.iraf_comparison']
+
+
 def test_separate_steps_preserve_products_and_new_log_starts_new_revision(epoch,monkeypatch):
     root,_=epoch;calls=worker(monkeypatch)
     first=nightly.run_epoch('2026-10-28',flux_calibration='archive',stage='log',project_root=root)

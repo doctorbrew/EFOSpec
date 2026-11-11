@@ -8,6 +8,9 @@ from .inventory import inventory
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="efospec", description="EFOSpec: EFOSC2 spectroscopy with PypeIt")
     commands = parser.add_subparsers(dest="command", required=True)
+    typing = commands.add_parser('typing-metadata', help='Review revision-bound host and adopted-redshift metadata')
+    from .typing_metadata import add_arguments as typing_arguments
+    typing_arguments(typing)
     epoch=commands.add_parser('night',help='One dated epoch: observing log, reduction, QC and final report')
     from .nightly import add_arguments
     add_arguments(epoch)
@@ -15,6 +18,7 @@ def main(argv=None):
     gui = commands.add_parser('gui', help='Open the PySide6 desktop extraction application')
     gui.add_argument('path', nargs='?', help='Run, dated workflow folder or review.json; omitted reopens the last night')
     gui.add_argument('--reference-root')
+    gui.add_argument('--raw', help='Exact failed raw filename to select for review')
     gui.add_argument('--smoke-test',action='store_true',help='Open the native window, report its runtime, then exit')
     installer=commands.add_parser('install-desktop',help='Install a macOS app or Linux launcher using this EFOSpec environment')
     installer.add_argument('--destination',help='Parent directory; defaults to the user application location')
@@ -163,7 +167,7 @@ def main(argv=None):
             return exit_code(run_epoch(args.night,stage=args.stage,project_root=args.project_root,plot_python=args.plot_python,
                                        native_calibrations=args.native_calibrations,targets=args.target,
                                        reviewed_sources=args.reviewed_sources,flux_calibration=args.flux_calibration,
-                                       calibration_groups=args.calibration_group))
+                                       calibration_groups=args.calibration_group,iraf_comparison=args.iraf_comparison))
         if args.command == 'background-gui':
             from .background_gui import launch
             return launch(args.packet)
@@ -197,10 +201,15 @@ def main(argv=None):
                                      templates=templates,group_ids=args.group)
             print(json.dumps(result,indent=2,allow_nan=False))
             return 0 if result['status'] == 'complete' else 1
+        if args.command == 'typing-metadata':
+            from .typing_metadata import command
+            print(json.dumps(command(args), indent=2, allow_nan=False))
+            return 0
         if args.command == 'gui':
             from .desktop import launch
-            if args.smoke_test:return launch(args.path,args.reference_root,smoke_test=True)
-            return launch(args.path,args.reference_root)
+            options = {'raw':args.raw} if args.raw else {}
+            if args.smoke_test:options['smoke_test']=True
+            return launch(args.path,args.reference_root,**options)
         if args.command == 'install-desktop':
             from .desktop_install import install_desktop
             print(json.dumps(install_desktop(args.destination),indent=2))

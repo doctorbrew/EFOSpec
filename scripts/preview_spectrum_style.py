@@ -3,8 +3,8 @@
 Run in the existing base Conda environment, which has the style dependencies:
     /Users/avinash/Softwares/miniconda3/bin/python scripts/preview_spectrum_style.py --target SN2023xxj
 
-Without --target, render all exposures in --run. No validation.json or legacy
-spectrum is required. --no-legacy explicitly selects standalone science plots.
+Without --target, render all exposures in --run. Main report plots are PypeIt-only;
+--legacy explicitly requests overlays. No validation.json or legacy spectrum is required.
 """
 import argparse
 import json
@@ -70,8 +70,16 @@ def draw_spectrum(ax, result, wave, bands, comparison=None, legacy_data=None):
         raise ValueError(f"no finite spectrum to plot: {result['product']}")
     lower, upper = (bands[0][good]-bands[3][good])/1e-16, (bands[0][good]+bands[3][good])/1e-16
     low, high = min(0., float(lower.min())), float(upper.max())
-    span = max(high-low, 0.01)
     ax.set_xlim(np.floor(wave[good].min()/100)*100, np.ceil(wave[good].max()/100)*100)
+    if comparison:
+        # Include every finite legacy sample visible on this wavelength axis.
+        # Native uncertainty remains included; neither spectrum is rescaled.
+        visible = (np.isfinite(old_wave) & np.isfinite(old_bands[0])
+                   & (old_wave >= ax.get_xlim()[0]) & (old_wave <= ax.get_xlim()[1]))
+        if visible.any():
+            low = min(low, float(np.min(old_bands[0][visible]/1e-16)))
+            high = max(high, float(np.max(old_bands[0][visible]/1e-16)))
+    span = max(high-low, 0.01)
     ax.set_ylim(low-0.16*span, high+0.25*span)
     ax.set_xlabel(r'Observed air wavelength [$\AA$]', labelpad=10)
     ax.set_ylabel(r'$F_\lambda$ [$10^{-16}\,\mathrm{erg}\,\mathrm{s}^{-1}'
@@ -81,7 +89,7 @@ def draw_spectrum(ax, result, wave, bands, comparison=None, legacy_data=None):
         spine.set_visible(True)
     suffix=' / Provisional wavelengths' if result.get('status')=='PROVISIONAL' else ''
     ax.set_title(rf"{display_label} (EFOSC2 / {result['grism']} $\cdot$ {result['exptime_s']:.0f}\,s)"+suffix,
-                 loc='center', pad=17)
+                 loc='center', pad=17, fontsize=28)
     handles = [native, uncertainty] + ([legacy] if comparison else [])
     styled_legend(ax, handles=handles, loc='upper right', ncol=len(handles),
                   columnspacing=1.1, borderpad=0.55)
@@ -429,6 +437,10 @@ def render_spectrum(result, run, *, no_legacy=False, legacy_root=None, suffix=""
         'legacy_samples_below_display': 0 if not comparison else int(
             ((old_wave >= ax.get_xlim()[0]) & (old_wave <= ax.get_xlim()[1])
              & (old_bands[0]/1e-16 < ax.get_ylim()[0])).sum()),
+        'legacy_samples_above_display': 0 if not comparison else int(
+            ((old_wave >= ax.get_xlim()[0]) & (old_wave <= ax.get_xlim()[1])
+             & (old_bands[0]/1e-16 > ax.get_ylim()[1])).sum()),
+        'ylim_policy': 'Native flux plus uncertainty and all visible finite IRAF flux samples, with outward padding',
         'input_sha256': before,
         'outputs': [str(pdf), str(jpg)],
     }
@@ -506,7 +518,7 @@ def main():
         suffix = ""
         if counts[(result["object"], result["grism"])] > 1:
             suffix = "_" + Path(result["product"]).stem
-        records.append(render_spectrum(result, run, no_legacy=args.no_legacy,
+        records.append(render_spectrum(result, run, no_legacy=args.no_legacy or args.legacy is None,
                                        legacy_root=args.legacy, suffix=suffix))
     from efospec.report import write_report
     all_records = [json.loads(path.read_text())

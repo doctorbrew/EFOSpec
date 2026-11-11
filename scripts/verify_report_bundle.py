@@ -48,11 +48,20 @@ def verify(night,project_root='.'):
         downloads=[];anchors=page.locator('a[download]')
         info=anchors.evaluate_all('(els)=>els.map(e=>({name:e.getAttribute("download"),href:e.getAttribute("href")}))')
         for extension in ('.fits','.asci','.pdf'):
-            index=next(i for i,r in enumerate(info) if r['name'].endswith(extension))
-            source=root/info[index]['href']
-            with page.expect_download() as event:anchors.nth(index).click()
+            download_page=page;download_anchors=anchors;download_info=info
+            if not any(r['name'].endswith(extension) for r in info):
+                supplement=root/'iraf-comparison.html'
+                assert supplement.is_file(), f'No {extension} download in main report or IRAF supplement'
+                download_page=context.new_page()
+                download_page.goto(supplement.as_uri(),wait_until='load')
+                download_anchors=download_page.locator('a[download]')
+                download_info=download_anchors.evaluate_all('(els)=>els.map(e=>({name:e.getAttribute("download"),href:e.getAttribute("href")}))')
+            index=next(i for i,r in enumerate(download_info) if r['name'].endswith(extension))
+            source=root/download_info[index]['href']
+            with download_page.expect_download() as event:download_anchors.nth(index).click()
             assert Path(event.value.path()).read_bytes()==source.read_bytes()
-            downloads.append(dict(name=info[index]['name'],sha256=sha256(source)))
+            downloads.append(dict(name=download_info[index]['name'],sha256=sha256(source)))
+            if download_page!=page:download_page.close()
         page.set_viewport_size(dict(width=390,height=844))
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
         assert not errors and not external

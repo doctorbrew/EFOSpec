@@ -19,15 +19,19 @@ def test_environment_bound_launcher_opens_native_window(tmp_path, platform):
     assert not result['runtime_bundled'] and not result['signed']
     if platform=='darwin':
         with (Path(result['application'])/'Contents/Info.plist').open('rb') as stream:
-            assert plistlib.load(stream)['CFBundleExecutable']=='EFOSpec'
+            info=plistlib.load(stream)
+            assert info['CFBundleExecutable']=='EFOSpec'
+            assert info['CFBundleURLTypes'][0]['CFBundleURLSchemes']==['efospec']
     else:
         entry=Path(result['application'])/'org.efospec.Desktop.desktop'
         assert 'Terminal=false' in entry.read_text()
         assert 'Exec="' in entry.read_text()
+        assert ' %u' in entry.read_text()
+        assert 'MimeType=x-scheme-handler/efospec;' in entry.read_text()
     completed=subprocess.run([result['executable'],'--smoke-test'],capture_output=True,text=True,timeout=45)
     assert completed.returncode==0,completed.stderr
     record=json.loads(completed.stdout.splitlines()[-1])
-    assert record['ready'] and record['tabs']==2
+    assert record['ready'] and record['tabs']==3
     assert record['qt_platform'] in {'cocoa','xcb','offscreen'}
     before=Path(result['executable']).read_bytes()
     with pytest.raises(FileExistsError):install_desktop(destination,platform=platform)

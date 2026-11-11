@@ -243,7 +243,7 @@ def build_report(run_directory, *, plot_python=None, render_plots=True):
         script = Path(__file__).resolve().parents[2]/'scripts/preview_spectrum_style.py'
         try:
             with (run/'report-generation.log').open('w') as log:
-                completed = subprocess.run([str(python), str(script), '--run', str(run)],
+                completed = subprocess.run([str(python), str(script), '--run', str(run), '--no-legacy'],
                                            stdout=log, stderr=subprocess.STDOUT, check=False)
             if completed.returncode:
                 error = (f'Plot renderer exited with status {completed.returncode}. '

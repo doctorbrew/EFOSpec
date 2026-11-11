@@ -1,52 +1,41 @@
-*.gz
-*.xml
-*.iml
+# Local observing inputs and generated science products (all descendants).
+# Keep bundled reference calibrations under trunk/src/ntt tracked.
+/data/
+/runs/
+/outputs/
 
-*~
+# Python builds, virtual environments and caches.
+/build/
+/dist/
 trunk/build/
 trunk/dist/
+*.egg-info/
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.coverage*
+htmlcov/
+
+# Local CI artifacts; CI recreates these when required.
+/badge-data/
+/test-results/
+
+# Local credentials and workstation metadata.
+.env
+.env.*
+!.env.example
+.DS_Store
+.idea/
+*.iml
+*~
 pessto-pipeline.sublime-project
 pessto-pipeline.sublime-workspace
-__init__.pyc
-_version.pyc
-cosmics.pyc
-efoscastrodef.pyc
-efosccalibdef.pyc
-efoscfastspecdef.pyc
-efoscphotredudef.pyc
-#efoscspec1Ddef.pyc
-#efoscspec2Ddef.pyc
-soficalibdef.pyc
-sofiphotredudef.pyc
-sofispec1Ddef.pyc
-sofispec2Ddef.pyc
-sqlcl.pyc
-#util.pyc
 
-# Added by Tomás M.
+# Retained upstream exclusions for legacy downloads and test datasets.
+*.gz
+*.xml
 test
 Test_data_GR18
 Test_data_GR18_new
 Test_data_GR20
-trunk/src/ntt.egg-info
-trunk/src/ntt/*.pyc
-.idea/
-trunk/src/ntt/__pycache__/
-
-# Migration development and local science runs. Bundled upstream calibrations stay tracked.
-__pycache__/
-*.pyc
-*.egg-info/
-.venv/
-.DS_Store
-/build/
-/dist/
-/data/
-/outputs/
-/runs/
-.env
-.pytest_cache/
-.coverage
-htmlcov/
-/badge-data/
-/test-results/

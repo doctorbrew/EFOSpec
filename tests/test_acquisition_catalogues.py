@@ -51,7 +51,7 @@ def test_host_overlay_excludes_unclassified_sources_and_preserves_redshift_metho
             assert sum(len(c.get_offsets()) for c in ax.collections)==2
             labels=[t.get_text() for t in ax.texts]
             assert labels==['Galaxy 1','Galaxy 2']
-            assert all(t.get_bbox_patch() is None for t in ax.texts)
+            assert all(t.get_bbox_patch().get_facecolor()==(1.,1.,1.,.8) for t in ax.texts)
             assert ax.get_legend() is None
             assert not ax.get_legend_handles_labels()[1]
             boxes=[]
@@ -66,9 +66,12 @@ def test_host_overlay_excludes_unclassified_sources_and_preserves_redshift_metho
                         mx,my=ax.transData.transform(xy)
                         assert not box.overlaps(Bbox.from_extents(mx-8*point,my-8*point,mx+8*point,my+8*point))
                 boxes.append(box)
-                assert label.get_color()=='#ff8080' and not label.get_path_effects()
+                from efospec.acquisition_display import ANNOTATION_COLORS
+                assert label.get_color() == ANNOTATION_COLORS['galaxy'] and not label.get_path_effects()
     monkeypatch.setattr('efospec.catalogue_plots.save_qc',inspect)
-    plot_catalogue_field(np.ones((100,100)),{'object':'SN test','raw':'test.fits','sources':rows,
+    raw=tmp_path/'test.fits'
+    fits.writeto(raw,np.ones((100,100)))
+    plot_catalogue_field(np.ones((100,100)),{'object':'SN test','raw':str(raw),'sources':rows,
         'astrometry':{'matched_stars':10,'rms_pixel':.5}},tmp_path)
 
 
@@ -229,7 +232,7 @@ def test_acquisition_qc_to_offline_report_preserves_raw_data_and_rejects_tamperi
         assert p.with_suffix('.pdf').read_bytes().startswith(b'%PDF')
     build_epoch_page(night,tmp_path)
     html=(root/'index.html').read_text()
-    assert 'Test galaxy' in html and 'Only catalogue-classified galaxy candidates are marked' in html
+    assert 'Test galaxy' in html and 'Galaxy markers show catalogue-classified candidates' in html
     assert 'unavailable</span>' in html and 'Reduction Archive' in html
     assert '#records' not in html and 'data:image/webp;base64,' in html
     # The viewer-safe page embeds only a compact preview; the full-resolution

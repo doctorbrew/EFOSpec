@@ -83,7 +83,8 @@ def install_desktop(destination=None, *, platform=None, python=None):
             info = dict(CFBundleName='EFOSpec', CFBundleDisplayName='EFOSpec',
                         CFBundleIdentifier='org.efospec.Desktop', CFBundlePackageType='APPL',
                         CFBundleExecutable='EFOSpec', CFBundleShortVersionString='0.1.0',
-                        CFBundleVersion='1', NSHighResolutionCapable=True)
+                        CFBundleVersion='1', NSHighResolutionCapable=True,
+                        CFBundleURLTypes=[dict(CFBundleURLName='EFOSpec review', CFBundleURLSchemes=['efospec'])])
             if sys.platform == 'darwin':
                 # Native format conversion for the bundle icon; preserve the source PNG.
                 resized = resources/'icon-512.png'
@@ -94,8 +95,8 @@ def install_desktop(destination=None, *, platform=None, python=None):
         else:
             entry = ('[Desktop Entry]\nType=Application\nName=EFOSpec\n'
                 'Comment=EFOSC2 spectra and source review\nTerminal=false\n'
-                'Categories=Science;Astronomy;\n'
-                'Exec='+_exec_argument(executable)+' %f\n'
+                'Categories=Science;Astronomy;\nMimeType=x-scheme-handler/efospec;\n'
+                'Exec='+_exec_argument(executable)+' %u\n'
                 'Icon='+_desktop_string(icon)+'\n')
             (target/'org.efospec.Desktop.desktop').write_text(entry)
             if menu:

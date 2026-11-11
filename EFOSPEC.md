@@ -162,3 +162,10 @@ PYTHONPATH=src python -m unittest discover -s tests -v
 - Legacy `trunk/` and existing NOT/PyRAF environments stay separate.
 - Raw data and generated `runs/`, `outputs/`, and `data/` stay outside Git.
 - Migration code and documentation are published in the `sPaMFouR/efospec` fork.
+
+## Typing metadata
+
+Use `efospec typing-metadata show|init|edit|report runs/2026-10-28` for
+revision-bound host/adopted-redshift annotations and saved-data HTML refresh.
+The desktop **Host & redshift** tab uses the same validation and revision store.
+See [host and redshift workflow](docs/typing-metadata.md).

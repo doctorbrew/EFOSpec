@@ -46,17 +46,24 @@ has been inspected; transformed frames can retain all raw ESO header cards.
     if kind == "BIAS" and category == "CALIB":
         return "bias"
     if kind == "DARK" and category == "CALIB":
+        # EFOSC2 manual 4.2, section 4.3.19: this shared template takes
+        # biases at exactly zero seconds and darks at non-zero exposure.
+        # Retain the original header; only the inventory role changes.
+        if (tech == "IMAGE" and header.get("ESO TPL ID") == "EFOSC_img_cal_Darks"
+                and header.get("EXPTIME") == 0.):
+            return "bias"
         return "dark"
     if tech != "SPECTRUM":
         return "non_spectroscopic" if tech else "review_type"
     if kind == "WAVE" and category == "CALIB":
         return "arc"
     # The dome-flat template takes an initial exposure to set the lamp exposure
-    # time. Keep that test frame visible, but do not add it to a master flat.
-    # Unrecognised DOME sequences still require review.
+    # time. ArcFF first takes an arc, so its test is exposure 2 (observed
+    # in the 2026-11-10 morning sequences, followed by DPR TYPE=FLAT).
+    # Keep tests visible but out of master flats; unknown sequences need review.
     if (kind == "DOME" and category == "CALIB"
-            and header.get("ESO TPL ID") == "EFOSC_spec_cal_Flats"
-            and header.get("ESO TPL EXPNO") == 1):
+            and (header.get("ESO TPL ID"), header.get("ESO TPL EXPNO")) in (
+                ("EFOSC_spec_cal_Flats", 1), ("EFOSC_spec_cal_ArcFF", 2))):
         return "flat_test"
     if kind in {"FLAT", "LAMP,FLAT", "DOME,FLAT", "SKY,FLAT"} and category == "CALIB":
         return "flat"

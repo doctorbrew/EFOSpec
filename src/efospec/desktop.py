@@ -16,6 +16,7 @@ from .jobs import Workbench
 from .recipes import sky_mask
 from .desktop_ui import STYLE, SourceEditor, card, label
 from .desktop_session import resolve_session
+from .review_handoff import failures, failure_log, parse_review_url
 
 RED='#f47777';BLUE='#9fc6d1';NAVY='#24384b'
 
@@ -143,9 +144,16 @@ class ExtractionWindow(Q.QMainWindow):
         self.review_layout.addLayout(review_bar)
         self.review_notice=label('Select a failed-exposure QC packet to choose its source and local background.','notice',True)
         self.review_layout.addWidget(self.review_notice)
+        self.failure_details=Q.QPlainTextEdit();self.failure_details.setReadOnly(True)
+        self.failure_details.setAccessibleName('Reduction error log');self.failure_details.setMaximumHeight(240)
+        self.failure_details.hide();self.review_layout.addWidget(self.failure_details)
+        self.failure_figures=Q.QTabWidget();self.failure_figures.hide()
+        self.review_layout.addWidget(self.failure_figures,1)
         self.review_placeholder=label('Source identity is selected by the observer. Original raw files and products are preserved.',wrap=True)
         self.review_layout.addWidget(self.review_placeholder,1)
         self.tabs.addTab(self.review_page,'Source review')
+        from .typing_editor import TypingEditor
+        self.typing_editor=TypingEditor();self.tabs.addTab(self.typing_editor,'Host & redshift')
         self.timer=QtCore.QTimer(self);self.timer.setInterval(350);self.timer.timeout.connect(self.poll_job);self.timer.start()
         self.cancel_button.setEnabled(False);self.run_button.setEnabled(False);self.open_revision.setEnabled(False);self.editor.setEnabled(False)
         for combo in self.findChildren(Q.QComboBox):
@@ -195,12 +203,16 @@ class ExtractionWindow(Q.QMainWindow):
 
     def open_run(self,path):
         try:
+            raw = None
+            if str(path).startswith('efospec:'):
+                path, raw = parse_review_url(str(path))
             if self.is_running() or (self.review_editor and self.review_editor.is_running()):
                 raise ValueError('Finish or cancel the extraction before changing nights.')
             session=resolve_session(path)
             new=Workbench(session.run,self.reference_root) if session.manifest['results'] else None
             if self.backend:self.backend.close()
             self.backend=new;self.session=session;self.exposure=None
+            self.typing_editor.open_run(session.run)
             self.path_label.setText(session.night);self.path_label.setToolTip(str(session.run))
             previous=(self.settings.value('last_product','') if self.settings and self.settings.value('last_run')==str(session.selected) else '')
             self.exposures.blockSignals(True);self.exposures.clear()
@@ -213,10 +225,16 @@ class ExtractionWindow(Q.QMainWindow):
             for packet in session.reviews:
                 info=json.loads(packet.read_text())
                 self.reviews.addItem(f'{info.get("object", "Unverified source")} · {info["raw_name"]}',str(packet))
+            reviewed = {json.loads(p.read_text())['raw_name'] for p in session.reviews}
+            for item in failures(session.manifest):
+                name=Path(item.get('path', '')).name
+                if name and name not in reviewed:
+                    self.reviews.addItem(f'{item.get("object", "Unknown")} · {name}', {'raw':name})
+                    reviewed.add(name)
             self.reviews.blockSignals(False)
-            self.tabs.setTabText(1,f'Source review ({len(session.reviews)})')
+            self.tabs.setTabText(1,f'Source review ({self.reviews.count()-1})')
             self.review_notice.setText('Choose the source explicitly; polynomial background extraction remains experimental.' if session.reviews
-                                      else 'No matching QC packets found. Open a review.json packet or prepare one with recovery-qc.')
+                                      else 'Choose a failed exposure to inspect its log. Manual extraction requires a compatible review packet.')
             if session.warnings:self.review_notice.setText(self.review_notice.text()+'\n'+'\n'.join(session.warnings))
             self.tabs.setCurrentIndex(0 if new else 1)
             if not new:
@@ -227,8 +245,19 @@ class ExtractionWindow(Q.QMainWindow):
                 self.canvas.draw_idle()
             if session.reviews and (not new or session.selected.name=='review.json'):
                 self.reviews.setCurrentIndex(1);self.tabs.setCurrentIndex(1)
+            if raw:self.select_raw(raw)
             if self.settings:self.settings.setValue('last_run',str(session.selected));self.settings.sync()
         except (OSError,ValueError,KeyError,ImportError) as exc:self.error(exc)
+
+    def select_raw(self, raw):
+        if not self.session:raise ValueError('Open a reduction run before selecting an exposure.')
+        for index in range(1, self.reviews.count()):
+            data=self.reviews.itemData(index)
+            name=data['raw'] if isinstance(data,dict) else json.loads(Path(data).read_text())['raw_name']
+            if name==raw:
+                self.reviews.setCurrentIndex(index);self.tabs.setCurrentIndex(1)
+                return
+        raise ValueError('No failed exposure with this filename in the selected run: '+raw)
 
     def choose_review(self):
         path,_=Q.QFileDialog.getOpenFileName(self,'Open source-review packet','','Review packet (review.json)')
@@ -240,19 +269,59 @@ class ExtractionWindow(Q.QMainWindow):
             self.review_editor=None
         self.review_placeholder.show()
         self.review_notice.show()
+        self.failure_details.clear();self.failure_details.hide()
+        while self.failure_figures.count():
+            widget=self.failure_figures.widget(0);self.failure_figures.removeTab(0);widget.deleteLater()
+        self.failure_figures.hide()
 
     def change_review(self,*_):
         path=self.reviews.currentData()
-        if not path:self.clear_review();return
+        self.clear_review()
+        if not path:return
+        raw=path['raw'] if isinstance(path,dict) else json.loads(Path(path).read_text())['raw_name']
+        item=next((e for e in failures(self.session.manifest) if Path(e.get('path','')).name==raw), None)
+        if item:
+            self.failure_details.setPlainText(failure_log(self.session.run,item));self.failure_details.show()
+        if isinstance(path,dict):
+            self.review_notice.setText(f'{item.get("object",raw)} · {item.get("code","Review required")}')
+            self.show_review_figures(raw)
+            self.review_placeholder.setText('This exposure is loaded for failure inspection. No compatible manual-extraction '
+                'packet is available for this reduction route. Native calibration recovery, wavelength repair and '
+                'unsupported setups require their corresponding engine support; no extraction has been started.')
+            return
         try:
             from .background_gui import BackgroundEditor
             panel=BackgroundEditor(path,self.reference_root,parent=self.review_page)
-            self.clear_review();self.review_editor=panel;self.review_placeholder.hide()
+            self.review_editor=panel;self.review_placeholder.hide()
             self.review_layout.addWidget(panel,1);panel.runningChanged.connect(self.poll_job)
             self.review_notice.setVisible(bool(self.session and self.session.warnings))
         except (OSError,ValueError,KeyError,ImportError) as exc:self.review_notice.setText(str(exc))
 
+    def show_review_figures(self, raw):
+        """Reuse saved, house-styled previews; never generate a replacement spectrum."""
+        from .inventory import sha256
+        for record in self.session.manifest.get('review_counts', []):
+            if Path(record['raw']).name!=raw:continue
+            try:
+                for name,digest in record['product_sha256'].items():
+                    path=Path(name);path.resolve().relative_to(self.session.run)
+                    if sha256(path)!=digest:raise ValueError('Review counts changed since reduction.')
+                folder=Path(record['product']).parent.parent/'plots'
+                folder.resolve().relative_to(self.session.run)
+                for name in ('counts','traces','profiles'):
+                    path=folder/(name+'.png')
+                    if not path.is_file():continue
+                    view=Q.QLabel();view.setPixmap(QtGui.QPixmap(str(path)).scaledToWidth(
+                        1000,QtCore.Qt.TransformationMode.SmoothTransformation))
+                    view.setAccessibleName('Saved review '+name)
+                    scroll=Q.QScrollArea();scroll.setWidget(view)
+                    self.failure_figures.addTab(scroll,name.title())
+                self.failure_figures.setVisible(self.failure_figures.count()>0)
+            except (OSError,ValueError) as exc:
+                self.failure_details.appendPlainText('Saved figures unavailable: '+str(exc))
+
     def change_exposure(self,*_):
+        from pypeit.pkg.exceptions import PypeItError
         if not self.backend or not self.exposures.currentData():return
         try:
             self.exposure=self.backend.exposure(self.exposures.currentData())
@@ -272,8 +341,8 @@ class ExtractionWindow(Q.QMainWindow):
             self.saved_bands=common_sky_bands(self.exposure.images.get('sky_input_mask'),self.exposure.window.origin[1])
             self.sky_auto.setChecked(True);self.background_changed()
             self.loading=False;self.edited()
-        except (OSError,ValueError,KeyError) as exc:
-            self.loading=False;self.exposure=None;self.error(exc);self.editor.setEnabled(False)
+        except (OSError,ValueError,KeyError,PypeItError) as exc:
+            self.loading=False;self.exposure=None;self.error(exc);self.editor.setEnabled(False);self.run_button.setEnabled(False)
             for ax in (self.spectrum_ax,self.image_ax,self.profile_ax):ax.clear()
             self.canvas.draw_idle()
 
@@ -491,11 +560,35 @@ class ExtractionWindow(Q.QMainWindow):
         self.timer.stop();event.accept()
 
 
-def launch(run=None,reference_root=None,*,smoke_test=False):
+class ReviewOpenEvents(QtCore.QObject):
+    def __init__(self,window):
+        super().__init__(window);self.window=window;self.received=False
+
+    def eventFilter(self,watched,event):
+        if event.type()==QtCore.QEvent.Type.FileOpen and event.url().scheme()=='efospec':
+            self.received=True
+            url=event.url().toString()
+            def open_requested():
+                self.window.open_run(url)
+                self.window.show();self.window.raise_();self.window.activateWindow()
+            QtCore.QTimer.singleShot(0,open_requested)
+            return True
+        return False
+
+
+def launch(run=None,reference_root=None,*,smoke_test=False,raw=None):
     app=Q.QApplication.instance() or Q.QApplication(sys.argv[:1]);app.setApplicationName('EFOSpec')
     settings=None if smoke_test else QtCore.QSettings('EFOSpec','Desktop')
     if not smoke_test:run=initial_run(run,settings)
-    window=ExtractionWindow(run,reference_root,settings=settings);window.show()
+    # Install the URL receiver before loading remembered products. Loading can
+    # process native events, and an incompatible old product must not lose the URL.
+    window=ExtractionWindow(None,reference_root,settings=settings)
+    handler=ReviewOpenEvents(window);app.installEventFilter(handler)
+    window.show()
+    def open_initial():
+        if not handler.received and run:window.open_run(run)
+        if raw:window.select_raw(raw)
+    QtCore.QTimer.singleShot(0,open_initial)
     # Dispose Qt children while its event dispatcher is still alive. Python
     # callback cycles can otherwise keep them past QApplication destruction.
     app.aboutToQuit.connect(window.close)
@@ -503,13 +596,14 @@ def launch(run=None,reference_root=None,*,smoke_test=False):
     if smoke_test:
         def finish():
             ready=run is None or (window.session is not None and (
-                window.exposure is not None or window.review_editor is not None))
+                window.exposure is not None or window.review_editor is not None or window.reviews.currentData() is not None))
             print(json.dumps({'application':'EFOSpec','qt_platform':app.platformName(),
                 'tabs':window.tabs.count(),'ready':ready,
+                'review_selection':window.reviews.currentData(),
                 'run':str(window.session.run) if window.session else None}),flush=True)
             window.close();app.exit(0 if ready else 1)
         QtCore.QTimer.singleShot(600,finish)
-    elif run is None:QtCore.QTimer.singleShot(0,window.choose_run)
+    elif run is None:QtCore.QTimer.singleShot(300,lambda:window.choose_run() if window.session is None else None)
     return app.exec()
 
 

@@ -147,6 +147,12 @@ def _report(state, output):
     if not manifest.is_file() or state['stages'].get('reduce',{}).get('status') not in {'complete','partial'}:
         return {'status':'failed','error':'no completed reduction; see the dated worker log'}
     _verify_inputs(state,output)
+    comparison_error=False
+    if state.get('iraf_comparison'):
+        with (output/'logs'/(state['night']+'-iraf-comparison.log')).open('w') as log:
+            comparison_code=subprocess.run([state.get('plot_python') or sys.executable,
+                '-m','efospec.iraf_comparison',str(output)],stdout=log,stderr=subprocess.STDOUT,check=False).returncode
+        comparison_error=comparison_code!=0
     args=['report',str(run_dir)]
     if state.get('plot_python'):args+=['--plot-python',state['plot_python']]
     code=_invoke(args,output,state['night']+'-report.log')
@@ -191,7 +197,8 @@ def _report(state, output):
         if qc_code or q.get('status')!='complete' or q.get('raw_name')!=raw or q.get('parent_run')!=str(run_dir):
             failures.append(raw)
         else:packets.append(str(packet/'index.html'))
-    return {'status':'complete' if code==0 and rendered.get('status')=='complete' and not failures and not native_plot_error and not counts_plot_error else 'partial',
+    return {'status':'complete' if code==0 and rendered.get('status')=='complete' and not failures and not native_plot_error and not counts_plot_error and not comparison_error else 'partial',
+            'iraf_comparison_error':comparison_error,
             'review_counts_plot_error':counts_plot_error,
             'native_plot_error':native_plot_error,
             'worker_exit':code,'qc_packets':packets,'qc_failures':failures,'fieldnotes':str(run_dir/'index.html')}
@@ -234,7 +241,8 @@ def _index(state, output):
 
 
 def run_epoch(night, *, stage='all', project_root='.', plot_python=None, native_calibrations=None,
-              targets=None, reviewed_sources=None, flux_calibration=None, calibration_groups=None):
+              targets=None, reviewed_sources=None, flux_calibration=None, calibration_groups=None,
+              iraf_comparison=False):
     night=_date(night)
     if flux_calibration not in {None,'same-night','archive'}:raise ValueError('unknown flux calibration policy')
     if stage not in {'all','log','reduce','report'}:raise ValueError('unknown epoch stage')
@@ -267,6 +275,7 @@ def run_epoch(night, *, stage='all', project_root='.', plot_python=None, native_
                    'plot_python':plot_python,
                    'native_calibrations':str(Path(native_calibrations).resolve()) if native_calibrations else None,
                    'targets':targets,'flux_calibration':flux_calibration or 'same-night',
+                   'iraf_comparison':bool(iraf_comparison),
                    'stages':{},'status':'running'}
             if calibration_groups:
                 if state['flux_calibration']!='same-night':raise ValueError('native calibration groups require same-night flux policy')
@@ -290,6 +299,7 @@ def run_epoch(night, *, stage='all', project_root='.', plot_python=None, native_
             if calibration_groups is not None and [str(Path(p).resolve()) for p in calibration_groups]!=state.get('calibration_groups',[]):
                 raise ValueError('native calibration groups changed; start a new dated revision')
             if plot_python:state['plot_python']=plot_python
+            if iraf_comparison:state['iraf_comparison']=True
             if targets is not None and targets != state.get('targets'):
                 raise ValueError('target selection changed; start a new dated revision')
             if reviewed_sources and sha256(Path(reviewed_sources)) != state.get('reviewed_sources_sha256'):
@@ -321,6 +331,8 @@ def run_epoch(night, *, stage='all', project_root='.', plot_python=None, native_
 
 
 def add_arguments(parser):
+    parser.add_argument('--iraf-comparison',action='store_true',
+                        help='Compare matched IRAF flux products found recursively beside the raw data; no reduction changes')
     parser.add_argument('night',help='One observing date, YYYY-MM-DD (noon UTC to following noon)')
     parser.add_argument('--project-root',default='.',help='Directory containing data/ and runs/')
     parser.add_argument('--plot-python',help='Python environment for house-style figures')
@@ -343,5 +355,5 @@ def script_main(stage):
     try:return exit_code(run_epoch(args.night,stage=stage,project_root=args.project_root,plot_python=args.plot_python,
                                   native_calibrations=args.native_calibrations,targets=args.target,
                                   reviewed_sources=args.reviewed_sources,flux_calibration=args.flux_calibration,
-                                  calibration_groups=args.calibration_group))
+                                  calibration_groups=args.calibration_group,iraf_comparison=args.iraf_comparison))
     except (OSError,ValueError,ImportError) as exc:parser.exit(2,f'[{args.night}] {exc}\n')

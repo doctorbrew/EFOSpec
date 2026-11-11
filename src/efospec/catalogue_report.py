@@ -8,6 +8,7 @@ from .naming import source_order
 def catalogue_qc(page, run):
     from .epoch_report import _text, _table
     from .field_catalogues import galaxy_labels, redshift_label
+    from .typing_report import acquisition_metadata
     current = page.read(page.root/'QC/catalogue-current.json')
     if not current: return []
     if current.get('night') != page.root.name: raise ValueError('catalogue report night mismatch')
@@ -28,7 +29,16 @@ def catalogue_qc(page, run):
         if field['status'] == 'failed':
             log = page.root/current['fields'][field['raw']]['path']
             download = page.download(log.parent/'astrometry/solve.log', 'Astrometry log')
-            sections.append((source_order(field), '<article class="exposure">'+content+'<p class="qc-status-bad">'+_text(field['error'])+'</p><p>'+download+'</p></article>'))
+            from .acquisition_target import target_position
+            target = target_position(field['raw'], field['object'])
+            if target['status'] in ('projected', 'outside_image'):
+                a = target['astrometry']
+                status = ('<p>Newer target-position astrometry is available: '
+                          +str(a['matched_stars'])+f' matched stars; RMS {target["astrometry_rms_pixel"]:.2f} pixels. '
+                          'This retained catalogue attempt has no galaxy overlay.</p>')
+            else:
+                status = '<p class="qc-status-bad">'+_text(field['error'])+'</p>'
+            sections.append((source_order(field), '<article class="exposure">'+content+status+'<p>'+download+'</p>'+acquisition_metadata(page,field['object'])+'</article>'))
             continue
         for name, digest in field['figures_sha256'].items():
             p=Path(name);p.resolve().relative_to(page.root)
@@ -45,8 +55,11 @@ def catalogue_qc(page, run):
             if query['status'] in ('unavailable','truncated'):label='<span class="qc-status-bad">'+label+'</span>'
             status.append([_text(query['catalogue']),label,'—' if query['status']=='unavailable' else len(query['rows'])])
         content += _table(['Catalogue','Query status','Sources in search cone'],status)
-        content += '<p class="caption">Only catalogue-classified galaxy candidates are marked. Galaxy numbers match across both panels and this table. The shared legend below the images gives redshift z and its catalogue method (spec or phot); unavailable values or methods are stated explicitly. AllWISE counterparts remain in the table, without separate image markers. Positional neighbours use a 2-arcsec radius and are not confirmed cross-identifications.</p>'
+        if field.get('target_position', {}).get('status') == 'projected':
+            content += '<p class="caption">The named open circle marks the observing-block target RA/Dec projected through the measured image astrometry. This position does not establish the slit centre or identify a spectral trace.</p>'
+        content += '<p class="caption">Galaxy markers show catalogue-classified candidates. The detail view frames the galaxy candidates and registered target. The SN is blue and galaxy candidates are red, with translucent white label boxes; galaxy numbers match across both panels and this table. The shared legend below the images gives redshift z and its catalogue method (spec or phot); unavailable values or methods are stated explicitly. AllWISE counterparts remain in the table, without separate image markers. Positional neighbours use a 2-arcsec radius and are not confirmed cross-identifications.</p>'
         content += '<div class="qc-plots">'+page.figure(image,field['object']+' / Potential host galaxies',full_width=True)+'</div>'
+        content += acquisition_metadata(page,field['object'])
         rows=[]
         labels=galaxy_labels(field['sources'])
         for source in field['sources']:

@@ -59,10 +59,24 @@ are retained and checked; spectral extraction and accepted products are unchange
 
 ## Reports and saved data
 
+Acquisition plots also mark the named observing-block target with an open circle
+and print its RA/Dec and coordinate frame. The circle and target label have no white halo or stroke. Coordinates come from `ESO TEL TARG
+ALPHA/DELTA`, with the target name, mean-coordinate flag and equinox checked;
+the offset telescope-pointing `RA/DEC` is never substituted. FK5 coordinates are
+transformed to ICRS before projection through the accepted image solution.
+This is an OB coordinate annotation, not an independent catalogue identification.
+Without accepted astrometry, coordinates can be printed but no pixel position
+is invented. The slit-direction key remains confined to the candidate detail view.
+
+Both catalogue and source-review plots retain coordinate and astrometry provenance.
+Source-review plots reuse hash-verified solutions from `QC/catalogue-current.json`
+or additional accepted solutions recorded in `QC/target-astrometry-current.json`.
+Plotting makes no solver or network calls and does not alter the raw FITS header.
+
 `QC/catalogue-current.json` selects records for the nightly Source QC section.
 Refreshing selected targets preserves the other targets' pointers and all earlier
 revisions. Report building makes no network requests. It verifies input, record,
-WCS and figure hashes, then embeds the full-field/zoom overlays, galaxy table,
+WCS and figure hashes, then embeds the full-field and galaxy-candidate views, galaxy table,
 query statuses, positional neighbours and PDF/JPG downloads. The existing
 house plot style is used, including 300-dpi JPGs.
 
@@ -76,8 +90,13 @@ for these NED-only results, shows
 or methods are stated explicitly. Positional neighbours do not supply a redshift
 to another source. The nightly table uses the same redshift labels. Acquisition
 images use `gray_r` (higher signals drawn darker), preserving the original
-pixel values and intensity stretch. Markers, legend symbols and
-plain tags share the brighter coral-red `#ff8080`. Tags have no boxes or halos and
+pixel values and intensity stretch. The second panel frames all in-image galaxy candidates and the registered OB target, with margins where the detector permits. If no galaxies are available it shows the target vicinity, or the full field when no target is registered. It is not a detector-centre zoom.
+
+Markers and labels use `xkcd:dodger blue` for the SN and `xkcd:red` for galaxy
+candidates. Labels have borderless white boxes with `alpha=0.8`; the text stays
+opaque, and the open markers retain no halo. The shared legend uses matching
+galaxy symbols. Numbered labels and marker shapes preserve catalogue identity.
+Tags and their boxes
 are placed fully to the left or right of their markers. Placement reserves space
 around every label and catalogue marker, keeps text inside the image, and shifts
 crowded labels vertically. No connecting lines are drawn. It refuses an

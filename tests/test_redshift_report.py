@@ -40,3 +40,21 @@ def test_provisional_spectral_and_photometric_catalogue_statuses_are_separate():
     assert 'photometric' in ned and '0.074716' in ned and 'candidate host' in ned
     assert '0.0238' in spectral and 'provisional wavelength' in spectral
     assert redshift_cells(None,standard=True)==['—','—']
+
+
+def test_redshifts_from_previous_reduction_are_not_labelled_never_measured(tmp_path):
+    from efospec.epoch_report import EpochPage
+    from efospec.redshift_report import load_redshifts
+    from efospec.inventory import sha256
+    root=tmp_path/'2026-10-28';run=root/'nightly/new/reduction';run.mkdir(parents=True)
+    (run/'run.json').write_text('{}')
+    qc=root/'QC';qc.mkdir()
+    manifest=qc/'old.json';manifest.write_text(json.dumps(dict(night=root.name,
+        parent_run_sha256={'old/run.json':'previous'},results=[dict(raw='/raw/old-science.fits')])))
+    (qc/'redshift-current.json').write_text(json.dumps(dict(night=root.name,path='QC/old.json',sha256=sha256(manifest))))
+    page=EpochPage(root)
+    assert load_redshifts(page,run)=={}
+    assert page.redshift_status=='previous_revision'
+    assert page.previous_redshift_raws=={'old-science.fits'}
+    assert redshift_cells(None,previous_revision=True)==['Previous revision','Previous revision']
+    assert redshift_cells(None,previous_revision=True,standard=True)==['—','—']

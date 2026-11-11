@@ -40,15 +40,31 @@ def epoch_page(tmp_path):
 
 class Assets(HTMLParser):
     def __init__(self, html):
-        super().__init__();self.ids=set();self.links=[];self.images=[];self.downloads={};self.feed(html)
+        super().__init__();self.ids=set();self.links=[];self.handoffs=[];self.images=[];self.downloads={};self.feed(html)
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
         if 'id' in a:self.ids.add(a['id'])
+        if 'data-review-url' in a:self.handoffs.append(a['data-review-url'])
         if tag=='a':
             self.links.append(a['href'])
             if 'download' in a:self.downloads[a['download']]=a['href']
         if tag=='img' and 'src' in a:self.images.append(a['src'])
+
+
+def test_iraf_supplement_is_separate_from_main_log(epoch_page,monkeypatch):
+    from efospec import iraf_report
+    from efospec.epoch_report import build_epoch_page
+    project,root,_=epoch_page
+    monkeypatch.setattr(iraf_report,'comparison_section',lambda page,revision:'<p>Unique overlay evidence</p>')
+    build_epoch_page(root.name,project)
+    main=(root/'index.html').read_text()
+    supplement=(root/'iraf-comparison.html').read_text()
+    assert 'href="iraf-comparison.html"' in main
+    assert 'Unique overlay evidence' not in main
+    assert 'Unique overlay evidence' in supplement
+    assert 'href="index.html"' in supplement
+    assert (root/'iraf-comparison-portable.html').is_file()
 
 
 def test_old_high_snr_sky_failure_gets_precise_explanation_without_changing_record(tmp_path):
@@ -75,7 +91,7 @@ def test_single_file_contains_evidence_downloads_and_only_internal_navigation(ep
     assert result['embedded_figures']==3 and result['warnings']==[]
     assert 'SN &lt;test&gt;' in html and 'Target identity unverified' in html
     assert 'source_selection_required' in html and 'archive/initial-reduction' in html
-    assert all(url.startswith(('data:', '#')) for url in assets.links+assets.images)
+    assert all(url.startswith(('data:', '#', 'efospec://review?')) for url in assets.links+assets.images)
     assert all(url[1:] in assets.ids for url in assets.links if url.startswith('#'))
     assert base64.b64decode(assets.downloads[product.name].split(',',1)[1])==product.read_bytes()
     assert all(sha256(p)==digest for p,digest in before.items())
@@ -152,16 +168,19 @@ def test_source_profiles_have_a_separate_full_width_card(epoch_page):
     packet = root/'nightly/revision-1/QC/ambiguous'
     save(packet/'review.json', {'object':'AT2026agzp', 'raw_name':'ambiguous.fits',
                                'identity':'UNVERIFIED', 'candidates':[]})
-    for kind in ['science', 'traces', 'profiles', 'acquisition-1']:
+    for kind in ['science', 'traces', 'profiles', 'acquisition-1', 'acquisition-2']:
         Image.new('RGB', (40, 10), 'white').save(packet/f'FitQC_AT2026agzp_{kind}.jpg')
     result = build_epoch_page('2026-10-28', project)
     html = (root/'index.html').read_text()
-    assert result['embedded_figures'] == 7
+    assert result['embedded_figures'] == 8
     labels = ['2D Spectrum', 'Sky-subtracted 2D spectrum',
-              'Spatial Profile and Trace Identification', 'Acquisition 1']
+              'Spatial Profile and Trace Identification', 'Acquisition 1', 'Acquisition 2']
     positions = [html.index('<figcaption>AT2026agzp / '+label) for label in labels]
     assert positions == sorted(positions)
     assert '<figure class="plot full-width"><figcaption>AT2026agzp / Spatial Profile and Trace Identification' in html
+    profile_card=html[positions[2]:positions[3]]
+    assert 'style="aspect-ratio:2"' in profile_card
+    assert 'object-fit:contain' in html
 
 
 def test_report_does_not_follow_a_different_nights_pointer(epoch_page):
@@ -307,3 +326,44 @@ def test_log_stage_with_retained_rescue_does_not_require_new_reduction_manifest(
     assert 'Provisional rescue spectra' not in html
     assert sha256(product)==before
     assert not parent.exists()
+
+
+def test_failed_and_skipped_exposures_keep_target_reason_log_and_handoff(epoch_page):
+    from efospec.review_handoff import parse_review_url
+    project,root,_=epoch_page
+    run=root/'nightly/revision-1/reduction'
+    manifest=json.loads((run/'run.json').read_text())
+    log=run/'failure.log';log.write_text('saved traceback <unaltered>')
+    item=dict(object='SN <failed>',path='/raw/failed.fits',code='background_support_required',
+              error='Final trace crosses band',traceback=str(log),setup={'grism':'Gr13'})
+    manifest['errors']=[item]
+    manifest['skipped']=[dict(object='SN <failed>',path='/raw/red.fits',code='unsupported_setup',reason='Gr16 unsupported')]
+    save(run/'run.json',manifest)
+    before=sha256(run/'run.json')
+    build_epoch_page(root.name,project)
+    html=(root/'index-portable.html').read_text();assets=Assets(html)
+    assert '<h3>SN &lt;failed&gt; · Gr13</h3><p class="qc-status-bad">background_support_required: Final trace crosses band' in html
+    links=[parse_review_url(url) for url in assets.handoffs]
+    assert links==[(str(run),'failed.fits'),(str(run),'red.fits')]
+    assert {'spectrum-errors-0','spectrum-skipped-0'} <= assets.ids
+    assert base64.b64decode(assets.downloads[log.name].split(',',1)[1])==log.read_bytes()
+    assert sha256(run/'run.json')==before
+
+
+def test_detailed_failure_is_only_in_source_logs_and_headings_include_seconds(epoch_page):
+    project,root,_=epoch_page
+    run=root/'nightly/revision-1/reduction';path=run/'run.json'
+    manifest=json.loads(path.read_text())
+    manifest['errors']=[dict(object='SN <test>',path='/raw/science.fits',
+        code='wavelength_validation_failed',error='native sky anchors disagree by more than 3 A')]
+    save(path,manifest)
+    build_epoch_page(root.name,project)
+    html=(root/'index.html').read_text()
+    observations=html.split('id="observations"')[1].split('</section>')[0]
+    spectra=html.split('id="spectra"')[1].split('</section>')[0]
+    assert 'native sky anchors disagree' not in observations
+    assert 'native sky anchors disagree' in spectra
+    assert '<h3>SN &lt;test&gt; · Gr13 · 60 s</h3>' in spectra
+    assert '<h3>SN &lt;test&gt; · 60 s</h3>' in spectra
+    assert '<button type="button" class="review-launch"' in spectra
+    assert '<a class="review-launch"' not in spectra

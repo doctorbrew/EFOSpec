@@ -93,6 +93,19 @@ class ClassificationTests(unittest.TestCase):
                 self.assertEqual(classify(raw_header(**{"ESO DPR TYPE": kind,
                     "ESO DPR TECH": tech, "ESO DPR CATG": "CALIB"})), expected)
 
+    def test_zero_exposure_dark_template_is_bias_without_changing_header(self):
+        header = raw_header(**{'ESO DPR CATG': 'CALIB', 'ESO DPR TECH': 'IMAGE',
+            'ESO DPR TYPE': 'DARK', 'ESO TPL ID': 'EFOSC_img_cal_Darks', 'EXPTIME': 0.})
+        before = header.tostring()
+        self.assertEqual(classify(header), 'bias')
+        self.assertEqual(header.tostring(), before)
+        for changes in ({'EXPTIME': 1.}, {'EXPTIME': None},
+                        {'ESO TPL ID': 'unknown'}, {'ESO DPR TECH': 'SPECTRUM'}):
+            with self.subTest(changes=changes):
+                candidate = header.copy()
+                candidate.update(changes)
+                self.assertEqual(classify(candidate), 'dark')
+
     def test_processed_arc_and_rectified_science_are_not_raw(self):
         self.assertEqual(classify(raw_header(**{"FILETYPE": 22104, "ESO DPR TYPE": "WAVE"})), "processed")
         self.assertEqual(classify(raw_header(**{"CTYPE2": "LINEAR"})), "processed")
@@ -151,6 +164,28 @@ class InventoryTests(unittest.TestCase):
             with self.subTest(changes=changes):
                 header = raw_header(**{'ESO DPR CATG': 'CALIB', 'ESO DPR TYPE': 'DOME', **changes})
                 self.assertEqual(classify(header), 'review_type')
+
+    def test_arcff_test_is_visible_but_never_selected_as_a_master_flat(self):
+        from efospec.native_readiness import assess_native_readiness
+
+        with tempfile.TemporaryDirectory() as directory:
+            self.write_raw(directory)
+            path = self.write_raw(directory, 'arcff-test.fits', **{
+                'ARCFILE': 'arcff-test.fits', 'ESO DPR CATG': 'CALIB',
+                'ESO DPR TYPE': 'DOME', 'ESO TPL ID': 'EFOSC_spec_cal_ArcFF',
+                'ESO TPL EXPNO': 2, 'ESO TPL NEXP': 9})
+            before = path.read_bytes()
+            report = inventory([directory])
+            self.assertEqual(report['counts_unique_content'], {'flat_test': 1, 'science': 1})
+            readiness = assess_native_readiness(report)
+            self.assertEqual(readiness['invalid_inputs'], [])
+            self.assertEqual(readiness['calibration_tests_ignored'], [str(path.resolve())])
+            self.assertEqual(readiness['exposures'][0]['raw_calibrations']['flat']['files'], [])
+            self.assertEqual(path.read_bytes(), before)
+        for number in (1, 3, None):
+            header = raw_header(**{'ESO DPR CATG': 'CALIB', 'ESO DPR TYPE': 'DOME',
+                'ESO TPL ID': 'EFOSC_spec_cal_ArcFF', 'ESO TPL EXPNO': number})
+            self.assertEqual(classify(header), 'review_type')
 
     def test_conflicting_archive_identity_is_not_silently_deduplicated(self):
         with tempfile.TemporaryDirectory() as directory:

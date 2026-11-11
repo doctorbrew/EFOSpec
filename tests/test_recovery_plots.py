@@ -67,11 +67,11 @@ def test_all_three_candidates_and_median_curves_are_visible(tmp_path, monkeypatc
             assert text.get_rotation() == 90
             assert text.get_position()[1] == .03
             assert text.get_verticalalignment() == 'bottom'
-            assert text.get_fontsize() == pytest.approx(21.6)
+            assert text.get_fontsize() == pytest.approx(28)
             assert text.get_bbox_patch().get_alpha() == .7
     assert figures['traces'].axes[1].get_legend_handles_labels()[1] == []
     assert figures['science'].axes[1].get_legend_handles_labels()[1] == []
-    assert figures['profiles'].get_figheight() == 8.5
+    assert figures['profiles'].get_figwidth()/figures['profiles'].get_figheight() == 2
     for line in figures['traces'].axes[1].lines:
         ax = line.axes
         assert ax.get_xlim()[0] < min(line.get_xdata()) < ax.get_xlim()[1]

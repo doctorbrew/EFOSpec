@@ -8,7 +8,7 @@
 - **The webpage is the read-only nightly reduction log.** Keep the opening table, per-source spectrum/trace/spatial-profile plots, status, and downloads.
 - Do not put extraction controls or job execution into the nightly report. Omit the previously rejected source-selection table column.
 - `efospec gui` launches the native PySide6 desktop application; `efospec browser-prototype` retains the earlier browser editor.
-- `efospec gui` contains Spectra and Source review tabs. `background-gui` is a compatibility entry point into that same application. Failed-exposure polynomial revisions remain count-level boxcar experiments; see [background workflow](docs/polynomial-background.md).
+- `efospec gui` contains Spectra, Source review and Host & redshift tabs. Metadata edits do not start reduction or classification. `background-gui` is a compatibility entry point into that same application. Failed-exposure polynomial revisions remain count-level boxcar experiments; see [background workflow](docs/polynomial-background.md).
 - Desktop launchers use the dedicated EFOSpec environment. Do not bundle a separate scientific runtime without a new explicit decision.
 - Preserve useful prototype code/tests while reusing its Python backend for desktop development. Do not claim the desktop app is delivered until its acceptance gates pass.
 - Canonical GUI requirements and tasks: [desktop roadmap](docs/roadmap/pypeit-migration/gui.md).

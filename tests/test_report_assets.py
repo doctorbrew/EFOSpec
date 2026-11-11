@@ -48,6 +48,23 @@ def test_repair_archives_original_and_does_not_touch_scientific_files(tmp_path):
         compact_existing_report('2026-10-29',project_root=tmp_path)
 
 
+def test_viewer_link_survives_rebuilding_the_canonical_report(tmp_path):
+    """T3's exact-file preview link must keep its original file identity."""
+    first=write_report_bundle(tmp_path/'index.html','<html><body>First revision</body></html>')
+    viewer=Path(first['viewer_path'])
+    original=viewer.read_bytes();identity=viewer.stat().st_ino
+    second=write_report_bundle(tmp_path/'index.html','<html><body>Second revision</body></html>')
+    assert Path(second['viewer_path'])!=viewer
+    assert viewer.parent==tmp_path
+    assert viewer.read_bytes()==original and viewer.stat().st_ino==identity
+    current=Path(second['viewer_path'])
+    assert current.read_bytes()==(tmp_path/'index.html').read_bytes()
+    current_identity=current.stat().st_ino
+    repeated=write_report_bundle(tmp_path/'index.html','<html><body>Second revision</body></html>')
+    assert repeated['viewer_path']==second['viewer_path']
+    assert current.stat().st_ino==current_identity
+
+
 def test_tampered_content_addressed_asset_stops_publication(tmp_path):
     html='<html><body><img src="data:image/jpeg;base64,'+base64.b64encode(sample_image()).decode()+'"></body></html>'
     write_report_bundle(tmp_path/'index.html',html)

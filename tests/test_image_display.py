@@ -61,8 +61,11 @@ def test_acquisition_has_exact_zoom_box_and_shared_clipped_stretch(tmp_path, mon
     assert full.images[0].norm is zoom.images[0].norm
     assert record['slit_orientation']['kind'] == 'orientation_only'
     assert record['slit_overlay_on_zoom_only'] is True
-    assert record['zoom_raw_bounds_xy'] == [119.5,479.5,69.5,429.5]
-    assert full.patches[0].get_width() == full.patches[0].get_height() == 360
+    # No catalogue or registered target: show the full field without inventing
+    # a detector-centre target or silently excluding candidate positions.
+    assert record['zoom_raw_bounds_xy'] == [-.5,599.5,-.5,499.5]
+    assert full.patches[0].get_width() == 600
+    assert full.patches[0].get_height() == 500
 
 
 def test_bright_percentile_extends_only_the_upper_limit_for_a_saturating_trace():
@@ -109,5 +112,5 @@ def test_documented_slit_direction_is_confined_to_separate_acquisition_zoom(tmp_
     assert full.get_subplotspec().colspan.start == 0
     assert zoom.get_subplotspec().colspan.start == 1
     assert record['slit_orientation']['detector_angle_deg']==0.
-    assert zoom.get_xlim()==(119.5,479.5)
-    assert zoom.get_ylim()==(69.5,429.5)
+    assert zoom.get_xlim()==(-.5,599.5)
+    assert zoom.get_ylim()==(-.5,499.5)

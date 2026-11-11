@@ -36,7 +36,7 @@ def _candidate_label(ax, x, label, color):
     right_side = x+2*offset < high
     return ax.text(x+offset if right_side else x-offset, .03, label,
                    transform=ax.get_xaxis_transform(), rotation=90,
-                   ha='left' if right_side else 'right', va='bottom', fontsize=21.6,
+                   ha='left' if right_side else 'right', va='bottom', fontsize=28,
                    color=color, zorder=10, clip_on=True,
                    bbox={'boxstyle':'square,pad=0.3', 'facecolor':'white',
                          'edgecolor':color, 'linewidth':1.2, 'alpha':.7})
@@ -110,7 +110,9 @@ def plot_exposure(exposure, output):
     for ax in axes:
         ax.set_xlabel('Raw x / spatial pixel')
         ax.set_ylabel('Raw y / spectral pixel')
-    fig.suptitle(title);save_qc(fig,output,'science',exposure.result['object'],tick_fontsize=24,title_fontsize=26,label_fontsize=28.6);plt.close(fig)
+    fig.suptitle(title,fontsize=32)
+    save_qc(fig,output,'science',exposure.result['object'],tick_fontsize=30,title_fontsize=32,label_fontsize=32)
+    plt.close(fig)
 
     # A zero placeholder from a failed selection is not a fitted sky model.
     fig, (left, right) = plt.subplots(1, 2, figsize=(20,12), constrained_layout=True)
@@ -129,9 +131,9 @@ def plot_exposure(exposure, output):
     for i, trace in enumerate(traces):
         _candidate_label(right, trace[label_row], f'C{i+1}', colors[i])
     subtitle = '' if sky_available else '\nSky subtraction unavailable: no fitted background'
-    fig.suptitle(title+subtitle)
+    fig.suptitle(title+subtitle,fontsize=32)
     image_displays['residual'] = residual_image._efospec_display
-    save_qc(fig,output,'traces',exposure.result['object'],tick_fontsize=24,title_fontsize=26,label_fontsize=28.6);plt.close(fig)
+    save_qc(fig,output,'traces',exposure.result['object'],tick_fontsize=30,title_fontsize=32,label_fontsize=32);plt.close(fig)
 
     # A separate wide figure remains legible when it spans the report grid.
     from .profile_background import load_profile_background, summed_profile
@@ -146,7 +148,7 @@ def plot_exposure(exposure, output):
     anchors = [trace[ny//2] for trace in traces if np.isfinite(trace[ny//2])]
     profile_xlimits = (min([supported_xlimits[0]]+[x-3 for x in anchors]),
                        max([supported_xlimits[1]]+[x+3 for x in anchors]))
-    fig, profile = plt.subplots(figsize=(20,8.5), constrained_layout=True)
+    fig, profile = plt.subplots(figsize=(20,10), constrained_layout=True)
     for i, trace in enumerate(traces):
         profile.axvline(trace[ny//2],color=colors[i],ls=TRACE_STYLES[i%4],lw=4.2)
     x = np.arange(nx)+x0
@@ -202,8 +204,9 @@ def plot_exposure(exposure, output):
     if profile_sky_available:
         profile.axhline(0, color='0.5', lw=.8, zorder=0)
     profile.legend(ncol=3, fontsize=23.4);profile.grid(False)
-    fig.suptitle(title)
-    save_qc(fig,output,'profiles',exposure.result['object'],tick_fontsize=18,legend_fontsize=18)
+    fig.suptitle(title,fontsize=28)
+    save_qc(fig,output,'profiles',exposure.result['object'],tick_fontsize=24,legend_fontsize=22,
+            title_fontsize=28,label_fontsize=28.6)
     plt.close(fig)
     save_json(Path(output)/'profile-display.json', {
         'coordinates':'raw_detector_pixels_zero_based', 'candidate_reference_raw_y':int(y0+ny//2),
@@ -236,6 +239,10 @@ def acquisition_images(exposure, output):
     """Full acquisition and separate zoom, with the documented slit direction."""
     from .figure_style import save_qc
     from .acquisition_slit import draw_slit_orientation
+    from .acquisition_target import target_position, draw_target_position
+    from .catalogue_plots import place_labels
+    from .acquisition_display import candidate_bounds, saved_candidates, ANNOTATION_COLORS, LABEL_BOX
+    from .field_catalogues import galaxy_labels
     import matplotlib.pyplot as plt
     raw = Path(exposure.frame['path']); header = fits.getheader(raw)
     records = []
@@ -248,23 +255,39 @@ def acquisition_images(exposure, output):
             continue
         data = fits.getdata(path).astype(float); ny,nx=data.shape
         fig,(full,detail)=plt.subplots(1,2,figsize=(20,11),constrained_layout=True)
-        half=min(180,ny//2,nx//2);y0=ny//2-half;x0=nx//2-half
-        zoom=data[y0:y0+2*half,x0:x0+2*half]
+        target=target_position(path,exposure.result['object'])
+        galaxies=saved_candidates(path)
+        bounds,detail_title=candidate_bounds(data.shape,galaxies,target)
+        x0,x1,y0,y1=bounds
+        zoom=data[max(0,int(y0+.5)):min(ny,int(np.ceil(y1+.5))),max(0,int(x0+.5)):min(nx,int(np.ceil(x1+.5)))]
         normalization=image_normalization(zoom,cmap='RdBu')
         _image(full,data,normalization=normalization,cmap='RdBu')
-        _image(detail,zoom,[x0-.5,x0+2*half-.5,y0-.5,y0+2*half-.5],normalization=normalization,cmap='RdBu')
+        _image(detail,data,normalization=normalization,cmap='RdBu')
+        detail.set(xlim=bounds[:2],ylim=bounds[2:])
         zoom_bounds=mark_zoom_region(full,detail)
-        detail.set_title('Acquisition zoom')
+        detail.set_title(detail_title)
         full.set_title('Acquisition detector')
         orientation=draw_slit_orientation(detail)
+        labels=galaxy_labels(galaxies)
+        for ax in (full,detail):
+            for galaxy in galaxies:
+                x,y=galaxy['x'],galaxy['y']
+                if not (ax.get_xlim()[0]<x<ax.get_xlim()[1] and ax.get_ylim()[0]<y<ax.get_ylim()[1]):continue
+                color=ANNOTATION_COLORS['galaxy']
+                ax.scatter([x],[y],s=100,facecolors='none',edgecolors=[color],linewidths=1.8)
+                ax.annotate(labels[galaxy['id']],(x,y),xytext=(12,0),textcoords='offset points',
+                            color=color,fontsize=15,clip_on=True,bbox=LABEL_BOX)
+        draw_target_position((full,detail),target)
         for ax in (full,detail):
             ax.set_xlabel('Acquisition raw x');ax.set_ylabel('Acquisition raw y')
         fig.suptitle(f"{exposure.result['object']} -- {path.name}",fontsize=20)
+        place_labels(fig)
         filename=f'acquisition-{len(records)+1}.png'
         save_qc(fig,output,Path(filename).stem,exposure.result['object'],tick_fontsize=27);plt.close(fig)
         records.append(dict(path=str(path),sha256=sha256(path),image=filename,
             zoom_raw_bounds_xy=zoom_bounds,image_display=normalization[1],slit_orientation=orientation,
-            slit_overlay_on_zoom_only=True,has_celestial_wcs=bool(WCS(h).has_celestial),date_obs=h.get('DATE-OBS')))
+            slit_overlay_on_zoom_only=True,has_celestial_wcs=bool(WCS(h).has_celestial),
+            target_position=target,date_obs=h.get('DATE-OBS')))
     return records
 
 

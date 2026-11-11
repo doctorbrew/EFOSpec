@@ -7,6 +7,8 @@ from .field_catalogues import redshift_label
 
 
 def load_redshifts(page, parent, rescue=None):
+    page.redshift_status='not_run'
+    page.previous_redshift_raws=set()
     path=page.root/'QC/redshift-current.json'
     if not path.exists():return {}
     pointer=page.read(path);manifest_path=(page.root/pointer['path']).resolve()
@@ -17,7 +19,10 @@ def load_redshifts(page, parent, rescue=None):
     expected={str(parent/'run.json'):sha256(parent/'run.json')}
     if rescue:expected[str(rescue/'run.json')]=sha256(rescue/'run.json')
     if manifest['night']!=page.root.name or manifest['parent_run_sha256']!=expected:
+        page.redshift_status='previous_revision'
+        page.previous_redshift_raws={Path(item['raw']).name for item in manifest.get('results',[]) if item.get('raw')}
         return {}
+    page.redshift_status='current'
     records={}
     for item in manifest['results']:
         path=Path(item['path']);path.resolve().relative_to(page.root/'QC')
@@ -33,9 +38,11 @@ def load_redshifts(page, parent, rescue=None):
     return records
 
 
-def redshift_cells(record, *, standard=False):
+def redshift_cells(record, *, standard=False, previous_revision=False):
     if standard:return ['—','—']
-    if not record:return ['Not queried','Not measured']
+    if not record:
+        if previous_revision:return ['Previous revision','Previous revision']
+        return ['Not queried','Not measured']
     ned=record['ned'];candidate=ned.get('candidate');spectral=record['spectral']
     if candidate:
         value=redshift_label(candidate).replace('(phot)','(photometric)').replace('(spec)','(spectroscopic)')

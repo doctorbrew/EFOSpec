@@ -1,6 +1,8 @@
 # Pipeline Installation Guide
 
 These historical instructions install the original PESSTO IRAF/PyRAF pipeline. For EFOSpec, use the [dedicated environment](../README.md#install).
+Local helper commands below are run from the EFOSpec checkout root; the helpers now live in `trunk/legacy-tools/`. Original third-party notes remain in its `other_instructions/` directory.
+
 This new pipeline is compatible with Python 3 and 64bit archs, and finally solves the issues with the Mac M1/M2/M3 chips.
 Thanks to the community that has made IRAF compatible with the latest OS and computers.
 
@@ -82,21 +84,21 @@ MacOS user will **also** need to run the following scripts in the pessto repo (d
 
 ```code
 pip3 install pickle5
-python fix_pickle_macos.py
-python fix_cursor_macos.py
+python trunk/legacy-tools/fix_pickle_macos.py
+python trunk/legacy-tools/fix_cursor_macos.py
 ```
 
 ## Fix cursor issue for macOS
 
 The latest Mac computers with the M1/M2/M3 chip have an issue when using the pyraf display: the cursor freezer when hovered over the display.
 To solve this, I found a workaround in https://github.com/iraf-community/pyraf/issues/107. To make life easier for the user,
-there is a script included in the repository (`fix_cursor_macos.py`). Simply run this script using your anaconda environment used to
+there is a script included in the repository (`trunk/legacy-tools/fix_cursor_macos.py`). Simply run this script using your anaconda environment used to
 install the pipeline:
 
 ```code
 conda activate pessto
 pip install certifi  # to install certificates for macOS
-python fix_cursor_macos.py
+python trunk/legacy-tools/fix_cursor_macos.py
 ```
 
 This will download the `Ptkplot.py` file from the repository and replace your local copy of this file (in your anaconda environment), which
@@ -194,12 +196,12 @@ Traceback (most recent call last):
 ValueError: unsupported pickle protocol: 5
 ```
 
-To make life easier for the user, there is a script included in the repository (`fix_pickle_macos.py`) to fix this. Simply run these commands:
+To make life easier for the user, there is a script included in the repository (`trunk/legacy-tools/fix_pickle_macos.py`) to fix this. Simply run these commands:
 
 ```code
 conda activate pessto
 pip3 install pickle5
-python fix_pickle_macos.py
+python trunk/legacy-tools/fix_pickle_macos.py
 ```
 
 or you can manually fix this by going to the file `sqliteshelve.py` (under `~/anaconda3/envs/pessto/lib/python3.7/site-packages/pyraf/`) and change `import pickle` for `import pickle5 as pickle` (hopefully, this should be fixed in future pyraf versions).
