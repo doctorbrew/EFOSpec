@@ -103,3 +103,16 @@
   Logs and the baseline comparison are in `outputs/prepush-20261111/`.
 - Next individual investigation selected by the observer: SN2026abgb on
   2026-10-28. Keep diagnosis and trial products separate from the selected run.
+
+## 2026-11-11 — Isolated SN2026abgb diagnosis
+
+- Reproduced the original failure from its saved source snapshot with unchanged
+  calibration masters. No final background solver call occurred: band placement
+  failed around a truncated edge candidate.
+- Tracked the real broad neighbour from raw finding through the restricted
+  bootstrap search. Current code loses that neighbour's guard and completes a
+  trial whose sky bands enter the guard in every row. Kept trial counts unadopted.
+- Identified a scoring ring inside the measured source aperture. Recorded the
+  evidence, diagnostic figure and bounded follow-up changes in the
+  [case report](diagnostics/SN2026abgb-2026-10-28.md). No shared reduction algorithm
+  or acceptance threshold changed during this investigation.
