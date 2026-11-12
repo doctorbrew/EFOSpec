@@ -10,11 +10,38 @@ TRACE_STYLES = ('-', '--', '-.', ':')
 TRACE_LINEWIDTH = 4.4
 
 
+def _turnover_significance(data, ivar, distance, good, fwhm, inflation):
+    """Compare the core with each shoulder on the same detector rows.
+
+    No fitted spatial slope is removed: doing so can manufacture a peak on a
+    curved monotonic wing. Row-wise differences cancel the spectral sky level.
+    """
+    regions = [abs(distance) <= .25*fwhm,
+               (distance >= -1.25*fwhm) & (distance <= -.6*fwhm),
+               (distance >= .6*fwhm) & (distance <= 1.25*fwhm)]
+    means, variances, valid = [], [], []
+    for region in regions:
+        weight = np.where(good & region, ivar, 0.)
+        total = weight.sum(axis=1)
+        means.append(np.divide((np.where(weight>0, data, 0.)*weight).sum(axis=1),
+                               total, out=np.zeros(len(data)), where=total>0))
+        variances.append(np.divide(1., total, out=np.zeros(len(data)), where=total>0))
+        valid.append(total>0)
+    rows = np.logical_and.reduce(valid)
+    if np.count_nonzero(rows) < max(3, (len(data)+1)//2): return [None, None]
+    result = []
+    for side in (1, 2):
+        weight = 1/(variances[0][rows]+variances[side][rows])
+        difference = means[0][rows]-means[side][rows]
+        result.append(float(np.sum(weight*difference)/np.sqrt(weight.sum())/inflation))
+    return result
+
+
 def trace_evidence(data, ivar, trace, fwhm, *, support=None, bins=6):
     """Test a Gaussian core against a local linear background in spectral bins.
 
     Use propagated noise and inflate by excess spatial residual scatter. Require
-    positive local contrast in at least half the bins; emission-line-only objects
+    positive local contrast and a two-sided turnover in at least half the bins; emission-line-only objects
     are deliberately sent to review, not declared absent. No trace is reshaped.
     """
     data, ivar, trace = map(lambda a: np.asarray(a, float), (data, ivar, trace))
@@ -49,11 +76,15 @@ def trace_evidence(data, ivar, trace, fwhm, *, support=None, bins=6):
         residual = (values-design@coeff)*np.sqrt(weight)
         inflation = max(1., 1.4826*np.median(abs(residual-np.median(residual))))
         error = np.sqrt(np.linalg.inv(a.T@a)[0, 0])*inflation
-        records.append(dict(snr=float(coeff[0]/error), supported=True))
-    passing = sum(r['snr'] is not None and r['snr'] >= 3 for r in records)
+        shoulders = _turnover_significance(data[rows], ivar[rows], distance[rows],
+                                           use, fwhm, inflation)
+        records.append(dict(snr=float(coeff[0]/error), supported=True,
+            shoulder_snr=shoulders, turnover=all(s is not None and s>=3 for s in shoulders)))
+    passing = sum(r['snr'] is not None and r['snr'] >= 3 and r.get('turnover', False) for r in records)
     return dict(accepted=passing >= (bins+1)//2, positive_bins=passing, bins=records,
                 minimum_bin_snr=3., required_positive_bins=(bins+1)//2,
-                method='local Gaussian contrast over linear background in independent spectral bins',
+                minimum_shoulder_snr=3.,
+                method='local Gaussian contrast plus core above both shoulders in independent spectral bins',
                 identity_confirmed=False)
 
 

@@ -208,7 +208,7 @@ def test_filtered_photons_to_counts_response_and_portable_report(synthetic_raw_n
         np.testing.assert_array_equal(hdus['COUNTS'].data['OPT_VALID'], s.OPT_MASK)
         assert all(hdu.verify_checksum() == 1 for hdu in hdus)
     html = Path(result['report']['path']).read_text()
-    assert 'ePESSTO+ / EFOSpec' in html and 'no independent flux validation' in html
+    assert 'Nightly LOG - NTT/EFOSC2 (ePESSTO+)' in html and 'no independent flux validation' in html
     downloads = dict(re.findall(r'<a download="([^"]+)" href="data:[^,]+,([^"]+)">', html))
     assert base64.b64decode(downloads[Path(row['product']).name]) == Path(row['product']).read_bytes()
     assert base64.b64decode(downloads['run.json']) == (tmp_path/'output/run.json').read_bytes()

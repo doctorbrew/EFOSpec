@@ -27,7 +27,14 @@ def review_command(run, raw):
 
 
 def failures(manifest):
-    return manifest.get('errors', []) + manifest.get('skipped', [])
+    items = manifest.get('errors', []) + manifest.get('skipped', [])
+    recorded = {Path(item.get('path', '')).name for item in items}
+    for counts in manifest.get('review_counts', []):
+        if Path(counts['raw']).name not in recorded:
+            items.append(dict(path=counts['raw'], object=counts['object'], setup=counts['setup'],
+                code='calibration_pending', stage='counts_extracted', counts_review=counts['product'],
+                reason='Counts extracted; flux calibration pending. '+' '.join(counts.get('pending_checks', []))))
+    return items
 
 
 def failure_reason(item):
@@ -37,6 +44,8 @@ def failure_reason(item):
 
 def recovery_advice(item):
     code = item.get('code')
+    if code == 'calibration_pending':
+        return 'Review the saved counts and the listed calibration checks. Aperture edits do not validate a response or wavelength correction.'
     if code == 'background_support_required':
         return ('Inspect the final trace, aperture and rejected background pixels. Refit clean bands on both '
                 'sides of the final trace, then rerun extraction and support checks in a new revision.')

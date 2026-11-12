@@ -99,7 +99,13 @@ h1,h2,h3{font-family:var(--serif);font-weight:400;color:var(--forest);line-heigh
 def local_url(path, run):
     """Only link existing files inside this run; URLs stay portable and escaped."""
     path = Path(path).resolve()
-    relative = path.relative_to(run)
+    try:relative = path.relative_to(run)
+    except ValueError:
+        # Explicitly selected telluric revisions live beside the source run.
+        dated=next((p for p in run.parents if p.parent.name=='runs'),None)
+        if dated is None:raise
+        path.relative_to(dated)
+        relative=Path(os.path.relpath(path,run))
     if not path.is_file():
         raise FileNotFoundError(path)
     return quote(relative.as_posix(), safe='/')
@@ -108,6 +114,8 @@ def local_url(path, run):
 def write_report(run_directory, *, generation_error=None):
     run = Path(run_directory).resolve()
     manifest = json.loads((run/'run.json').read_text())
+    from .telluric_products import selected_pairs,overlay_record,status_text
+    pairs=selected_pairs(run)
     plot_dir = run/'style-preview'
     records = []
     for path in sorted(plot_dir.glob('FitSpectrum_*.json')):
@@ -125,6 +133,12 @@ def write_report(run_directory, *, generation_error=None):
             for p, h in r.get('input_sha256', {}).items())]
         record = matches[-1] if matches else {}
         files = {Path(p).name: plot_dir/Path(p).name for p in record.get('outputs', [])}
+        pair=pairs.get(product.name)
+        if pair:
+            overlay=overlay_record(pair)
+            if overlay:
+                record=overlay;files={Path(p).name:Path(p) for p in overlay['outputs']}
+            else:missing.append({'product':product.name,'figure':'Before/after telluric comparison'})
         anchor = 'exposure-'+hashlib.sha256(product.name.encode()).hexdigest()[:12]
         target, grism = escape(result['object']), escape(result['grism'])
         snr = result['median_native_snr_4000_8500']
@@ -132,6 +146,12 @@ def write_report(run_directory, *, generation_error=None):
         downloads = f'<a href="{local_url(product, run)}">FITS</a>'
         if product.with_suffix('.asci').is_file():
             downloads += f' · <a href="{local_url(product.with_suffix(".asci"), run)}">ASCII</a>'
+        if pair:
+            downloads=' · '.join(f'<a download="{escape(Path(pair[key]).stem+suffix+Path(pair[key]).suffix)}" '
+                f'href="{local_url(Path(pair[key]),run)}">{label}</a>'
+                for key,label,suffix in [('uncorrected_product','Before telluric FITS','_before_telluric'),
+                    ('uncorrected_ascii','Before telluric ASCII','_before_telluric'),
+                    ('product','After telluric FITS','_after_telluric'),('ascii','After telluric ASCII','_after_telluric')])
         rows.append(f'<tr><td><a class="target-link" href="#{anchor}">{target}</a></td>'
                     f'<td>{grism}</td><td class="num">{exposure:.0f}</td><td class="num">{snr:.1f}</td>'
                     f'<td><a href="#{anchor}">View plots ↗</a></td><td>{downloads}</td></tr>')
@@ -157,6 +177,7 @@ def write_report(run_directory, *, generation_error=None):
         association = result.get('target', {}).get('association')
         notice = ('<p class="note">Target identity is unverified: extraction used the nominal acquisition position.</p>'
                   if association not in {'historical_aperture', 'operator_selected'} else '')
+        if pair:notice+='<p class="qc-status-bad">'+escape(status_text(pair))+'</p>'
         if result.get('status')=='PROVISIONAL':
             notice+='<p class="qc-status-bad">Provisional flux; science wavelengths unvalidated. '+escape(result.get('interpretation',''))+'</p>'
         if result.get('valid_flux_fraction',1.) < .8:

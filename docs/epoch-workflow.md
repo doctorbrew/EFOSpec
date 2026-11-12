@@ -60,7 +60,11 @@ gets a new viewer filename, while existing viewer links keep working.
 Spatial-profile figures show only the data before subtraction and the saved
 PypeIt sky model in three vertically stacked wavelength bins. Successful and
 failed-review profiles share their renderer, colours, fonts and layout. Failed
-reviews retain candidate markers; an absent sky fit is explicitly labelled and
+reviews show only validated candidates or an explicitly selected aperture.
+Visible apertures are numbered consecutively from left to right: a single
+retained aperture is always C1. The original candidate identifiers, selection
+and evidence remain unchanged in provenance, with an explicit display-label map.
+An absent sky fit is explicitly labelled and
 never replaced with a zero-valued model curve. The curves use identical native
 pixels, with linear electron units. The spatial degree comes from the saved
 fit; no new polynomial is fitted to the sums. Model curves stop at the common
@@ -331,8 +335,11 @@ hash checks. Raw data and the preserved legacy checkout were outside deletion sc
   remain labelled arc-only; their wavelength status accompanies the applied response.
 - Missing/failed standards never trigger an archived-response fallback. Counts from
   a successfully extracted standard survive a response-fit failure.
-- New flux delivery currently supports Gr11/Gr13 Free only. Filtered and red work
-  stays in the separate diagnostic routes; no filtered response substitutes for Free.
+- New nightly reductions include Gr11/Gr13 Free/GG495 and Gr16/OG530 native
+  routes. Counts survive response failures; Gr16 retains counts and response
+  diagnostics pending independent red-wavelength/flexure validation. Remaining
+  checks appear per exposure in the CLI, Qt Source review and nightly log.
+  No filtered response substitutes for Free. See [integration details](daily-standard-calibration.md#nightly-integration-12-november-2026).
 - Archive-grid reviewed recipes fail explicitly in the native route: they require
   new native geometry review, including previously identified C2/C3 sources.
 - The Calibration section shows actual standard exposures, response downloads and

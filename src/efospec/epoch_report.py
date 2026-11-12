@@ -52,12 +52,12 @@ class EpochPage:
         path.resolve().relative_to(self.root)
         return 'data:'+mime+';base64,'+base64.b64encode(path.read_bytes()).decode('ascii')
 
-    def download(self, path, label):
+    def download(self, path, label, *, filename=None):
         if not path.is_file():
             return ''
         mime = {'.json':'application/json', '.csv':'text/csv', '.asci':'text/plain',
                 '.log':'text/plain', '.pdf':'application/pdf'}.get(path.suffix, 'application/octet-stream')
-        return f'<a download="{_text(path.name)}" href="{self.data(path, mime)}">{_text(label)}</a>'
+        return f'<a download="{_text(filename or path.name)}" href="{self.data(path, mime)}">{_text(label)}</a>'
 
     def figure(self, path, title, *, full_width=False, aspect_ratio=None):
         if not path or not path.is_file():
@@ -102,6 +102,8 @@ class EpochPage:
         return f' · {seconds:g} s'
 
     def spectra(self, run_dir, run, *, id_prefix='spectrum'):
+        from .telluric_products import selected_pairs,overlay_record,status_text
+        pairs=selected_pairs(run_dir)
         records = [self.read(p) for p in sorted((run_dir/'style-preview').glob('FitSpectrum_*.json'))]
         frames = {Path(f['path']).name: f for f in self.read(run_dir.parent/'observing-log.json').get('frames', [])}
         sections = []; section_order = []
@@ -112,6 +114,15 @@ class EpochPage:
                 Path(p).name == product.name and h == digest for p, h in r.get('input_sha256', {}).items())]
             record = matches[-1] if matches else {}
             outputs = [run_dir/'style-preview'/Path(p).name for p in record.get('outputs', [])]
+            pair=pairs.get(product.name);telluric_notice=''
+            if pair:
+                overlay=overlay_record(pair)
+                if overlay:
+                    record=overlay;outputs=[Path(p) for p in overlay['outputs']]
+                else:
+                    telluric_notice='<p class="qc-status-bad">Before/after telluric plot has not been generated.</p>'
+                telluric_notice+='<p class="qc-status-bad">'+_text(status_text(pair))+'</p>'
+                telluric_notice+='<p class="caption">Both reductions use the same flux scale. Shaded atmospheric regions are withheld from the corrected product.</p>'
             title = ' · '.join(filter(None, [result.get('object', 'Unknown'), result.get('grism'), result.get('slit')]))
             title += self.exposure_time(result, frames)
             cards = []
@@ -119,6 +130,12 @@ class EpochPage:
                 images = [p for p in outputs if p.name.startswith(prefix) and p.suffix == '.jpg']
                 cards.append(self.figure(images[0] if len(images) == 1 else None, title+' / '+name))
             downloads = ' · '.join(filter(None, [self.download(product, 'FITS'), self.download(product.with_suffix('.asci'), 'ASCII')]))
+            if pair:
+                downloads=' · '.join(self.download(Path(pair[key]),label,
+                    filename=Path(pair[key]).stem+suffix+Path(pair[key]).suffix)
+                    for key,label,suffix in [('uncorrected_product','Before telluric FITS','_before_telluric'),
+                        ('uncorrected_ascii','Before telluric ASCII','_before_telluric'),
+                        ('product','After telluric FITS','_after_telluric'),('ascii','After telluric ASCII','_after_telluric')])
             association = result.get('target', {}).get('association')
             identity = '' if association in {'historical_aperture', 'operator_selected'} else (
                 ' · <span title="The extracted detector trace has not been independently matched to the named target; extraction itself succeeded.">Target identity unverified</span>')
@@ -130,18 +147,23 @@ class EpochPage:
             section_order.append(source_order(result))
             sections.append(f'<article class="exposure" id="{_text(id_prefix)}-{i}"><h3>{_text(title)}</h3>'
                 f'<p class="caption">{_text(result.get("date_obs", ""))} UTC{identity} · {downloads}</p>'
+                +telluric_notice+
                 f'<div class="plots">{"".join(cards)}</div></article>')
-        for result in run.get('review_counts',[]):
+        for i, result in enumerate(run.get('review_counts',[])):
             for path,digest in result['product_sha256'].items():
                 if sha256(Path(path))!=digest:raise ValueError('review counts changed')
             plots=Path(result['product']).parent.parent/'plots'
-            title=' · '.join(filter(None, [result['object'], result['setup']['grism'], result['setup'].get('slit'), 'Review counts']))
+            title=' · '.join(filter(None, [result['object'], result['setup']['grism'], result['setup'].get('filter'), result['setup'].get('slit'), 'Review counts']))
             title += self.exposure_time(result, frames)
             links=' · '.join([self.download(Path(result['product']),'Counts FITS'),self.download(Path(result['ascii']),'Counts ASCII')])
             section_order.append(source_order(result))
-            sections.append('<article class="exposure"><h3>'+_text(title)+'</h3>'
-                '<p class="qc-status-bad">Wavelength validation failed; unshifted arc wavelengths, no flux calibration.</p>'
-                '<p>'+links+'</p><div class="plots">'+''.join(self.figure(plots/(kind+'.png'),title+' / '+kind)
+            pending=result.get('pending_checks', ['Wavelength validation failed; unshifted arc wavelengths, no flux calibration.'])
+            from .review_handoff import failures
+            handoff=next((item for item in failures(run) if item.get('path')==result['raw']), None)
+            sections.append(f'<article class="exposure" id="{_text(id_prefix)}-counts-{i}"><h3>'+_text(title)+'</h3>'
+                '<p class="qc-status-bad">'+_text(result.get('delivery_status','Review counts'))+'. '+_text(' '.join(pending))+'</p>'
+                +(self.failure_notice(run_dir,handoff) if handoff else '')
+                +'<p>'+links+'</p><div class="plots">'+''.join(self.figure(plots/(kind+'.png'),title+' / '+kind)
                     for kind in ('counts','traces','profiles'))+'</div></article>')
         for group in ('errors', 'skipped'):
             for i, item in sorted(enumerate(run.get(group, [])), key=lambda pair: source_order(pair[1])):
@@ -172,16 +194,16 @@ class EpochPage:
                 raw = Path(result.get('raw', result.get('path', ''))).name
                 reason = {'sky_flexure_unreliable':'Sky-line check', 'source_selection_required':'Choose source',
                           'background_support_required':'Review background',
+                          'native_calibration_not_implemented':'Calibration route unavailable',
                           'unsupported_setup':'Unsupported setup'}.get(result.get('code'), label)
                 outcomes[raw] = f'<a href="#spectrum-{i}">Spectrum ↓</a>' if group == 'results' else f'<a class="qc-status-bad" href="#spectrum-{group}-{i}">{_text(reason)} ↓</a>'
         for standard in run.get('standards', []):
             raw = Path(standard['frame']['path']).name
             outcomes.setdefault(raw, 'Standard counts; response unvalidated')
-        for result in run.get('review_counts',[]):
+        for i,result in enumerate(run.get('review_counts',[])):
             raw = Path(result['raw']).name
-            index = next((i for i, e in enumerate(run.get('errors', [])) if Path(e.get('path', '')).name == raw), None)
-            outcomes[raw] = (f'<a class="qc-status-bad" href="#spectrum-errors-{index}">Review counts; wavelength unvalidated ↓</a>'
-                             if index is not None else '<span class="qc-status-bad">Review counts; wavelength unvalidated</span>')
+            label=result.get('delivery_status','Review counts; wavelength unvalidated')
+            outcomes[raw] = f'<a class="qc-status-bad" href="#spectrum-counts-{i}">{_text(label)} ↓</a>'
         for i,result in enumerate((provisional or {}).get('results',[])):
             outcomes[Path(result['raw']).name]=f'<a class="qc-status-bad" href="#rescue-spectrum-{i}">Provisional flux; wavelength unvalidated ↓</a>'
         rows = []
@@ -218,8 +240,9 @@ class EpochPage:
                 + ('<p class="caption">'+_text(note)+'</p>' if note else ''))
 
     def problems(self, run, run_dir=None):
+        from .review_handoff import failures
         groups = {}
-        for item in run.get('errors', [])+run.get('skipped', []):
+        for item in failures(run):
             code = item.get('code', 'unknown')
             groups.setdefault(code, []).append(item)
         rows = []
@@ -538,12 +561,33 @@ class EpochPage:
         associations = [[_text(r['object']), _text(r['sensitivity'].get('standard_name','')),
                          _text(Path(r['sensitivity']['standard_raw']).name)] for r in run.get('results', [])]
         current = calibration_overview(run)
+        from .telluric_products import selected_pairs,status_text
+        pairs=selected_pairs(revision/'reduction')
+        if pairs:
+            current+='<h3>Paired telluric reductions</h3><p>The response scope below describes the original reduction. '
+            current+='The Spectra section also retains separate atmospheric corrections with both downloads and overlaid curves.</p>'
+            current+=_table(['Transient','Corrected bands','Transfer status'],[
+                [_text(r['object']),_text(', '.join(pairs[Path(r['product']).name]['bands'])),
+                 '<span class="qc-status-bad">'+_text(status_text(pairs[Path(r['product']).name]))+'</span>']
+                for r in sorted(run['results'],key=source_order) if Path(r['product']).name in pairs])
+            current+='<p>'+self.download(Path(next(iter(pairs.values()))['manifest']),'Telluric fits and transfer checks')+'</p>'
         current += (_table(['Standard','UTC start','Setup','Status','Download'],responses)
                     if responses else '<p>No contemporary response was built; see failed exposures.</p>')
         current += _table(['Spectrum','Reference standard','Observed standard exposure'], associations)
         current += ('<p>'+str(len(run.get('held_out',[])))+' held-out exposure transfers recorded; '
                     +str(len(run.get('held_out_errors',[])))+' transfer checks failed. '
                     'These test internal repeatability, not an independent absolute scale.</p>')
+        transfers=[]
+        for check in run.get('held_out',[]):
+            setup=check['setup'];ratio=check.get('median_ratio')
+            bands='; '.join(f'{b["band_air_angstrom"][0]}–{b["band_air_angstrom"][1]} Å: {b["median_ratio"]:.3f}'
+                           for b in check.get('continuum_bands',[]) if b.get('median_ratio') is not None)
+            transfers.append([_text(setup['grism']+' / '+setup['filter']+' / '+setup['slit']),
+                _text(Path(check['training_raw']).name),_text(Path(check['raw']).name),
+                'Unavailable' if ratio is None else f'{ratio:.3f}',_text(bands)])
+        if transfers:
+            current+='<h3>Independent-exposure response checks</h3><p>Recovered flux divided by the physical standard reference; unity is closure. Slit losses and transparency can change these ratios.</p>'
+            current+=_table(['Setup','Response exposure','Test exposure','Median ratio','Continuum bands'],transfers)
         return current+historical
 
     def archive(self, revision):
@@ -620,16 +664,23 @@ EPOCH_CSS = """
     """
 
 
-def build_epoch_page(night, project_root='.'):
+def build_epoch_page(night, project_root='.', *, revision_dir=None):
     """Rebuild presentation only; saved science products and recipes stay unchanged."""
     if date.fromisoformat(night).isoformat() != night:
         raise ValueError('observing date must be YYYY-MM-DD')
     root = Path(project_root).resolve()/'runs'/night
     page = EpochPage(root)
-    pointer = page.read(root/'nightly/current.json')
-    revision = (root/'nightly'/pointer.get('revision', '')).resolve()
-    if pointer.get('night') != night or revision.parent != root/'nightly':
-        raise ValueError('invalid dated revision pointer')
+    if revision_dir is None:
+        pointer = page.read(root/'nightly/current.json')
+        revision = (root/'nightly'/pointer.get('revision', '')).resolve()
+        if pointer.get('night') != night or revision.parent != root/'nightly':
+            raise ValueError('invalid dated revision pointer')
+        destination = root/'index.html'
+    else:
+        revision=Path(revision_dir).resolve()
+        if not any(revision.is_relative_to(root/sub) for sub in ('nightly','QC')):
+            raise ValueError('review revision must belong to this observing night')
+        destination=revision/'index.html'
     state = page.read(revision/'night.json')
     if state.get('night') != night:
         raise ValueError('workflow belongs to a different observing date')
@@ -702,7 +753,7 @@ def build_epoch_page(night, project_root='.'):
     if redshift_content:
         content.insert(4, redshift_content)
     from .iraf_report import comparison_section, write_comparison_page
-    iraf_page=EpochPage(root)
+    iraf_page=EpochPage(root if revision_dir is None else revision)
     iraf_content=comparison_section(iraf_page,revision)
     page.warnings.extend(iraf_page.warnings)
     if iraf_content:
@@ -718,6 +769,8 @@ def build_epoch_page(night, project_root='.'):
     warning = '<p class="note">'+_text('; '.join(page.warnings))+'</p>' if page.warnings else ''
     scope = ('<p class="caption">Selected targets: '+_text(', '.join(state['targets']))
              +'. Other exposures are listed for context; earlier results remain in Reduction Archive.</p>') if state.get('targets') else ''
+    if revision_dir is not None:
+        scope += '<p class="caption">Review of processing revision '+_text(revision.name)+'. The selected nightly reduction is unchanged.</p>'
     html = f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Nightly LOG - NTT/EFOSC2 (ePESSTO+) · {night} · EFOSpec</title><style>{CSS}{EPOCH_CSS}{HOST_CSS}</style></head><body><main>
 <header class="masthead"><span class="brand">Nightly LOG - NTT/EFOSC2 (ePESSTO+)</span><span class="eyebrow">EFOSC2 · {night}</span></header>
@@ -727,7 +780,7 @@ def build_epoch_page(night, project_root='.'):
 {warning}{sections}<footer>EFOSpec · {night} · Saved figures and measurements</footer></main>
 <dialog aria-label="Enlarged figure"><button type="button">Close</button><img alt=""></dialog><script>{SCRIPT}</script></body></html>'''
     from .report_assets import write_report_bundle
-    bundle=write_report_bundle(root/'index.html',html)
+    bundle=write_report_bundle(destination,html)
     return dict(bundle,revision=revision.name,embedded_figures=page.images,warnings=page.warnings)
 
 
@@ -736,10 +789,10 @@ def build_filtered_page(run_dir):
     root = Path(run_dir).resolve(); page = EpochPage(root)
     run = page.read(root/'run.json')
     if run.get('method') not in {'native_filtered_standard_extraction','native_red_counts_diagnostic',
-                               'native_optical_counts_diagnostic'} or run.get('status') == 'running':
+                               'native_optical_counts_diagnostic','native_nightly_counts_diagnostic'} or run.get('status') == 'running':
         raise ValueError('counts report requires a completed separate native run')
     red=run['method']=='native_red_counts_diagnostic'
-    purpose=('Red spectra' if red else 'Wavelength review counts' if
+    purpose=('Nightly calibration review' if run['method']=='native_nightly_counts_diagnostic' else 'Red spectra' if red else 'Wavelength review counts' if
              run['method']=='native_optical_counts_diagnostic' else 'Filtered standards')
     roles={f['path']:f['role'] for f in page.read(root/'inputs.json').get('frames',[])}
     night = date.fromisoformat(run['night']).isoformat()
@@ -764,15 +817,16 @@ def build_filtered_page(run_dir):
         rows.append([_text(result['object']), _text(result['date_obs']),
                      'Science' if roles.get(result['raw'])=='science' else 'Standard',
                      _text(result['setup']['grism']+' / '+result['setup']['filter']), _text(result['setup']['slit']),
-                     'Counts extracted; <span class="qc-status-bad">flux unvalidated</span>'])
+                     _text(result.get('delivery_status','Counts extracted; flux unvalidated'))])
         links = [page.download(Path(result[key]), label) for key, label in
                  [('product','Counts FITS'), ('ascii','Counts ASCII'), ('native_spec1d','PypeIt spec1d')]]
         links += [page.download(p, p.suffix[1:].upper()+' figure') for p in sorted(plots.glob('FitQC_*_counts.*'))
                   if p.suffix in {'.pdf', '.jpg'}]
         spectra.append('<article class="exposure"><h3>'+title+'</h3><p>'+' · '.join(links)+'</p>'
             +page.figure(plots/'counts.png', result['object']+' / Extracted counts')+'</article>')
+        pending=result.get('pending_checks',['Target identity unverified; exposure-specific flexure unmeasured.'])
         qc.append('<article class="exposure"><h3>'+title+'</h3>'
-            '<p class="qc-status-bad">Target identity unverified; exposure-specific flexure unmeasured.</p>'
+            '<p class="qc-status-bad">'+_text(' '.join(pending))+'</p>'
             '<div class="qc-plots">'+page.figure(plots/'science.png',result['object']+' / 2D Spectrum')
             +page.figure(plots/'traces.png',result['object']+' / Sky-subtracted 2D spectrum')
             +page.figure(plots/'profiles.png',result['object']+' / Spatial Profile and Trace Identification',full_width=True)
@@ -795,7 +849,7 @@ def build_filtered_page(run_dir):
     bodies = [_table(['Source','UTC','Role','Setup','Slit','Outcome'],rows), ''.join(spectra), issues,
               ''.join(qc), _table(['Exposure','Spatial degree','Minimum samples per side','Reduced chi2','Details'],backgrounds),
               ''.join(calibrations), '<p>Earlier reductions and the main nightly report remain separate and unchanged.</p>',
-              '<p>Separate native counts reduction; no accepted exposure-specific flexure or flux calibration.</p><p>'
+              '<p>Native counts; no flux calibration. Each exposure records its wavelength checks.</p><p>'
               +page.download(root/'run.json','Run manifest')+' · '+page.download(root/'setup-checks.json','Setup checks')+'</p>']
     sections = ''.join(f'<section class="target" id="{a}"><h2>{t}</h2>{b}</section>'
                        for (a,t),b in zip(titles,bodies))
@@ -803,7 +857,7 @@ def build_filtered_page(run_dir):
 <title>Nightly LOG - NTT/EFOSC2 (ePESSTO+) · {night} · {purpose}</title><style>{CSS}{EPOCH_CSS}</style></head><body><main>
 <header class="masthead"><span class="brand">Nightly LOG - NTT/EFOSC2 (ePESSTO+)</span><span class="eyebrow">EFOSC2 · {night}</span></header>
 <div class="intro"><div><span class="eyebrow">{purpose}</span><h1>{night}</h1></div><p>{len(run['results'])} extracted · {len(run['errors'])} failed</p></div>
-<p class="qc-status-bad">Experimental arc-calibrated counts. Flux calibration and exposure-specific flexure remain unvalidated.</p>
+<p class="qc-status-bad">Experimental counts. Review the remaining calibration checks for each exposure.</p>
 <nav class="tabs" aria-label="Report sections">{''.join(f'<a href="#{a}">{t}</a>' for a,t in titles)}</nav>
 {sections}<footer>EFOSpec · {night} · {purpose}</footer></main>
 <dialog aria-label="Enlarged figure"><button type="button">Close</button><img alt=""></dialog><script>{SCRIPT}</script></body></html>'''
@@ -815,8 +869,9 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description='Rebuild one portable epoch report from saved results')
     parser.add_argument('night')
     parser.add_argument('--project-root', default=str(Path(__file__).resolve().parents[2]))
+    parser.add_argument('--revision', help='Render this saved dated revision beside its own files without changing the selected nightly log')
     args = parser.parse_args(argv)
-    print(json.dumps(build_epoch_page(args.night, args.project_root), indent=2))
+    print(json.dumps(build_epoch_page(args.night, args.project_root, revision_dir=args.revision), indent=2))
 
 
 if __name__ == '__main__':

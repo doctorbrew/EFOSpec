@@ -89,7 +89,8 @@ def plot_failure_profiles(run, *, review=None):
         if review is not None: output=review.parent/'profiles'/Path(error['path']).stem
         fig,record=draw_review_profiles(images,result, selection=choice.get('selection'),
             candidate_notes=choice.get('candidate_notes'), supplemental_traces=choice.get('supplemental_traces', []),
-            hidden_candidates=choice.get('hidden_candidates', []), candidate_labels=choice.get('candidate_labels'))
+            hidden_candidates=choice.get('hidden_candidates', []), candidate_labels=choice.get('candidate_labels'),
+            candidate_evidence=choice.get('candidate_evidence'))
         save_review_profile(fig,output,result['object']);plt.close(fig)
         assert sha256(path)==before
         record.update(parent_run_sha256=sha256(run/'run.json'),diagnostic_file=str(path),

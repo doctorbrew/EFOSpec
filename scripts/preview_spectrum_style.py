@@ -34,6 +34,8 @@ from efospec.qa import compare_legacy, read_flux
 from efospec.profile_plot import draw_spatial_profiles
 from efospec.run_paths import resolve_result_paths
 from efospec.image_display import image_normalization
+from efospec.telluric_products import selected_pairs, read_overlay
+from efospec.figure_style import COLORS
 
 
 # White mixing keeps the line opaque while making xkcd:red a pastel hue.
@@ -51,25 +53,44 @@ def mark_sky_lines(ax):
                        alpha=0.65, zorder=0.5)
 
 
-def draw_spectrum(ax, result, wave, bands, comparison=None, legacy_data=None):
+def draw_spectrum(ax, result, wave, bands, comparison=None, legacy_data=None, telluric=None):
     display_label = result['object'].replace('_', r'\_')
     joint = bool(result.get('joint'))
     uncertainty = ax.fill_between(
         wave, (bands[0]-bands[3])/1e-16, (bands[0]+bands[3])/1e-16,
         color=PYPEIT_COLOUR, alpha=0.18, linewidth=0, zorder=1,
-        label=(r'Conditional $\pm 1\sigma$' if joint else r'Propagated $\pm 1\sigma$'))
+        label=(r'Before: $\pm 1\sigma$' if telluric else r'Conditional $\pm 1\sigma$' if joint else r'Propagated $\pm 1\sigma$'))
     if comparison:
         old_wave, old_bands = legacy_data
         legacy, = ax.plot(old_wave, old_bands[0]/1e-16, color=IRAF_COLOUR,
                          linewidth=1.1, zorder=2, label='IRAF')
     native, = ax.plot(wave, bands[0]/1e-16, color=PYPEIT_COLOUR,
-                      linewidth=1.5, zorder=3, label='Joint fixed profiles' if joint else
+                      linewidth=1.5, zorder=3, label='Before telluric' if telluric else 'Joint fixed profiles' if joint else
                       'PypeIt boxcar' if result.get('primary_extraction')=='boxcar' else 'PypeIt')
+    telluric_handles=[]
+    if telluric:
+        from efospec.telluric_model import BANDS
+        corrected=telluric['bands'];applied=telluric['applied']
+        after,=ax.plot(wave,corrected[0]/1e-16,color=COLORS[0],ls='--',lw=1.7,zorder=4,
+            label='After telluric (review)' if telluric['review'] else 'After telluric (partial)')
+        error=ax.fill_between(wave,(corrected[0]-corrected[3])/1e-16,(corrected[0]+corrected[3])/1e-16,
+            where=applied,color=COLORS[0],alpha=.15,lw=0,zorder=1,label=r'After: propagated $\pm 1\sigma$')
+        telluric_handles=[after,error]
+        withheld=False
+        for name,(lo,hi) in BANDS.items():
+            if name not in telluric['qualified_bands'] and wave.min()<hi and wave.max()>lo:
+                ax.axvspan(lo,hi,color='.5',alpha=.12,zorder=0);withheld=True
+        if withheld:telluric_handles.append(Patch(facecolor='.5',alpha=.2,label='Telluric withheld'))
     good = np.isfinite(wave) & np.isfinite(bands[0]) & np.isfinite(bands[3])
     if not good.any():
         raise ValueError(f"no finite spectrum to plot: {result['product']}")
     lower, upper = (bands[0][good]-bands[3][good])/1e-16, (bands[0][good]+bands[3][good])/1e-16
     low, high = min(0., float(lower.min())), float(upper.max())
+    if telluric:
+        supported=np.isfinite(corrected[0])&np.isfinite(corrected[3])
+        if supported.any():
+            low=min(low,float(np.min((corrected[0][supported]-corrected[3][supported])/1e-16)))
+            high=max(high,float(np.max((corrected[0][supported]+corrected[3][supported])/1e-16)))
     ax.set_xlim(np.floor(wave[good].min()/100)*100, np.ceil(wave[good].max()/100)*100)
     if comparison:
         # Include every finite legacy sample visible on this wavelength axis.
@@ -90,11 +111,12 @@ def draw_spectrum(ax, result, wave, bands, comparison=None, legacy_data=None):
     suffix=' / Provisional wavelengths' if result.get('status')=='PROVISIONAL' else ''
     ax.set_title(rf"{display_label} (EFOSC2 / {result['grism']} $\cdot$ {result['exptime_s']:.0f}\,s)"+suffix,
                  loc='center', pad=17, fontsize=28)
-    handles = [native, uncertainty] + ([legacy] if comparison else [])
-    styled_legend(ax, handles=handles, loc='upper right', ncol=len(handles),
-                  columnspacing=1.1, borderpad=0.55)
+    handles = [native, uncertainty] + telluric_handles + ([legacy] if comparison else [])
+    legend_options=dict(loc='upper center',bbox_to_anchor=(.5,-.24)) if telluric else dict(loc='upper right')
+    styled_legend(ax, handles=handles, ncol=2 if telluric else len(handles),
+                  columnspacing=1.1, borderpad=0.55,**legend_options)
     ax.text(0.5, 0.035,
-            rf"Median SNR = {result['median_native_snr_4000_8500']:.1f} per pixel",
+            ('Original ' if telluric else '')+rf"Median SNR = {result['median_native_snr_4000_8500']:.1f} per pixel",
             transform=ax.transAxes, color='0.35', fontsize=18, ha='center', va='bottom')
     mark_sky_lines(ax)
 
@@ -239,10 +261,14 @@ def find_comparison(result, run, legacy_root=None):
     return compare_legacy(result, Path(raw_path).parent) if raw_path else None
 
 
-def render_spectrum(result, run, *, no_legacy=False, legacy_root=None, suffix=""):
+def render_spectrum(result, run, *, no_legacy=False, legacy_root=None, suffix="", telluric_pair=None):
     result = resolve_result_paths(result, run)
     comparison = None if no_legacy else find_comparison(result, run, legacy_root)
     inputs = [Path(result['product'])]
+    telluric=None
+    if telluric_pair:
+        telluric=read_overlay(telluric_pair)
+        inputs.extend([Path(telluric_pair['product']),Path(telluric_pair['manifest'])])
     display = {}
     display_path = Path(run)/'profile-display.json'
     if display_path.exists():
@@ -260,15 +286,19 @@ def render_spectrum(result, run, *, no_legacy=False, legacy_root=None, suffix=""
     inputs.extend(trace_paths)
     before = {str(p): sha256(p) for p in inputs}
     wave, bands, _ = read_flux(inputs[0])
+    if telluric:
+        bands=bands.copy();bands[:,~telluric['original_valid']]=np.nan
     legacy_data = None
     if comparison:
         old_wave, old_bands, _ = read_flux(Path(comparison['path']))
         legacy_data = old_wave, old_bands
 
-    stem = run / 'style-preview' / f"FitSpectrum_{result['object']}_{result['grism']}_air{suffix}"
-    fig, ax = plt.subplots(figsize=(13, 6.8))
-    fig.subplots_adjust(left=0.115, right=0.985, bottom=0.16, top=0.88)
-    draw_spectrum(ax, result, wave, bands, comparison, legacy_data)
+    plot_dir=Path(telluric_pair['plots_dir']) if telluric_pair else run/'style-preview'
+    plot_dir.mkdir(parents=True,exist_ok=True)
+    stem = plot_dir / f"FitSpectrum_{result['object']}_{result['grism']}_air{suffix}"
+    fig, ax = plt.subplots(figsize=(13, 8.6 if telluric else 6.8))
+    fig.subplots_adjust(left=0.115, right=0.985, bottom=0.34 if telluric else 0.16, top=0.88)
+    draw_spectrum(ax, result, wave, bands, comparison, legacy_data,telluric=telluric)
     pdf, jpg = savefig_light(fig, stem, dpi_pdf=300, dpi_jpg=300)
     record = {
         'product': str(Path(result['product']).resolve()),
@@ -296,6 +326,7 @@ def render_spectrum(result, run, *, no_legacy=False, legacy_root=None, suffix=""
                     'legacy': to_hex(IRAF_COLOUR)},
         'pastel_definition': '60 percent xkcd:red mixed with 40 percent white',
         'legacy_comparison': comparison,
+        'telluric_pair':telluric_pair,
         'target_association': result['target']['association'],
         'display_limits': {'wavelength_air_angstrom': list(ax.get_xlim()),
                            'flux_in_1e_minus16_cgs': list(ax.get_ylim())},
@@ -312,9 +343,9 @@ def render_spectrum(result, run, *, no_legacy=False, legacy_root=None, suffix=""
     plt.close(fig)
 
     combined, (spectral_ax, trace_ax) = plt.subplots(
-        2, 1, figsize=(13, 11.5), sharex=True, gridspec_kw={'height_ratios': [1.25, 1.]})
-    combined.subplots_adjust(left=0.115, right=0.985, top=0.93, bottom=0.10, hspace=0.40)
-    draw_spectrum(spectral_ax, result, wave, bands, comparison, legacy_data)
+        2, 1, figsize=(13, 14. if telluric else 11.5), sharex=True, gridspec_kw={'height_ratios': [1.25, 1.]})
+    combined.subplots_adjust(left=0.115, right=0.985, top=0.93, bottom=0.10, hspace=1. if telluric else 0.40)
+    draw_spectrum(spectral_ax, result, wave, bands, comparison, legacy_data,telluric=telluric)
     spectral_ax.set_xlabel('')
     spectral_ax.tick_params(axis='x', which='both', bottom=True, labelbottom=True)
     wavelength_limits = spectral_ax.get_xlim()
@@ -356,6 +387,7 @@ def render_spectrum(result, run, *, no_legacy=False, legacy_root=None, suffix=""
     record['input_files_unchanged'] = all(sha256(p) == before[str(p)] for p in inputs)
     if not record['input_files_unchanged']:
         raise ValueError('input files changed while rendering')
+    record['output_sha256']={p:sha256(Path(p)) for p in record['outputs']}
     # A repeated-target stem contains decimal slit widths (e.g. slit1.5).
     # Append the extension: with_suffix would truncate the identifying suffix.
     stem.with_name(stem.name+'.json').write_text(json.dumps(record, indent=2)+'\n')
@@ -404,6 +436,7 @@ def main():
     parser.add_argument("--target", help="Optional target; default: all exposures")
     parser.add_argument('--profiles-only',action='store_true',help='Refresh only saved spatial-profile plots')
     parser.add_argument('--plot-directory',type=Path,help='Existing plot directory to refresh with --profiles-only')
+    parser.add_argument('--telluric-only',action='store_true',help='Render selected before/after pairs into their new telluric revision')
     legacy = parser.add_mutually_exclusive_group()
     legacy.add_argument("--legacy", type=Path, help="Optional directory of comparison spectra")
     legacy.add_argument("--no-legacy", action="store_true", help="Plot only PypeIt and its uncertainty")
@@ -412,7 +445,9 @@ def main():
         parser.error('--plot-directory requires --profiles-only')
     run = args.run.resolve()
     manifest = json.loads((run / "run.json").read_text())
-    matches = [r for r in manifest["results"] if not args.target or r["object"] == args.target]
+    pairs=selected_pairs(run)
+    matches = [r for r in manifest["results"] if (not args.target or r["object"] == args.target)
+               and (not args.telluric_only or Path(r['product']).name in pairs)]
     if not matches:
         parser.error("no matching reduced exposures")
     counts = Counter((r["object"], r["grism"]) for r in manifest['results'])
@@ -425,7 +460,7 @@ def main():
         if counts[(result["object"], result["grism"])] > 1:
             suffix = "_" + Path(result["product"]).stem
         records.append(render_spectrum(result, run, no_legacy=args.no_legacy or args.legacy is None,
-                                       legacy_root=args.legacy, suffix=suffix))
+                                       legacy_root=args.legacy, suffix=suffix,telluric_pair=pairs.get(Path(result['product']).name)))
     from efospec.report import write_report
     plot_directory=args.plot_directory or run/'style-preview'
     all_records = [json.loads(path.read_text())

@@ -37,6 +37,12 @@ def test_sky_replay_recovers_the_original_selection_and_rejects_changed_defaults
     assert sha256(images)==before
     with np.load(record['sidecar']) as sidecar:
         np.testing.assert_array_equal(sidecar['sky_input_mask'],original)
+    # A different trace order must still fail the strict replay check; matching
+    # rounded source names alone is insufficient to reproduce the sky mask.
+    result['processing']['trace_geometry']['trace_polynomial_degree']=5
+    with pytest.raises(ValueError,match='did not reproduce'):
+        recover_sky_selection(result,run)
+    assert sha256(images)==before
     manifest['source_sha256']['pypeit_adapter.py']='0'*64
     (run/'run.json').write_text(json.dumps(manifest))
     with pytest.raises(ValueError,match='defaults changed'):recover_sky_selection(result,run)

@@ -67,6 +67,10 @@ def test_full_raw_reduction_without_legacy_access(synthetic_raw_night,tmp_path,m
     result=reduce_pair(root,science,standard,out,render_report=False)
     assert len(result['results'])==1 and not result['errors']
     row=result['results'][0]
+    standard_sky=json.loads((out/'standard/sky-check.json').read_text())
+    assert standard_sky['raw']==str(standard)
+    assert standard_sky['policy']!='raw_arc_only; science sky check required'
+    assert standard_sky['lines']  # Standards must attempt the same independent check.
     assert row['sky_flexure']['held_out_6363_pass']
     assert row['processing']['bias'] and row['processing']['flat']
     with fits.open(row['product']) as h:

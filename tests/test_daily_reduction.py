@@ -47,11 +47,56 @@ def test_changed_inputs_cannot_be_applied(tmp_path,filename):
     std=entry(tmp_path);(tmp_path/filename).write_text('changed')
     with pytest.raises(ValueError,match='changed'):select_response(frame(),[std])
 
+@pytest.mark.parametrize('grism,filter_name,route', [('Gr13','GG495','optical'), ('Gr16','OG530','red')])
+def test_nightly_extracts_before_response_selection_and_retains_counts_on_failure(
+        tmp_path, monkeypatch, grism, filter_name, route):
+    """Exercise lifecycle independently of the expensive photon/calibration tests."""
+    from efospec import daily_reduction as daily
+    frames = []
+    for role, name in [('standard_candidate','Standard'), ('science','Transient')]:
+        f=frame(); f.update(path=str(tmp_path/(name+'.fits')), role=role, sha256=name, issues=[])
+        f['setup'].update(grism=grism, filter=filter_name)
+        f['metadata'].update(OBJECT=name)
+        frames.append(f)
+    monkeypatch.setattr(daily, 'inventory', lambda *a: dict(frames=frames,errors=[],identity_conflicts=[]))
+    monkeypatch.setattr(daily, 'assess_native_readiness', lambda *a: dict(invalid_inputs=[],exposures=[
+        dict(path=f['path'],setup=f['setup'],raw_calibrations={}) for f in frames]))
+    monkeypatch.setattr(daily, 'calibration_key', lambda a: 'setup')
+    monkeypatch.setattr(daily, 'validate_associations', lambda *a: None)
+    attempted=[]
+    def prepare(f, associations, directory, position, **kwargs):
+        attempted.append((f['role'], kwargs['red_counts_only']))
+        return dict(frame=f,engine=dict(objects={}),sky={},directory=directory,
+                    bundle=dict(directory=directory,record={}))
+    def counts(p, directory):
+        product=directory/'counts.fits'; product.write_text('retained counts')
+        return dict(raw=p['frame']['path'],object=p['frame']['metadata']['OBJECT'],
+            setup=p['frame']['setup'],product=str(product),flux_calibrated=False,
+            product_sha256={str(product):sha256(product)}), []
+    monkeypatch.setattr(daily, 'prepare', prepare)
+    monkeypatch.setattr(daily, 'export_counts', counts)
+    monkeypatch.setattr(daily, 'fit_standard_response', lambda *a:
+        dict(status='reference_unavailable',error='physical reference unavailable'))
+    run=daily.reduce_daily(tmp_path,tmp_path/'new',night='2026-10-29',targets=['Transient'])
+    assert attempted == [('standard_candidate', route=='red'), ('science', route=='red')]
+    assert run['execution_status']=='partial' and not run['skipped'] and not run['results']
+    assert len(run['review_counts'])==len(run['counts'])==2
+    assert [e['stage'] for e in run['errors']]==['response_fit','response_selection']
+    for r in run['review_counts']:
+        assert Path(r['product']).read_text()=='retained counts'
+        assert r['pending_checks'] and not r['flux_calibrated']
+        assert r['route']==route
+    from efospec.review_handoff import failures
+    manifest=dict(review_counts=run['review_counts'],errors=[],skipped=[])
+    assert all(e['code']=='calibration_pending' for e in failures(manifest))
+
+
 from test_native_end_to_end import synthetic_raw_night
 
 
+@pytest.mark.parametrize('filter_name', ['Free','GG495'])
 def test_daily_raw_photons_preserve_flux_scale_and_include_unrequested_standard(
-        synthetic_raw_night,tmp_path,monkeypatch):
+        synthetic_raw_night,tmp_path,monkeypatch,filter_name):
     import builtins
     import io
     import numpy as np
@@ -60,6 +105,14 @@ def test_daily_raw_photons_preserve_flux_scale_and_include_unrequested_standard(
     from efospec import standard_reference
     from efospec.daily_reduction import reduce_daily
     root,science,standard=synthetic_raw_night
+    if filter_name!='Free':
+        import shutil
+        source=root; root=tmp_path/'filtered-raw';root.mkdir()
+        for path in source.glob('*.fits'):
+            dest=root/path.name;shutil.copyfile(path,dest)
+            with fits.open(dest,mode='update') as hdus:
+                hdus[0].header['HIERARCH ESO INS FILT1 NAME']=filter_name
+        science=root/science.name;standard=root/standard.name
     wave=np.arange(3000.,11001.,2.)
     def physical(frame,cache):
         return dict(name='SyntheticStandard',std_ra=0.,std_dec=0.,cal_file='synthetic-truth',
@@ -82,6 +135,8 @@ def test_daily_raw_photons_preserve_flux_scale_and_include_unrequested_standard(
     assert result['processing']['bias'] and result['processing']['flat']
     assert result['sensitivity']['standard_raw']==str(standard)
     assert result['sensitivity']['night']=='2024-11-14'
+    assert result['sensitivity']['setup']['filter']==filter_name
+    assert len(run['counts'])==2 and not run['review_counts']
     with fits.open(result['product']) as h:
         assert h[0].header['FLUXCAL']=='NATIVE' and h[0].header['WAVEMED']=='air'
         good=h['VALID'].data[0].astype(bool)
@@ -103,12 +158,12 @@ def test_failed_standard_prevents_science_export_without_archive_fallback(
         raise ValueError('standard background geometry rejected')
     monkeypatch.setattr(daily_reduction,'prepare',fail)
     run=daily_reduction.reduce_daily(root,tmp_path/'failed',night='2024-11-14',targets=['SyntheticSN'])
-    assert attempted==[str(standard)]
+    assert attempted==[str(standard), str(science)]
     assert not run['results'] and not run['standards']
     assert run['execution_status']=='failed'
     assert len(run['errors'])==2
-    assert run['errors'][1]['stage']=='response_selection'
-    assert 'no successful same-night' in run['errors'][1]['error']
+    assert run['errors'][1]['stage']=='native_extraction'
+    assert 'standard background geometry rejected' in run['errors'][1]['error']
     assert not list((tmp_path/'failed/products').iterdir())
 
 

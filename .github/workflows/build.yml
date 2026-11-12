@@ -50,6 +50,8 @@ jobs:
           python -m pip check
       - name: Install browser for workbench integration tests
         run: python -m playwright install --with-deps chromium
+      - name: Install atmospheric model for telluric integration tests
+        run: python -c "from efospec.telluric_model import Atmosphere; model=Atmosphere(); print(model.path, model.sha256)"
       - name: Record scientific versions
         run: |
           python -c "from importlib.metadata import version; print({p: version(p) for p in ['numpy', 'scipy', 'astropy', 'pypeit', 'matplotlib']})"

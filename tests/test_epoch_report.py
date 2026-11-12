@@ -38,6 +38,39 @@ def epoch_page(tmp_path):
     return tmp_path, root, product
 
 
+def test_pending_response_counts_show_actual_stage_and_direct_anchor(epoch_page):
+    from efospec.epoch_report import EpochPage
+    project, root, product=epoch_page
+    revision=root/'nightly/revision-1'; run=revision/'reduction'
+    ascii_path=product.with_suffix('.asci');ascii_path.write_text('saved counts')
+    record=dict(raw='/raw/science.fits',object='SN <test>',setup=dict(grism='Gr13',filter='GG495',slit='slit1.0'),
+        product=str(product),ascii=str(ascii_path),product_sha256={str(product):sha256(product)},
+        delivery_status='Counts extracted; flux calibration pending',
+        pending_checks=['response selection: no matching physical reference'])
+    manifest=dict(results=[],errors=[],skipped=[],review_counts=[record])
+    page=EpochPage(root)
+    html=page.spectra(run,manifest)+page.observations(revision,manifest)
+    assert 'Counts extracted; flux calibration pending' in html
+    assert 'no matching physical reference' in html and 'GG495' in html
+    assert 'Wavelength validation failed' not in html
+    assert 'id="spectrum-counts-0"' in html and 'href="#spectrum-counts-0"' in html
+    assert 'efospec://review?' in html and 'Open in EFOSpec GUI' in html
+
+
+def test_review_report_keeps_selected_page_and_pointer_unchanged(epoch_page):
+    from efospec.epoch_report import build_epoch_page
+    project, root, product=epoch_page
+    build_epoch_page('2026-10-28', project)
+    before={p:sha256(p) for p in (root/'index.html',root/'nightly/current.json',product)}
+    revision=root/'nightly/revision-1'
+    build_epoch_page('2026-10-28',project,revision_dir=revision)
+    assert (revision/'index.html').exists()
+    assert 'The selected nightly reduction is unchanged' in (revision/'index.html').read_text()
+    assert all(sha256(p)==h for p,h in before.items())
+    with pytest.raises(ValueError,match='belong to this observing night'):
+        build_epoch_page('2026-10-28',project,revision_dir=project/'runs/2026-10-29/QC/other')
+
+
 class Assets(HTMLParser):
     def __init__(self, html):
         super().__init__();self.ids=set();self.links=[];self.handoffs=[];self.images=[];self.downloads={};self.feed(html)

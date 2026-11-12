@@ -1,0 +1,14 @@
+[telluric]
+teltype = pca
+telgridfile = TellPCA_3000_26000_R10000.fits
+# EFOSpec resolves the actual physical standard reference by coordinates.
+objmodel = star
+polyorder = 3
+fit_wv_min_max = 6000., 9000.
+# Resolving power lambda/FWHM, NOT FWHM in Angstrom.
+resln_guess = 500.
+resln_frac_bounds = 0.5, 2.0
+# Low-resolution optical standards constrain two atmospheric components here.
+tell_npca = 2
+sn_clip = 30.
+seed = 777

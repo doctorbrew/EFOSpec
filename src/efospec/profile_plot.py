@@ -108,7 +108,7 @@ def draw_spatial_profiles(result, wave, data, *, display=None):
             position = _candidate_centroid(candidate, data, profile['wavelength_air_angstrom'],
                                            last=bin_index==len(profiles)-1)
             centroids.append(dict(label=candidate['label'], spatial_pixel=position,
-                                  note=candidate.get('note')))
+                                  note=candidate.get('note'), source_label=candidate.get('source_label',candidate['label'])))
             if position is None or candidate['label']==data.get('selected_label'): continue
             colour = candidate.get('colour', '0.3')
             model_ax.axvline(position, color=colour, linestyle=':', linewidth=1.2)
@@ -221,7 +221,7 @@ def draw_spatial_profiles(result, wave, data, *, display=None):
 
 def draw_review_profiles(images, result, *, spatial_origin=0, traces=None, background=None,
                          selection=None, candidate_notes=None, supplemental_traces=(),
-                         hidden_candidates=(), candidate_labels=None,
+                         hidden_candidates=(), candidate_labels=None, candidate_evidence=None,
                          spatial_label='Spatial pixel (saved window)'):
     """Show explicit review geometry without accepting an extraction or sky fit."""
     data=np.asarray(images['data'])
@@ -265,13 +265,44 @@ def draw_review_profiles(images, result, *, spatial_origin=0, traces=None, backg
     for candidate in supplemental_traces:
         prepared['candidate_traces'].append(dict(candidate, trace=np.asarray(candidate['trace'])+spatial_origin,
                                                  colour='xkcd:dodger blue'))
-    prepared['supplemental_traces'] = bool(supplemental_traces)
+    # A stored polynomial path is a proposal, not evidence of a source. Apply
+    # the measured decisions to every candidate, including old review packets.
+    # Bind saved decisions by name AND trace, since callers can reorder traces.
+    checks = dict(candidate_evidence or {})
+    recorded_evidence = images.get('candidate_evidence_json')
+    if candidate_evidence is None and recorded_evidence is not None:
+        import json
+        saved_checks = json.loads(str(recorded_evidence))
+        originals = list(zip(images.get('found_names', []), images.get('found_traces', [])))
+        for i, t in enumerate(traces):
+            matches = [str(name) for name, original in originals if np.array_equal(t, original)]
+            if len(matches)==1 and matches[0] in saved_checks:
+                checks[f'C{i+1}'] = saved_checks[matches[0]]
+    validation_hidden = []
+    validated_display = selection is not None or candidate_evidence is not None or recorded_evidence is not None
+    if validated_display:
+        retained = []
+        for candidate in prepared['candidate_traces']:
+            label = candidate['label']
+            if label==prepared.get('selected_label') or checks.get(label, {}).get('accepted') is True:
+                retained.append(candidate)
+            else:
+                validation_hidden.append(label)
+        prepared['candidate_traces'] = retained
+    prepared['supplemental_traces'] = any(c.get('colour')=='xkcd:dodger blue' for c in prepared['candidate_traces'])
+    # Number the visible, validated apertures from left to right. In particular,
+    # a lone retained aperture is C1 even if its historical proposal was C2/C3.
+    # The selection, evidence keys and original arrays remain in their old IDs.
+    display_labels = ({c['label']:f'C{i+1}' for i,c in enumerate(sorted(
+        prepared['candidate_traces'],key=lambda c:float(np.median(c['trace']))))}
+        if validated_display else dict(labels))
     for candidate in prepared['candidate_traces']:
-        candidate['label'] = labels.get(candidate['label'], candidate['label'])
+        candidate['source_label'] = candidate['label']
+        candidate['label'] = display_labels.get(candidate['label'], candidate['label'])
     if len({c['label'] for c in prepared['candidate_traces']}) != len(prepared['candidate_traces']):
         raise ValueError('display candidate labels must be distinct')
     if prepared.get('selected_label'):
-        prepared['selected_label'] = labels.get(prepared['selected_label'], prepared['selected_label'])
+        prepared['selected_label'] = display_labels.get(prepared['selected_label'], prepared['selected_label'])
     columns=np.arange(data.shape[1])
     if background is not None:
         prepared['sky_valid_rows']=background['valid_rows']
@@ -284,6 +315,10 @@ def draw_review_profiles(images, result, *, spatial_origin=0, traces=None, backg
                   background_source=background.get('provenance') if background else None,
                   selection=selection, candidate_notes=notes, extraction_accepted=False,
                   hidden_candidates=list(hidden_candidates), candidate_labels=labels,
+                  display_label_map=display_labels, selected_display_label=prepared.get('selected_label'),
+                  label_policy='consecutive visible apertures ordered by spatial position; original IDs retained in provenance' if validated_display else 'historical candidate IDs',
+                  candidate_evidence=checks, validation_hidden_candidates=validation_hidden,
+                  candidate_display_policy='reviewed profiles require positive validation for every non-selected trace; explicit operator aperture retained',
                   sky_mask_stage=stage, spatial_coordinates=spatial_label,
                   aperture='review geometry only; '+selection['radius_source'] if selection else 'none selected')
     return fig,record

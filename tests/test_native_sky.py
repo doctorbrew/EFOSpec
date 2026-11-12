@@ -2,6 +2,25 @@ import numpy as np
 import pytest
 
 
+def test_standard_flexure_is_measured_and_failures_retain_arc_grid():
+    from efospec.native_sky import exposure_flexure, SkyValidationError
+    # Same independent line gate for science and standards; only failure delivery differs.
+    wave = np.broadcast_to(np.arange(5400.,6500.,2.)[:,None], (550,60)).copy()
+    rng = np.random.default_rng(34)
+    image = rng.normal(20.,1.,wave.shape)
+    for rest, amplitude in [(5577.338,1200.),(6300.304,600.),(6363.776,200.)]:
+        image += amplitude*np.exp(-.5*((wave-(rest-4.))/7.)**2)
+    shift, qa = exposure_flexure(image,wave,required=False)
+    assert shift == pytest.approx(4.,abs=.1) and qa['held_out_6363_pass']
+    image -= 200.*np.exp(-.5*((wave-(6363.776-4.))/7.)**2)
+    shift, qa = exposure_flexure(image,wave,required=False)
+    assert shift == 0. and qa['applied_shift_angstrom'] is None
+    assert qa['status']=='unvalidated' and qa['validation_error'] and qa['lines']
+    with pytest.raises(SkyValidationError):exposure_flexure(image,wave,required=True)
+    # Malformed input is a programming/data error, not an allowed arc-only fallback.
+    with pytest.raises(ValueError):exposure_flexure(image[0],wave,required=False)
+
+
 def sky_image(include_check=True):
     rng=np.random.default_rng(42)
     w=np.linspace(3600.,9300.,1024)

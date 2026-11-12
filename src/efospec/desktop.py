@@ -234,12 +234,12 @@ class ExtractionWindow(Q.QMainWindow):
             self.reviews.blockSignals(False)
             self.tabs.setTabText(1,f'Source review ({self.reviews.count()-1})')
             self.review_notice.setText('Choose the source explicitly; polynomial background extraction remains experimental.' if session.reviews
-                                      else 'Choose a failed exposure to inspect its log. Manual extraction requires a compatible review packet.')
+                                      else 'Choose an exposure to inspect its completed stages and pending checks. Manual extraction requires a compatible review packet.')
             if session.warnings:self.review_notice.setText(self.review_notice.text()+'\n'+'\n'.join(session.warnings))
             self.tabs.setCurrentIndex(0 if new else 1)
             if not new:
                 self.editor.setEnabled(False);self.run_button.setEnabled(False)
-                self.target_title.setText('No extracted spectra');self.context_label.setText('Review failed exposures in the Source review tab.')
+                self.target_title.setText('No flux-calibrated spectra');self.context_label.setText('Inspect saved counts and remaining checks in the Source review tab.')
                 self.snr_label.setText('—')
                 for ax in (self.spectrum_ax,self.image_ax,self.profile_ax):ax.clear()
                 self.canvas.draw_idle()

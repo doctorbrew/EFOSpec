@@ -35,11 +35,13 @@ def test_failed_profile_shows_reviewed_c2_and_wavelength_dependent_centroids(sky
         # model has saved sampling bands but must not be drawn as zero.
         assert ax.get_ylim()[0]>0
         assert max(profile['aperture_fraction']) > .9
-        assert any(t.get_text()=='C2' and t.get_position()[0]==pytest.approx(profile['median_trace_pixel']+1)
+        assert any(t.get_text()=='C1' and t.get_position()[0]==pytest.approx(profile['median_trace_pixel']+1)
                    for t in ax.texts)
         assert all('centre:' not in t.get_text() for t in ax.texts)
         centers.append(profile['median_trace_pixel'])
-        assert profile['candidate_centroids'][1]['spatial_pixel']==pytest.approx(centers[-1])
+        assert next(c for c in profile['candidate_centroids'] if c['label']=='C1')['spatial_pixel']==pytest.approx(centers[-1])
+        assert record['display_label_map']=={'C2':'C1'}
+        assert record['selection']['candidate']==2
         assert bool(np.any(profile['background_fraction']))==sky_available
         assert np.max(ax.images[1].get_array()[..., 3]) > 0
     assert centers[0] < centers[1] < centers[2]
@@ -56,6 +58,7 @@ def test_removed_wing_cannot_reappear_and_broad_neighbour_gets_c2_label():
     selection=dict(candidate=1,radius_pixels=16.,radius_source='proposed FWHM width',method='operator_visual')
     fig,record=draw_review_profiles(images,dict(object='SNtest',grism='Gr13',exptime_s=900),
         selection=selection,hidden_candidates=['C2'],candidate_labels={'N1':'C2'},
+        candidate_evidence={'N1':{'accepted':True}},
         supplemental_traces=[dict(label='N1',trace=np.full(30,160.))])
     for ax,b in zip(fig.axes,record['bins']):
         markers=[line.get_xdata()[0] for line in ax.lines if len(line.get_xdata())==2]
@@ -65,6 +68,32 @@ def test_removed_wing_cannot_reappear_and_broad_neighbour_gets_c2_label():
         assert [c['spatial_pixel'] for c in b['candidate_centroids']]==[100.,160.]
     assert record['hidden_candidates']==['C2'] and record['candidate_labels']=={'N1':'C2'}
     np.testing.assert_array_equal(images['found_traces'][1],np.full(30,142.))
+    plt.close(fig)
+
+
+@pytest.mark.parametrize('source', ['review', 'saved_packet', 'missing'])
+def test_reviewed_profiles_do_not_promote_rejected_or_unvalidated_traces(source):
+    from efospec.profile_plot import draw_review_profiles
+    import matplotlib.pyplot as plt
+    shape=(30,201)
+    images=dict(data=np.ones(shape),waveair=np.broadcast_to(np.linspace(4000,7000,30)[:,None],shape),
+        found_traces=np.array([np.full(30,p) for p in (60.,103.,145.)]),
+        found_names=np.array(['left','target','right']))
+    evidence={'C1':{'accepted':False},'C2':{'accepted':True},'C3':{'accepted':False}}
+    kwargs={}
+    if source=='review': kwargs['candidate_evidence']=evidence
+    if source=='saved_packet':
+        images['candidate_evidence_json']=np.array(json.dumps({name:evidence[f'C{i+1}']
+            for i,name in enumerate(images['found_names'])}))
+    selection=dict(candidate=2,radius_pixels=7.,radius_source='review recipe',method='operator_visual')
+    fig,record=draw_review_profiles(images,dict(object='SNtest',grism='Gr13',exptime_s=900),
+        selection=selection,candidate_notes={'C1':'Unconfirmed'},**kwargs)
+    for ax,b in zip(fig.axes,record['bins']):
+        assert [c['label'] for c in b['candidate_centroids']]==['C1']
+        assert [c['source_label'] for c in b['candidate_centroids']]==['C2']
+        assert [line.get_xdata()[0] for line in ax.lines if len(line.get_xdata())==2]==[103.]
+        assert all(t.get_text() not in ('C1?','C3?','C2','C3') for t in ax.texts)
+    assert set(record['validation_hidden_candidates'])=={'C1','C3'}
     plt.close(fig)
 
 

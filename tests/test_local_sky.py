@@ -361,3 +361,65 @@ def test_the_clean_radius_grows_with_the_brightness_of_a_compact_source():
         assert radius is not None and noise > 0
         radii.append(radius)
     assert radii[1] > radii[0]
+
+
+def test_fractional_aperture_survives_final_background_refit(monkeypatch):
+    from efospec import local_sky
+    data, ivar, tilts, trace = steep_background(0.)
+    monkeypatch.setattr(local_sky, 'clean_background_radius', lambda *args: (None, 1.))
+    mask, fit, selection = local_sky.select_bounded_background(
+        data, ivar, tilts, trace, radius=12.75, fwhm=4.)
+    assert selection['selected_inner_edge_spatial_pixels'] == 12.75
+    assert not np.any(mask & (abs(np.arange(data.shape[1])-trace[:, None]) <= 13.25))
+    np.testing.assert_array_equal(mask, fit['input_mask'])
+
+
+def test_background_holdout_never_scores_inside_measured_aperture(monkeypatch):
+    from efospec import local_sky
+    data, ivar, tilts, trace = steep_background(0.)
+    monkeypatch.setattr(local_sky, 'clean_background_radius', lambda *args: (13, 1.))
+    _, _, selection = local_sky.select_bounded_background(
+        data, ivar, tilts, trace, radius=23.5, fwhm=4.)
+    ring = selection['holdout_ring_pixels']
+    assert ring is None or ring[0] >= 24
+    if ring is None: assert selection['holdout_residual_counts'] is None
+
+
+def test_geometry_failure_reports_that_solver_was_not_called(monkeypatch):
+    from efospec import local_sky
+    data, ivar, tilts, trace = steep_background(0.)
+    def unexpected(*args, **kwargs): pytest.fail('impossible bands must fail before the solver')
+    monkeypatch.setattr(local_sky, 'fit_background', unexpected)
+    with pytest.raises(BackgroundSupportError, match='sky solver was not called'):
+        local_sky.select_bounded_background(data, ivar, tilts, trace, radius=80., fwhm=40.)
+
+
+def test_broad_neighbour_outside_bootstrap_search_remains_guarded(tmp_path, monkeypatch):
+    from astropy.io import fits
+    from test_pypeit_adapter import write_raw
+    from efospec.pypeit_adapter import EFOSpecEFOSC2Spectrograph
+    from efospec.extraction import extract_spectra
+    from efospec import local_sky
+    y,x=np.indices((160,201));trace=102.6+.002*(np.arange(160)-80)
+    neighbour=trace+58.
+    expected=150.+8000.*np.exp(-.5*((x-trace[:,None])/4.5)**2)
+    expected+=2000.*np.exp(-.5*((x-neighbour[:,None])/7.85)**2)
+    data=expected+np.random.default_rng(728).normal(size=x.shape)*np.sqrt(expected+7.8**2)
+    wave=4500.+25.*y+np.zeros_like(x)
+    raw=write_raw(tmp_path,'raw.fits')
+    with fits.open(raw) as hdus:detector=EFOSpecEFOSC2Spectrograph().get_detector_par(1,hdus)
+    (tmp_path/'QA/PNGs').mkdir(parents=True)
+    original=local_sky.select_bounded_background;guarded=[]
+    def select(*args,**kwargs):
+        guarded.extend(kwargs['neighbours'])
+        return original(*args,**kwargs)
+    monkeypatch.setattr(local_sky,'select_bounded_background',select)
+    try:
+        result=extract_spectra(data,wave,detector,exposure_time=600.,read_noise=7.8,
+            output=tmp_path,basename='broad-neighbour',target_position=102.6,bounded_background=True)
+    except BackgroundSupportError:
+        pass  # Refusing a contaminated extraction is a valid outcome.
+    else:
+        mask=result['selection']['sky_input_mask']
+        assert not np.any(mask & (abs(x-neighbour[:,None])<=1.5*18.48))
+    assert any(abs(np.median(t-neighbour))<1. and fw>16. for t,fw,radius in guarded)

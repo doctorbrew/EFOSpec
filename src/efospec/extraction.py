@@ -79,6 +79,22 @@ def select_sources(found, target_position=None, manual=None):
     return selected
 
 
+def validated_candidate_packet(selection, found, evidence):
+    """Publish supported/manual candidates; retain all proposals only as audit data.
+
+    Never recompute a saved sky mask using the filtered catalogue.
+    """
+    import json
+    keep = np.array([bool(s.hand_extract_flag) or evidence.get(str(s.NAME), {}).get('accepted', False)
+                     for s in found], dtype=bool)
+    rows = selection['sky_input_mask'].shape[0]
+    traces = np.array([s.TRACE_SPAT for s in found], dtype=float).reshape(len(found), rows)
+    names = np.array([str(s.NAME) for s in found], dtype='U80')
+    return dict(selection, found_names=names[keep], found_traces=traces[keep],
+                rejected_names=names[~keep], rejected_traces=traces[~keep],
+                candidate_evidence_json=np.array(json.dumps(evidence))), keep
+
+
 @native_qa_context()
 def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
                     output, basename, target_position=None, manual=None, sky_input_mask=None, processed=None,
@@ -175,7 +191,9 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
             selection=capture_sky_selection(finder,found)
             selection.update(sky_input_mask=np.zeros_like(data,dtype=bool),
                 sky_mask_stage=np.array('source_finding_only_no_accepted_background_fit'))
-        exc.diagnostics.update(SourceSelectionError(str(exc),found,target_position).diagnostics)
+        selection, keep = validated_candidate_packet(selection, found, evidence)
+        exc.diagnostics.update(SourceSelectionError(str(exc),found[keep],target_position).diagnostics)
+        exc.diagnostics['rejected_candidates'] = selection['rejected_names'].tolist()
         directory=Path(output)/'native';directory.mkdir(parents=True,exist_ok=True)
         with NamedTemporaryFile(dir=directory,prefix=basename+'_selection_failed_',
                                 suffix='.npz',delete=False) as stream:
@@ -227,7 +245,7 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
         # handled by the diagnostic-writing selection gate below.
         found,finder.nobj=finder.find_objects(data,sci.ivar)
         try:
-            first_names=select_sources(found,target_position,manual)
+            first_names=select_sources(validate_candidates(found,data),target_position,manual)
         except SourceSelectionError:
             unresolved=True;sky=np.zeros_like(data)
         if not unresolved:
@@ -240,6 +258,21 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
             from .local_sky import fit_background
             initial_found = [{'window_pixel':float(s.SPAT_PIXPOS),
                               'fwhm_pixels':float(np.nanmedian(s.FWHM))} for s in found]
+            # Test the initial detections against the full calibrated frame.
+            # A restricted later search cannot establish that an outside source
+            # disappeared. Unmeasurable flanks retain a conservative guard.
+            initial_neighbours = []
+            for source, record in zip(found, initial_found):
+                if source.NAME == primary.NAME:
+                    continue
+                check = trace_evidence(data, sci.ivar, source.TRACE_SPAT,
+                    record['fwhm_pixels'], support=sci.select_flag(invert=True))
+                record['local_contrast'] = check
+                if check['accepted'] or not all(b['supported'] for b in check['bins']):
+                    initial_neighbours.append(source)
+                    record['guard_retained'] = True
+                else:
+                    record['guard_retained'] = False
             seed_trace=primary.TRACE_SPAT
             seed_radius=max(15.,1.5*float(np.nanmedian(primary.FWHM)))
             try:
@@ -267,6 +300,11 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
                 float(par['reduce']['extraction']['boxcar_radius'])/(float(detector['platescale'])*2))
             neighbours=[(s.TRACE_SPAT,float(np.nanmedian(s.FWHM)),background_radius)
                         for s in accepted if s.NAME!=primary.NAME]
+            for source in initial_neighbours:
+                fw = float(np.nanmedian(source.FWHM))
+                # Keep the broader original guard even if a wing is detected
+                # as a narrower source after the provisional subtraction.
+                neighbours.append((source.TRACE_SPAT, fw, background_radius))
             if manual is None:
                 try:
                     background_radius, aperture_info = measured_aperture(
@@ -284,11 +322,16 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
                 sky_input_mask,selected_background,auto_selection=select_bounded_background(
                     data,np.where(sci.select_flag(invert=True),sci.ivar,0.),tilts,sky_trace,
                     radius=background_radius,fwhm=fwhm,neighbours=neighbours,
-                    allowed_mask=detection_support,max_gap_pixels=60,sigma_clip=4.)
+                    allowed_mask=sci.select_flag(invert=True),max_gap_pixels=60,sigma_clip=4.)
             except BackgroundSupportError as exc:
                 save_detection_failure(exc,found,np.zeros_like(data))
                 raise
             finder.initial_skymask=sky_input_mask
+            # The final finite bands define the supported detection interval.
+            left=np.min(np.where(sky_input_mask,x,nx),axis=1)
+            right=np.max(np.where(sky_input_mask,x,-1),axis=1)
+            detection_support=(x>=left[:,None])&(x<=right[:,None])
+            detection_ivar=np.where(detection_support,sci.ivar,0.)
             sky_model={'degree':auto_selection['selected_spatial_degree'],'sigma_clip':4.}
             auto_info={'requested_width_spatial_pixels':30,'minimum_width_spatial_pixels':15,
                        'actual_width_spatial_pixels':auto_selection['selected_width_spatial_pixels'],
@@ -321,14 +364,13 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
         # FindObjects.run would fit the sky again. Use its public object-finding
         # stage with our audited PypeIt model, then hold it during extraction.
         found, finder.nobj = find_in_supported_background(data-sky)
-    accepted = validate_candidates(found, data-sky) if not unresolved else found
+    accepted = validate_candidates(found, data-sky)
     if aperture_info is not None:
         for source in accepted:
             if abs(source.SPAT_PIXPOS-primary.SPAT_PIXPOS) <= fwhm:
                 source.BOX_R_PIX = background_radius
     selection = capture_sky_selection(finder, found)
-    import json
-    selection['candidate_evidence_json'] = np.array(json.dumps(evidence))
+    selection, _ = validated_candidate_packet(selection, found, evidence)
     if unresolved:
         selection.update(sky_input_mask=np.zeros_like(data,dtype=bool),
                          sky_mask_stage=np.array('source_finding_only_no_background_fit'))
@@ -388,7 +430,7 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
         if len(selected) != 1:
             raise ValueError(f'target {identity} lost during extraction')
         objects[identity] = extracted[selected]
-    result = {'objects': objects, 'found': found, 'arrays': arrays, 'selection': selection,
+    result = {'objects': objects, 'found': accepted, 'arrays': arrays, 'selection': selection,
               'diagnostic_context':{'science':sci,'slits':slits,'tilts':tilts},
               'sky_policy': 'selected_global_sky' if sky_input_mask is not None else 'automatic_global_and_local'}
     if manual is None:
@@ -398,7 +440,7 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
             'candidates':[{'name':str(s.NAME),'window_pixel':float(s.SPAT_PIXPOS),
                            'peak':float(s.smash_peakflux) if s.smash_peakflux is not None else None,
                            'snr':float(s.smash_snr) if s.smash_snr is not None else None,
-                           'trace_evidence':evidence.get(str(s.NAME))} for s in found]}
+                           'trace_evidence':evidence.get(str(s.NAME))} for s in accepted]}
     result['trace_geometry'] = dict(trace_polynomial_degree=TRACE_DEGREE, candidate_evidence=evidence,
                                     aperture=aperture_info, maximum_nonpolynomial_departure_pixels=.5)
     if fitted_background is not None:

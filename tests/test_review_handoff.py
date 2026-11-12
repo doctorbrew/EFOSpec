@@ -98,6 +98,20 @@ def test_old_pypeit_product_cannot_crash_exposure_handoff(qtbot,tmp_path,monkeyp
     w.close()
 
 
+def test_red_counts_pending_calibration_are_selectable_without_an_extraction_error(qtbot,tmp_path):
+    from efospec.desktop import ExtractionWindow
+    record=dict(raw='/raw/red.fits',object='Standard',setup=dict(grism='Gr16',filter='OG530'),
+        product=str(tmp_path/'counts.fits'),product_sha256={},
+        pending_checks=['Independent red-sky features required; no correction applied.'])
+    (tmp_path/'run.json').write_text(json.dumps(dict(results=[],errors=[],skipped=[],review_counts=[record])))
+    w=ExtractionWindow();qtbot.addWidget(w);w.open_run(review_url(tmp_path,'red.fits'))
+    assert w.reviews.currentData()=={'raw':'red.fits'}
+    assert 'Counts extracted; flux calibration pending' in w.failure_details.toPlainText()
+    assert 'Independent red-sky features required' in w.failure_details.toPlainText()
+    assert not w.run_button.isEnabled() and w.backend is None
+    w.close()
+
+
 def test_native_url_event_selects_failed_exposure_after_startup(qtbot,tmp_path):
     from efospec.desktop import ExtractionWindow, ReviewOpenEvents
     from PySide6 import QtCore, QtWidgets

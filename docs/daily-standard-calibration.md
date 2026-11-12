@@ -10,6 +10,21 @@ four additional **provisional** 28 October spectra. Two background failures are
 resolved; the science wavelength checks still fail. The accepted nightly
 reduction and its acceptance gates remain unchanged.
 
+Calibration review: [12 November standard wavelength and flux audit](diagnostics/calibration-validation-20261112.md)
+replaces the blanket standard arc-only policy with measured optical sky checks.
+It documents why the tested filtered-response splices were not adopted.
+The subsequent [telluric implementation and transfer tests](telluric-correction.md)
+add an explicit `efospec telluric` revision: 12 fitted standards and two science
+review products, with airmass extrapolation still unvalidated. Default nightly
+products retain their original calibration; absolute-flux and second-order
+limitations remain.
+
+The subsequent paired delivery uses the selected 28 October reduction and
+retains four transient before/after telluric FITS/ASCII pairs. The final spectrum
+plots and downloads include both, with explicit review status. Use
+`efospec telluric ... --apply-science --review-extrapolation --attach-to-report`
+for a new dated correction revision; see the [workflow and critique](telluric-correction.md).
+
 ## Implemented
 
 New `efospec night DATE` revisions default to **same-night** responses. The
@@ -24,12 +39,19 @@ two-sided background gate remain unchanged.
   ties fail. Standard selection is independent of the science `--target` filter.
 - No archived sensitivity fallback. Both standard and science use native raw
   processing; no native response is applied to the old unflattened bridge counts.
-- Current nightly flux support: Gr11/Gr13 Free, 2x2, slit1.0/slit1.5.
-  Filtered standards and Gr16 remain separate diagnostic workflows.
-- Short standards retain arc-only wavelengths. Their wavelength status, observed
+- Nightly native routes: Gr11/Gr13 Free or GG495, and Gr16/OG530, with validated
+  2x2 detector geometry and slit1.0/slit1.5 calibration paths. Spatial apertures
+  and background bands are measured per exposure, not selected by this setup list.
+- Extract and retain counts before selecting a response. Optical flux uses only
+  a successful response with the identical setup and passing science wavelength
+  checks. Gr16 counts and standard-response diagnostics remain available while
+  independent red-wavelength/flexure validation is pending; no red shift or flux
+  correction is silently accepted.
+- Optical standards attempt the independent sky check; failed checks retain
+  arc-only wavelengths and their measured failure reasons. Their wavelength status, observed
   raw exposure/hash, physical reference, response/hash and extinction/hash follow
   the delivered spectrum. Unsupported response bins stay masked.
-- Retain standard counts even if response fitting fails. Save failed extraction
+- Retain science and standard counts even if response selection/fitting fails. Save failed extraction
   diagnostics and logs. Every attempted exposure has an explicit outcome.
 - Compare distinct standard exposures in identical setups when available; retain
   transfer diagnostics separately from training closure. Neither establishes an
@@ -40,6 +62,68 @@ two-sided background gate remain unchanged.
   contamination, response uncertainty and resampling covariance remain uncorrected.
 - The nightly Calibration section includes response FITS downloads and actual
   spectrum-to-observed-standard associations. Unvalidated statuses remain explicit.
+
+## Nightly integration, 12 November 2026
+
+- `run.json` separates flux `results`, all extracted `counts`, pending
+  `review_counts`, and per-exposure `exposure_states`. Counts do not enter typing
+  or classification as flux spectra. The CLI, Qt Source review and nightly log
+  show “Counts extracted; flux calibration pending” with the actual remaining check.
+- Gr16 saves the whole-band correlation and two disjoint-band measurements
+  (6500–7450 and 7650–8500 air Å). Offset disagreement above 3 Å is explicit.
+  Agreement alone does not establish line identity, significance or absolute
+  wavelength accuracy, and never authorizes a correction.
+- Automatic extraction retains locally supported initial neighbours even when
+  the provisional sky search cannot see them. Untestable flanks retain a guard.
+  Final bands use calibrated pixels and never polynomial sky extrapolation as
+  source evidence. Aperture radii retain fractional precision through refitting.
+- Holdout pixels must lie outside the measured aperture and every neighbour
+  guard. All scored widths/degrees use the same withheld region. If it cannot be
+  measured, the record says so instead of treating source light as validation.
+- If no offered finite band can be placed, nightly processing may expand the
+  calibrated spatial half-window from 100 to 150, then 200 pixels. It retains
+  earlier attempts, requires arc support throughout the new window, and keeps
+  the same 15–30 pixel bands, neighbour guards and gap limit. Solver failures and
+  explicitly reviewed recipes do not trigger window expansion.
+- A geometry failure now says when the sky solver was never called. It is not
+  reported as a convergence failure or an instrument setup exclusion.
+
+### Validation on 2026-10-28
+
+- Review revision: `runs/2026-10-28/QC/nightly-integration-20261112/`.
+  Its `index.html` uses the canonical renderer; neither the selected nightly
+  pointer nor the existing log was changed. Original spectra and metadata remain.
+- Attempted all 20 exposures: 14 count extractions, 12 experimental flux exports,
+  two Gr16 counts awaiting wavelength validation, six exposures without an
+  accepted extraction, and zero setup skips. Eight failed-stage records include
+  both wavelength and extraction failures for two exposures.
+- All four formerly skipped Gr13/GG495 standards extracted and fitted their own
+  responses. Six distinct-exposure slit1.5 transfers have median ratios
+  0.959–1.022; the single slit1.0 filtered standard has no matching independent
+  exposure. These are internal checks, not absolute-flux certification.
+- Both Gr16/OG530 standards extracted and built responses. Their two reciprocal
+  transfers have median ratios 0.941 and 1.034. Disjoint sky-band shifts differ
+  by 0.285 and 0.508 Å. No shift or red flux was adopted: independent red-feature
+  identification and uncertainty validation remain pending.
+- SN2026abgb still fails band placement at half-windows 100, 150 and 200. The
+  broader initial neighbour remains protected. AT2026agwm and SN2026aebl also
+  fail the stricter aperture/contamination checks; this trial does not replace
+  their earlier products. Reviewed SN2026ayt geometry remains explicit.
+- Synthetic photons recover the known flux ratio through both Free and GG495
+  nightly routes. Full suite: **492 passed, one previously reproduced failure**
+  in exact historical sky-selection replay (`test_saved_diagnostics.py`).
+  Final report/GUI/window checks: **39 passed**; a new broad-neighbour regression
+  also passes. Coverage was not measured in these runs.
+- All **780 protected files** passed SHA256 checks before and after rendering.
+  Evidence includes `preservation*.json`, `report-verification.json`, native Qt
+  smoke results and the saved `reduction/run.json`. No classification was run.
+
+Render an isolated saved revision without selecting it:
+
+```sh
+python -m efospec.epoch_report 2026-10-28 \
+  --revision runs/2026-10-28/QC/nightly-integration-20261112
+```
 
 ## Commands and compatibility
 

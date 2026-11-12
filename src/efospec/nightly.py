@@ -138,8 +138,9 @@ def _reduce(state, output):
             if native_code in (0,1) and checked.get('status') in ('complete','incomplete') else 'failed',
             'worker_exit':native_code,'record':str(path),
             'note':'Native calibration diagnostics only; no native correction or sensitivity is applied to archive products.'}
-    return {'status':'partial' if run['errors'] or run['skipped'] or run.get('held_out_errors') else 'complete','worker_exit':code,
-            'spectra':len(run['results']),'failed':len(run['errors']),'unsupported':len(run['skipped'])}
+    return {'status':'partial' if run['errors'] or run['skipped'] or run.get('held_out_errors') or run.get('review_counts') else 'complete','worker_exit':code,
+            'spectra':len(run['results']),'review_counts':len(run.get('review_counts',[])),
+            'failed':len(run['errors']),'unsupported':len(run['skipped'])}
 
 
 def _report(state, output):

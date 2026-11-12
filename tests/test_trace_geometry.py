@@ -26,6 +26,26 @@ def test_single_spectral_spike_and_support_boundary_need_review():
     assert not trace_evidence(data,ivar,trace,4.71,support=support)['accepted']
 
 
+def test_curved_monotonic_wing_needs_a_turnover_not_just_gaussian_contrast():
+    rng=np.random.default_rng(102)
+    y,x=np.indices((240,141));trace=np.full(240,70.)
+    # Concave curvature projects onto a positive Gaussian even though the
+    # entire local profile is increasing: there is no source centred here.
+    data=1000+4*x-.05*(x-70)**2+rng.normal(0,2,x.shape)
+    check=trace_evidence(data,np.full(data.shape,.25),trace,8.)
+    assert not check['accepted']
+    assert all(b['snr']>3 for b in check['bins'])
+    assert all(not b['turnover'] for b in check['bins'])
+
+
+def test_broad_peak_is_kept_and_an_unsupported_flank_is_not_a_peak():
+    data,ivar,trace=fixture(amplitude=100,sigma=8.)
+    check=trace_evidence(data,ivar,trace,18.84)
+    assert check['accepted'] and all(b['turnover'] for b in check['bins'])
+    support=np.indices(data.shape)[1]<75
+    assert not trace_evidence(data,ivar,trace,18.84,support=support)['accepted']
+
+
 def test_aperture_grows_with_seeing_and_encloses_core():
     radii=[]
     for sigma in (1.5,3.):

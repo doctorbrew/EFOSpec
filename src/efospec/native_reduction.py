@@ -24,6 +24,45 @@ def arc_supported_rows(wavevac, limits):
 
 def prepare(frame, associations, directory, position, cached=None, *, arc_supported_only=False,
             spatial_half_width=100, background_review=None, red_counts_only=False,
+            reviewed_source=None, arc_only_review=False, adaptive_window=False):
+    """Expand only a calibrated inspection window when finite sky bands cannot fit.
+
+    Expansion never relaxes source guards, wavelength coverage, or two-sided
+    sampling. Explicit reviewed geometry always keeps its original window.
+    """
+    from .local_sky import BackgroundSupportError
+    from .native_calibration import save_json
+    directory = Path(directory)
+    widths = [spatial_half_width]
+    if adaptive_window and background_review is None and reviewed_source is None:
+        widths += [w for w in (150, 200) if w > spatial_half_width]
+    attempts = []
+    for i, width in enumerate(widths):
+        destination = directory if i == 0 else directory/f'window-half-{width}'
+        try:
+            result = _prepare_window(frame, associations, destination, position, cached,
+                arc_supported_only=arc_supported_only, spatial_half_width=width,
+                background_review=background_review, red_counts_only=red_counts_only,
+                reviewed_source=reviewed_source, arc_only_review=arc_only_review)
+            attempts.append(dict(spatial_half_width=width, directory=str(destination), status='extracted'))
+            result['engine']['background_fit']['window_attempts'] = attempts
+            save_json(directory/'window-attempts.json', attempts)
+            return result
+        except BackgroundSupportError as exc:
+            attempts.append(dict(spatial_half_width=width, directory=str(destination),
+                status='failed', error=str(exc), diagnostics=dict(exc.diagnostics)))
+            save_json(directory/'window-attempts.json', attempts)
+            trials = exc.diagnostics.get('trials', [])
+            geometry_only = trials and all(t['status']=='geometry_unavailable' for t in trials)
+            if not geometry_only or i == len(widths)-1:
+                exc.diagnostics['window_attempts'] = attempts
+                raise
+            if cached is None and (destination/'calibration/calibration.json').is_file():
+                cached = destination/'calibration'
+
+
+def _prepare_window(frame, associations, directory, position, cached=None, *, arc_supported_only=False,
+            spatial_half_width=100, background_review=None, red_counts_only=False,
             reviewed_source=None, arc_only_review=False):
     """Preserve the calibrated PypeIt noise model in a bounded raw-pixel window."""
     from pypeit.core.wave import vactoair
@@ -31,8 +70,8 @@ def prepare(frame, associations, directory, position, cached=None, *, arc_suppor
     if red_counts_only and (frame['setup']['grism'], frame['setup']['filter']) != ('Gr16','OG530'):
         raise ValueError('red counts-only diagnostics require Gr16/OG530')
     if arc_only_review and (frame['role']!='science' or frame['setup']['grism'] not in {'Gr11','Gr13'}
-                            or frame['setup']['filter']!='Free'):
-        raise ValueError('optical arc-only review requires a Free-filter science exposure')
+                            or frame['setup']['filter'] not in {'Free','GG495'}):
+        raise ValueError('optical arc-only review requires a Gr11/Gr13 Free/GG495 science exposure')
     if cached is None:
         bundle=build_calibrations(frame,associations,directory/'calibration')
     else:
@@ -68,8 +107,7 @@ def prepare(frame, associations, directory, position, cached=None, *, arc_suppor
     arc=dict(qa,arc=associations['arc']['files'][0],
              reference_lines=vactoair(np.array(qa['reference_lines_vacuum'])*u.AA).value.tolist())
     shift=0.
-    # Short standards often cannot measure two night-sky lines. Keep that explicit;
-    # don't reuse a science shift taken at a different pointing/time.
+    # Attempt standards too; weak standard sky must not borrow a science shift.
     sky={'shift_angstrom':0.,'policy':'raw_arc_only; science sky check required',
          'held_out_6363_pass':False,'lines':[]}
     if red_counts_only:
@@ -79,12 +117,13 @@ def prepare(frame, associations, directory, position, cached=None, *, arc_suppor
              'data_unit':'electron', 'raw_pixel_origin_yx':[ylo,xlo]})
         sky.update(policy='raw_arc_only; red-sky correlation is diagnostic, no correction applied',
                    status='unvalidated', applied_shift_angstrom=None,
-                   review_file=str(directory/'red-sky/check.json'), correlation=diagnostic['correlation'])
+                   review_file=str(directory/'red-sky/check.json'), correlation=diagnostic['correlation'],
+                   band_consistency=diagnostic['band_consistency'])
     elif arc_only_review:
         sky.update(policy='raw_arc_only; failed science wavelength validation; review counts only',
                    status='unvalidated',applied_shift_angstrom=None)
-    elif frame['role']=='science':
-        from .native_sky import measure_flexure as sky_flexure, SkyValidationError
+    elif frame['role'] in {'science','standard_candidate'}:
+        from .native_sky import exposure_flexure, SkyValidationError
         slit_pixels=float(frame['setup']['slit'].removeprefix('slit'))/(float(image.detector['platescale'])*frame['setup']['binx'])
         # Wavelength measurements can use the long slit without changing the
         # bounded background model used for source extraction. Exclude slit
@@ -97,8 +136,8 @@ def prepare(frame, associations, directory, position, cached=None, *, arc_suppor
         sky_good=~image.fullmask.flagged()[sky_cut]
         sky_good &= abs(np.arange(sky_xlo,sky_xhi)[None,:]-position)>30.
         try:
-            shift,sky=sky_flexure(image.image[sky_cut],sky_wave,slit_width_pixels=slit_pixels,
-                                  good_pixels=sky_good)
+            shift,sky=exposure_flexure(image.image[sky_cut],sky_wave,
+                required=frame['role']=='science',slit_width_pixels=slit_pixels,good_pixels=sky_good)
         except SkyValidationError as exc:
             from .native_calibration import save_json
             directory.mkdir(parents=True,exist_ok=True)
@@ -109,11 +148,14 @@ def prepare(frame, associations, directory, position, cached=None, *, arc_suppor
             raise
         sky['measurement_raw_bounds_yx']=[ylo,yhi,sky_xlo,sky_xhi]
         sky['target_exclusion_radius_pixels']=30.
-        if not sky['held_out_6363_pass']:
+        if frame['role']=='science' and not sky['held_out_6363_pass']:
             raise ValueError('native science requires an independent 6363-A sky-line check')
-        sky['policy']='two sky lines plus independent 6363-A check'
+        if sky['held_out_6363_pass']:
+            sky['policy']='two sky lines plus independent 6363-A check'
         waveair+=shift
     directory.mkdir(parents=True,exist_ok=True)
+    from .native_calibration import save_json
+    save_json(directory/'sky-check.json',dict(raw=frame['path'],raw_sha256=frame['sha256'],**sky))
     for sub in ('products','native','qa','QA/PNGs'):(directory/sub).mkdir(parents=True,exist_ok=True)
     h=frame['metadata'];setup=frame['setup']
     basename=product_name(science_stem(h['OBJECT'],h['DATE-OBS'],setup['grism'],setup['filter'],setup['slit']),h['DATE-OBS'],{},'_f')[:-7]

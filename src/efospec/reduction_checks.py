@@ -84,7 +84,7 @@ reporting an additive offset. Preserve the distinction between these models.
         raise ValueError('sky comparison requires an increasing wavelength vector')
     keep=(waveair>=wavelength_range[0])&(waveair<=wavelength_range[1])&np.isfinite(sky)
     if keep.sum()<60 or np.any(np.diff(np.flatnonzero(keep))!=1):
-        raise ValueError('insufficient contiguous optical sky coverage')
+        raise ValueError('insufficient contiguous sky coverage in the requested wavelength band')
     tw, tf, template_fwhm, name = sky_template() if template is None else template
     vacuum=airtovac(waveair[keep]*u.AA).value
     grid=np.linspace(vacuum[0],vacuum[-1],len(vacuum))
@@ -182,10 +182,26 @@ def check_red_sky(data, waveair, directory, metadata):
         arrays.update(extra)
     except Exception as exc:
         comparison={'status':'unavailable','applied':False,'error':str(exc)}
+    # Disjoint wavelength intervals test whether a single offset even describes
+    # this exposure. They do not establish line identities, peak significance or
+    # an absolute wavelength acceptance, and never authorize a correction.
+    bands = []
+    for i, limits in enumerate(((6500., 7450.), (7650., 8500.))):
+        try:
+            band, extra = correlate_sky(wave, sky, wavelength_range=limits)
+            arrays.update({f'band_{i}_{key}': value for key, value in extra.items()})
+        except Exception as exc:
+            band = dict(status='unavailable', applied=False, error=str(exc))
+        bands.append(dict(band, requested_range_air_angstrom=list(limits)))
+    measured = all(b.get('status') == 'measured' and np.isfinite(b.get('shift_angstrom', np.nan)) for b in bands)
+    difference = abs(bands[0]['shift_angstrom']-bands[1]['shift_angstrom']) if measured else None
+    consistency = dict(status=('consistent' if difference <= 3. else 'inconsistent') if measured else 'unavailable',
+        bands=bands, difference_angstrom=difference, maximum_difference_angstrom=3.,
+        applied=False, limitation='Disjoint-band consistency only; independent red-feature identification and uncertainty validation remain required.')
     np.savez_compressed(directory/'curves.npz',**arrays)
     record={'schema_version':1,'status':'unvalidated','metadata':metadata,
         'line_check':{'lines':[],'failed_gates':['red_sky_validation_required']},
-        'correlation':comparison,'applied_shift_angstrom':None,
+        'correlation':comparison,'band_consistency':consistency,'applied_shift_angstrom':None,
         'curves_sha256':sha256(directory/'curves.npz'),'wavelength_medium':'air',
         'wavelength_unit':'Angstrom','spectral_reference_frame':'topocentric'}
     (directory/'check.json').write_text(json.dumps(record,indent=2,allow_nan=False)+'\n')

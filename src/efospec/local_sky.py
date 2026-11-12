@@ -436,7 +436,7 @@ def select_bounded_background(data, ivar, tilts, trace, *, radius, fwhm, neighbo
                         if holdout is not None else (None, None))
         record = dict(width_spatial_pixels=int(width), spatial_degree=int(degree), role=label,
                       status='fitted', band_residual_sigma=band,
-                      inner_edge_spatial_pixels=int(inner),
+                      inner_edge_spatial_pixels=float(inner),
                       holdout_residual_counts=score,
                       holdout_residual_error_counts=error,
                       holdout_residual_pixel_sigma=(None if score is None
@@ -461,31 +461,34 @@ def select_bounded_background(data, ivar, tilts, trace, *, radius, fwhm, neighbo
         preferred = min(proximity)[2]
         widths = (preferred,) + tuple(w for w in widths if w != preferred)
     default_width, default_degree = widths[0], degrees[0]
-    # The validated default keeps its own inner edge: the ring is withheld from
-    # it as well, but its geometry is not moved in order to be measured.
+    # All scored models use a common, source-free holdout outside the measured
+    # aperture. Their bands begin beyond it; the default width/degree competes
+    # on the same support as the alternatives.
     aperture = int(np.ceil(radius))
     measurable = clean is not None
     inner = None
     holdout = None
     if measurable:
+        clean = max(int(clean), int(np.ceil(radius+.5)))
         # A band may never start inside the aperture, nor inside the ring.
         inner = max(aperture, int(clean)+int(holdout_width))
         holdout = np.broadcast_to((np.abs(offset) >= clean)
-                                  & (np.abs(offset) < clean+holdout_width), np.shape(data))
+                                  & (np.abs(offset) < clean+holdout_width), np.shape(data)).copy()
+        for other, fw, other_radius in neighbours:
+            guard = max(1.5*fw, other_radius+.5)
+            holdout &= abs(columns[None, :]-np.asarray(other)[:, None]) > guard
+        if allowed_mask is not None:
+            holdout &= allowed_mask
+        holdout &= finite
+        if any(np.any(np.sum(holdout & (offset*side > 0), axis=1) < 2) for side in (-1, 1)):
+            measurable = False
         # Leave room for the narrowest permitted band outside the withheld ring.
         if inner+min(int(w) for w in widths) > int(np.max(np.abs(offset))):
             measurable = False
 
-    # The ring is only a hold-out if the validated default never samples it.
-    # When the source is still bright where that band already begins, either
-    # the clean radius is optimistic or the bands are as close as they can get;
-    # either way the comparison would be between a model interpolating across a
-    # hole and one extrapolating towards it, decided by source light rather
-    # than by the background. Measure the default's own inner edge and require
-    # the ring to fall inside the gap it leaves.
     default_inner = None
     if measurable:
-        placed = place(default_width, aperture)
+        placed = place(default_width, inner)
         if placed is None:
             measurable = False
         else:
@@ -496,7 +499,7 @@ def select_bounded_background(data, ivar, tilts, trace, *, radius, fwhm, neighbo
 
     scored, chosen, reason, unresolved = [], None, None, False
     if measurable:
-        attempt(default_width, default_degree, aperture, holdout, 'default')
+        attempt(default_width, default_degree, inner, holdout, 'default')
         for width in widths:
             for degree in degrees:
                 attempt(width, degree, inner, holdout, 'trial')
@@ -509,16 +512,19 @@ def select_bounded_background(data, ivar, tilts, trace, *, radius, fwhm, neighbo
         selected = next((v for v in (attempt(width, default_degree, radius, None, 'default')
                                      for width in widths) if v is not None), None)
         if selected is None:
+            fitted_any = any(t['status'] != 'geometry_unavailable' for t in trials)
             raise BackgroundSupportError(
-                'No bounded two-sided background converged for any offered width at the '
-                'default spatial degree.', trials=trials)
+                ('No bounded two-sided background converged at the default spatial degree.'
+                 if fitted_any else 'No bounded two-sided background could be placed: '
+                 'source/neighbour guards and calibrated support leave insufficient room; '
+                 'the sky solver was not called.'), trials=trials)
         chosen, unresolved = selected, True
         reason = ('default retained: no ring of columns inside this slit carries background '
                   'without source light, so no geometry could be measured'
                   if clean is None else
-                  'default retained: the source stays bright out to the inner edge of the '
-                  'default band, so no withheld ring of clean background lies in the gap it '
-                  'leaves and no geometry could be measured against it')
+                  'default retained: no two-sided holdout outside the measured aperture '
+                  'and neighbour guards fits beside the finite bands; width and degree '
+                  'could not be compared on independent background pixels')
     else:
         best = min(scored, key=lambda v: abs(v[2]['holdout_residual_counts']))
         default = next((v for v in scored if v[2]['role'] == 'default'), None)

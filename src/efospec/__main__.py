@@ -8,6 +8,15 @@ from .inventory import inventory
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="efospec", description="EFOSpec: EFOSC2 spectroscopy with PypeIt")
     commands = parser.add_subparsers(dest="command", required=True)
+    telluric = commands.add_parser('telluric', help='Fit one night of standards and independently check atmospheric transfer')
+    telluric.add_argument('night')
+    telluric.add_argument('--run', required=True)
+    telluric.add_argument('--output', required=True)
+    telluric.add_argument('--config', required=True)
+    telluric.add_argument('--apply-science', action='store_true')
+    telluric.add_argument('--review-extrapolation', action='store_true',
+        help='Retain time/airmass transfer review products')
+    telluric.add_argument('--attach-to-report', action='store_true', help='Render both reductions in the plots and nightly report')
     typing = commands.add_parser('typing-metadata', help='Review revision-bound host and adopted-redshift metadata')
     from .typing_metadata import add_arguments as typing_arguments
     typing_arguments(typing)
@@ -162,6 +171,9 @@ def main(argv=None):
         command.add_argument("--arc", action="append", default=[], help="Explicit raw arc; repeatable")
     args = parser.parse_args(argv)
     try:
+        if args.command == 'telluric':
+            from .telluric_night import execute
+            return execute(args)
         if args.command == 'night':
             from .nightly import run_epoch,exit_code
             return exit_code(run_epoch(args.night,stage=args.stage,project_root=args.project_root,plot_python=args.plot_python,
@@ -305,7 +317,9 @@ def main(argv=None):
             result = reduce_daily(args.path,args.output,night=args.night,targets=args.target,
                                   reviewed_sources=args.reviewed_sources,calibration_groups=args.calibration_group)
             print(json.dumps(dict(output_dir=result['output_dir'], status=result['execution_status'],
-                                  spectra=len(result['results']), errors=result['errors'], skipped=result['skipped']),indent=2))
+                                  spectra=len(result['results']), counts=len(result['counts']),
+                                  exposure_states=result['exposure_states'],
+                                  errors=result['errors'], skipped=result['skipped']),indent=2))
             return 0 if result['execution_status']=='complete' else 1
         if args.command == 'reduce-rapid':
             from .rapid import reduce_night

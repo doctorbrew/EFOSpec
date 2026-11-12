@@ -5,6 +5,20 @@ masters, sky checks, references and response coverage must still be validated.
 """
 
 
+def nightly_route(setup):
+    """Select implemented native calibrations, independently of source geometry."""
+    if setup.get('binx') != 2 or setup.get('biny') != 2:
+        return None, 'Native detector geometry is implemented for 2x2 binning; this binning needs calibration validation.'
+    if setup.get('slit') not in {'slit1.0', 'slit1.5'}:
+        return None, 'Native arc and slit-resolution validation is required for this slit.'
+    pair = setup.get('grism'), setup.get('filter')
+    if pair[0] in {'Gr11', 'Gr13'} and pair[1] in {'Free', 'GG495'}:
+        return 'optical', None
+    if pair == ('Gr16', 'OG530'):
+        return 'red', None
+    return None, f'Native wavelength calibration is not implemented for {pair[0]}/{pair[1]}.'
+
+
 def archive_setup_issue(setup):
     """The archive bridge's existing setup gate, with an actionable reason."""
     grism, filter_name = setup.get('grism'), setup.get('filter')
@@ -15,7 +29,7 @@ def archive_setup_issue(setup):
                 'while red-sky flexure validation and a matching flux response are still required for science delivery.')
     if grism in {'Gr11', 'Gr13'} and filter_name == 'GG495':
         return (f'{grism}/GG495 is not enabled in the archive reduction: the filtered '
-                'native extraction and response need validation and nightly integration.')
+                'native nightly route extracts counts and fits setup-matched responses, with experimental flux validation.')
     if grism not in {'Gr11', 'Gr13'} or filter_name != 'Free':
         return (f'Archive reduction does not enable {grism}/{filter_name}; '
                 'only Gr11/Gr13 with the Free filter are implemented.')
@@ -36,14 +50,14 @@ def setup_support(setup):
         development.append('Implement and validate native detector geometry and raw wavelength calibration for this setup.')
     if red:
         development.extend([
-            'Use reduce-red for native Gr16/OG530 review counts with propagated variance; these are not accepted science products.',
+            'Nightly processing retains native Gr16/OG530 review counts with propagated variance; these are not accepted science products.',
             'Validate red-sky flexure with held-out features; 5577 A is outside Gr16 coverage. Existing correlation is diagnostic only.',
             'Register the observed standard against a physical flux reference and validate an OG530 response.',
             'Measure red fringing and define supported wavelength/telluric masks.',
         ])
     elif optical and filter_name == 'GG495':
         development.extend([
-            ('Use reduce-filtered for separate experimental Gr13/GG495 standard counts; validate physical references and responses.'
+            ('Nightly processing extracts Gr13/GG495 counts and fits matching standard responses; validate the physical reference and response.'
              if grism == 'Gr13' else 'Validate the existing experimental native extraction and response on filtered standards.'),
             'Measure the usable filter band from the data; do not substitute the Free-filter response.',
             'Retain matched Free/GG495 standard observations for a separately validated second-order correction.',
@@ -51,7 +65,7 @@ def setup_support(setup):
     elif not paired:
         development.append('Implement and validate the paired native extraction for this grism, filter, binning and slit.')
     if issue:
-        development.append('Integrate accepted native products into the dated nightly workflow with explicit calibration provenance.')
+        development.append('The native nightly route records completed stages and remaining calibration checks; the archive bridge remains separate.')
     return {
         'archive_bridge': 'enabled' if issue is None else 'not_enabled',
         'archive_issue': issue,
@@ -60,6 +74,8 @@ def setup_support(setup):
         'separate_filtered_standards': 'experimental' if paired and grism == 'Gr13' and filter_name == 'GG495' else 'not_enabled',
         'red_counts_diagnostic': 'experimental' if binned and red and setup.get('slit') in {'slit1.0','slit1.5'} else 'not_enabled',
         'scientifically_validated': False,
+        'nightly_route': nightly_route(setup)[0],
+        'nightly_calibration_issue': nightly_route(setup)[1],
         'development_required': development,
         'validation_required': [
             'Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.',

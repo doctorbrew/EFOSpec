@@ -12,6 +12,22 @@ from efospec.pypeit_adapter import EFOSpecEFOSC2Spectrograph
 from test_pypeit_adapter import write_raw
 
 
+def test_rejected_proposals_are_not_published_as_candidates_or_sky_masks():
+    import json
+    from efospec.extraction import validated_candidate_packet
+    mask=np.ones((12,50),bool);mask[:,20:30]=False
+    found=[SimpleNamespace(NAME=name,TRACE_SPAT=np.full(12,position),hand_extract_flag=manual)
+           for name,position,manual in [('real',25,False),('wing',40,False),('reviewed',12,True)]]
+    evidence={'real':{'accepted':True},'wing':{'accepted':False},'reviewed':{'accepted':False}}
+    packet,keep=validated_candidate_packet({'sky_input_mask':mask},found,evidence)
+    assert keep.tolist()==[True,False,True]
+    assert packet['found_names'].tolist()==['real','reviewed']
+    assert packet['rejected_names'].tolist()==['wing']
+    assert json.loads(str(packet['candidate_evidence_json']))==evidence
+    np.testing.assert_array_equal(packet['rejected_traces'],[found[1].TRACE_SPAT])
+    np.testing.assert_array_equal(packet['sky_input_mask'],mask)
+
+
 def synthetic_image(seed=11, ratio=1.):
     spectral, spatial = np.indices((160, 141))
     sky = 100.+40.*np.exp(-.5*((spectral-70.)/2.)**2)

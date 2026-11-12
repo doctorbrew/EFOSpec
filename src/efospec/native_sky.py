@@ -12,6 +12,24 @@ class SkyValidationError(ValueError):
         self.diagnostics={'lines':lines,'held_out_6363_pass':False}
 
 
+def exposure_flexure(data, waveair, *, required, **options):
+    """Try the same sky check on standards; only measured success permits a shift.
+
+    Insufficient standard sky retains the arc grid and the actual failed check.
+    Unexpected errors propagate. Sky validation does not measure point-source
+    miscentring across the slit or a stellar radial velocity.
+    """
+    try:
+        shift, record = measure_flexure(data, waveair, **options)
+    except SkyValidationError as exc:
+        if required:
+            raise
+        return 0., dict(exc.diagnostics, status='unvalidated', shift_angstrom=0.,
+            applied_shift_angstrom=None, validation_error=str(exc),
+            policy='raw_arc_only; standard sky check attempted and failed')
+    return shift, dict(record, status='validated_sky', applied_shift_angstrom=shift)
+
+
 def measure_flexure(data,waveair, *, slit_width_pixels=None, good_pixels=None):
     """Two offset anchors, then a genuinely isolated 6363-A validation window."""
     data,waveair=np.asarray(data,float),np.asarray(waveair,float)

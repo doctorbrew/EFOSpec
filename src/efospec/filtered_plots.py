@@ -36,7 +36,7 @@ def plot_filtered_run(run):
     run = Path(run).resolve()
     manifest = json.loads((run/'run.json').read_text())
     if manifest.get('method') not in {'native_filtered_standard_extraction','native_red_counts_diagnostic',
-                                    'native_optical_counts_diagnostic'}:
+                                    'native_optical_counts_diagnostic','native_nightly_counts_diagnostic'}:
         raise ValueError('counts plotting requires a separate native counts run')
     for record in manifest['results']:
         for name, digest in record['product_sha256'].items():

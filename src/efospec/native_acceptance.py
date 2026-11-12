@@ -46,10 +46,22 @@ def standard_recovery(frame, spectrum, response, reference):
     ratio=np.divide(flux,truth,out=np.full_like(flux,np.nan),where=valid)
     record=json.loads(Path(response).with_suffix('.json').read_text())
     independent=frame['sha256']!=record['standard_sha256']
+    from pypeit.core import flux_calib
+    from .flux_validation import transfer_summary
+    # Overall closure can hide colour errors and telluric absorption. Use the
+    # same explicit stellar/atmospheric masks as response fitting for continuum QA.
+    if valid.any():
+        bad,stellar,telluric=flux_calib.get_mask(wavevac,np.asarray(spectrum.OPT_COUNTS),
+            np.asarray(spectrum.OPT_COUNTS_IVAR),valid.copy(),mask_hydrogen_lines=True,
+            mask_helium_lines=True,mask_telluric=True,hydrogen_mask_wid=40.)
+        continuum=valid&bad&stellar&telluric
+    else:
+        continuum=np.zeros_like(valid)
+    transfer=transfer_summary(air,ratio,valid,continuum)
     bins=[]
     for lo,hi in ((4600,4800),(5100,5300),(5600,5800),(6000,6200),
                   (6600,6800),(7000,7200),(8000,8200)):
-        m=valid&(air>=lo)&(air<hi)
+        m=continuum&(air>=lo)&(air<hi)
         bins.append(dict(band_air_angstrom=[lo,hi],samples=int(m.sum()),
                          median_ratio=float(np.median(ratio[m])) if m.any() else None))
     return dict(raw=frame['path'],raw_sha256=frame['sha256'],
@@ -57,7 +69,11 @@ def standard_recovery(frame, spectrum, response, reference):
                 interpretation='held-out exposure' if independent else 'training-standard closure only',
                 valid_samples=int(valid.sum()),continuum_bands=bins,
                 median_ratio=float(np.median(ratio[valid])) if valid.any() else None,
-                science_validated=False), dict(waveair=air,ratio=ratio,valid=valid)
+                median_ratio_scope='All supported samples, including absorption; use continuum_transfer for colour/scale QA.',
+                continuum_transfer=transfer,
+                independent_reference_star=(reference['name']!=record.get('standard_name'))
+                    if record.get('standard_name') else None,
+                science_validated=False), dict(waveair=air,ratio=ratio,valid=valid,continuum=continuum)
 
 
 def assess_run(run):

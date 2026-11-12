@@ -66,6 +66,34 @@ def test_red_correlation_never_claims_a_validated_correction(tmp_path,monkeypatc
     assert record['status']=='unvalidated'
     assert record['applied_shift_angstrom'] is None
     assert record['line_check']['failed_gates']==['red_sky_validation_required']
+    assert record['band_consistency']['status']=='consistent'
+
+
+@pytest.mark.parametrize('offset,status', [(1., 'consistent'), (8., 'inconsistent')])
+def test_red_disjoint_bands_reveal_nonuniform_offsets_without_applying_them(tmp_path, monkeypatch, offset, status):
+    from efospec import reduction_checks as checks
+    def measure(*args, wavelength_range, **kwargs):
+        return dict(status='measured', applied=False,
+                    shift_angstrom=-5.+(offset if wavelength_range[0] > 7500 else 0.)), {}
+    monkeypatch.setattr(checks, 'correlate_sky', measure)
+    data, wave = sky_image(0.)
+    record = checks.check_red_sky(data, wave, tmp_path/'red', {})
+    assert record['band_consistency']['status'] == status
+    assert record['band_consistency']['difference_angstrom'] == pytest.approx(offset)
+    assert record['applied_shift_angstrom'] is None and record['status'] == 'unvalidated'
+
+
+def test_missing_red_holdout_is_explicit(tmp_path, monkeypatch):
+    from efospec import reduction_checks as checks
+    def measure(*args, wavelength_range, **kwargs):
+        if wavelength_range[0] > 7500: raise ValueError('sky band has no measurable features')
+        return dict(status='measured', shift_angstrom=-5.), {}
+    monkeypatch.setattr(checks, 'correlate_sky', measure)
+    data, wave = sky_image(0.)
+    record = checks.check_red_sky(data, wave, tmp_path/'red', {})
+    assert record['band_consistency']['status'] == 'unavailable'
+    assert 'no measurable features' in record['band_consistency']['bands'][1]['error']
+    assert record['applied_shift_angstrom'] is None
 
 
 def test_check_directory_cannot_be_overwritten(tmp_path,monkeypatch):

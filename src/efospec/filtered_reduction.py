@@ -74,7 +74,8 @@ def export_counts(prepared, directory):
     header = {key: h[key] for key in ('RA', 'DEC', 'EXPTIME', 'DATE-OBS', 'INSTRUME', 'MJD-OBS')}
     header.update(TARGET=h['OBJECT'], PYP_SPEC='ntt_efosc2_epessto', PYPELINE='MultiSlit',
                   WAVEMED='vacuum', SPECSYS='TOPOCENT', EPSTATUS='EXPERIMENTAL',
-                  FLUXCAL='NONE', FLEXURE='UNMEASURED', BUNIT='electron',
+                  FLUXCAL='NONE', FLEXURE=('VALIDATED' if prepared['sky'].get('held_out_6363_pass')
+                                          else 'UNMEASURED'), BUNIT='electron',
                   GRISM=setup['grism'], FILTER=setup['filter'], SLIT=setup['slit'])
     native = directory/'native'/('spec1d_'+stem+'.fits')
     objects.write_to_fits(header, str(native), overwrite=False)
@@ -101,7 +102,8 @@ def export_counts(prepared, directory):
     two_d = write_spec2d(directory/'native'/('spec2d_'+stem+'.fits'),
         diagnostics['science'], diagnostics['slits'], airtovac(prepared['waveair']*u.AA).value,
         diagnostics['tilts'], arrays[0], arrays=arrays, raw_origin=(prepared['ylo'], prepared['xlo']),
-        stage='red_counts_arc_only' if setup['grism']=='Gr16' else 'filtered_standard_arc_only')
+        stage='native_counts_validated_sky' if prepared['sky'].get('held_out_6363_pass')
+              else 'native_counts_arc_only')
     image = directory/'native'/(stem+'_images.npz')
     np.savez_compressed(image, data=prepared['data'], sky=arrays[0], object_model=arrays[1],
         ivar=arrays[2], mask=arrays[3].mask, waveair=prepared['waveair'],

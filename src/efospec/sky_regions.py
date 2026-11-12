@@ -80,6 +80,11 @@ read-only. New reductions capture the selection directly in their images NPZ.
     settings = result['processing']
     par = inst.profile_parameters('rapid')
     par['flexure']['spec_method'] = 'skip'
+    # Trace order is an extraction override, not an instrument default. Older
+    # reductions without a recorded override used the pinned driver default.
+    geometry = settings.get('trace_geometry') or {}
+    if 'trace_polynomial_degree' in geometry:
+        par['reduce']['findobj']['trace_npoly'] = geometry['trace_polynomial_degree']
     par['reduce']['findobj']['maxnumber_sci'] = settings['findobj_maxnumber']
     par['reduce']['findobj']['snr_thresh'] = settings['findobj_snr_threshold']
     par['reduce']['findobj']['skip_second_find'] = True

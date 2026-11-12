@@ -14,6 +14,7 @@ from .native_readiness import assess_native_readiness
 from .native_reduction import prepare
 from .filtered_reduction import export_counts, fit_standard_response
 from .products import PreparedExposure, export_spectrum
+from .setup_support import nightly_route
 
 SETUP_KEYS = ('grism', 'filter', 'slit', 'binx', 'biny', 'readout')
 
@@ -44,9 +45,7 @@ def select_response(frame, standards):
 
 
 def supported(frame):
-    s = frame['setup']
-    return (s['grism'] in {'Gr11','Gr13'} and s['filter'] == 'Free'
-            and s['binx'] == s['biny'] == 2 and s['slit'] in {'slit1.0','slit1.5'})
+    return nightly_route(frame['setup'])[0] is not None
 
 
 def reduce_daily(input_dir, output, *, night, targets=None, reviewed_sources=None, calibration_groups=()):
@@ -82,13 +81,13 @@ def reduce_daily(input_dir, output, *, night, targets=None, reviewed_sources=Non
         input_dir=str(Path(input_dir).resolve()), output_dir=str(output), targets=targets,
         python=sys.executable, pypeit_version=pypeit.__version__, source_sha256=snapshot_sources(output),
         results=[], errors=[], skipped=[], standards=[], held_out=[], held_out_errors=[],
-        review_counts=[], review_counts_errors=[],
+        counts=[], exposure_states=[], review_counts=[], review_counts_errors=[],
         independent_flux_validation=False,
         limitations=['Same-night responses are experimental; absolute flux accuracy is unvalidated.',
-            'Short standards retain arc-only wavelengths; no science sky shift is transferred to them.',
+            'Optical standards attempt the independent sky check; failed checks retain arc-only wavelengths with measured reasons. No science shift is transferred.',
             'Source position is an acquisition hypothesis, not a confirmed astrophysical identity.',
             'No slit-loss, telluric or second-order correction; response uncertainty and resampling covariance are omitted.',
-            'Only Gr11/Gr13 Free, 2x2, slit1.0/slit1.5 are enabled for nightly flux delivery.'])
+            'Gr11/Gr13 Free/GG495 use exact-setup responses; Gr16/OG530 retains counts and response diagnostics pending red-wavelength validation.'])
     save_json(output/'inputs.json', inv); save_json(output/'setup-checks.json', readiness)
     save_json(output/'run.json', run)
     cache = {}; fitted = []; objects = {}
@@ -113,12 +112,15 @@ def reduce_daily(input_dir, output, *, night, targets=None, reviewed_sources=Non
             diagnostics=getattr(exc, 'diagnostics', {}),
             action='Inspect the exposure log and same-night standards; no archive fallback was applied.'))
 
-    def extract(frame, directory):
+    def extract(frame, directory, *, arc_only_review=False):
         association = associations[frame['path']]
         validate_associations(frame, association['raw_calibrations'])
         key = calibration_key(association)
         prepared = prepare(frame, association['raw_calibrations'], directory, 548.,
                            cached=cache.get(key), arc_supported_only=True,
+                           red_counts_only=nightly_route(frame['setup'])[0]=='red',
+                           arc_only_review=arc_only_review,
+                           adaptive_window=True,
                            reviewed_source=reviews.get(Path(frame['path']).name))
         cache[key] = prepared['bundle']['directory']
         return prepared
@@ -152,58 +154,89 @@ def reduce_daily(input_dir, output, *, night, targets=None, reviewed_sources=Non
             raise ValueError('response and extraction have no supported flux bins')
         run['results'].append(row)
 
+    review_root = output/'wavelength-review'
     for frame in sorted(selected.values(), key=lambda f:(f['role']!='standard_candidate',f['metadata']['MJD-OBS'])):
+        route, issue = nightly_route(frame['setup'])
+        state = dict(raw=frame['path'], object=frame['metadata']['OBJECT'], setup=frame['setup'],
+                     route=route, stage='native_calibration', status='pending', pending_checks=[])
+        run['exposure_states'].append(state)
         if not supported(frame):
             run['skipped'].append(dict(path=frame['path'], object=frame['metadata']['OBJECT'],
-                setup=frame['setup'], code='unsupported_setup',
-                reason='Nightly contemporary flux delivery requires Gr11/Gr13 Free, 2x2, slit1.0/slit1.5; use separate filtered/red diagnostics.'))
+                setup=frame['setup'], code='native_calibration_not_implemented',
+                stage='native_calibration', reason=issue))
+            state.update(status='not_implemented', pending_checks=[issue])
             save_json(output/'run.json', run)
             continue
-        directory = output/'exposures'/Path(frame['path']).stem; directory.mkdir(parents=True)
-        stage = 'response_selection'
+        directory = review_root/'exposures'/Path(frame['path']).stem; directory.mkdir(parents=True)
+        stage = 'native_extraction'
+        counts = None
         with (directory/'execution.log').open('w') as stream, redirect_stdout(stream), redirect_stderr(stream):
             try:
-                chosen = select_response(frame, fitted) if frame['role']=='science' else None
-                stage = 'native_extraction'
-                prepared = extract(frame, directory)
+                wavelength_error = None
+                try:
+                    prepared = extract(frame, directory)
+                except Exception as exc:
+                    if getattr(exc, 'code', None) != 'wavelength_validation_failed':
+                        raise
+                    failure(frame, 'wavelength_validation', exc, directory)
+                    wavelength_error = str(exc)
+                    # The failed check never becomes an accepted wavelength shift.
+                    key = calibration_key(associations[frame['path']])
+                    if (directory/'calibration/calibration.json').is_file():
+                        cache[key] = directory/'calibration'
+                    directory = directory/'arc-only-review'
+                    directory.mkdir()
+                    prepared = extract(frame, directory, arc_only_review=True)
+                stage = 'counts_export'
+                counts, spectra = export_counts(prepared, directory)
+                prepared['engine']['objects']['primary'] = spectra
+                counts.update(role=frame['role'], route=route, pending_checks=[],
+                              flux_response={'status':'not_applied','independent_flux_validation':False})
+                run['counts'].append(counts)
+                state.update(stage='counts_extracted', status='counts_extracted', product=counts['product'])
+                if wavelength_error:
+                    counts.update(wavelength_validation_error=wavelength_error)
+                    counts['pending_checks'].append('Exposure-specific wavelength/flexure validation: '+wavelength_error)
+                    run['errors'][-1]['counts_review']=counts['product']
+                if route == 'red':
+                    counts['pending_checks'].append('Gr16 red-wavelength/flexure validation with independent held-out sky features; no correction applied.')
+                    consistency = prepared['sky'].get('band_consistency', {})
+                    counts['pending_checks'].append('Red sky disjoint-band check: '+consistency.get('status','unavailable')+'.')
                 if frame['role']=='standard_candidate':
-                    stage = 'standard_counts'
-                    counts, spectra = export_counts(prepared, directory)
-                    prepared['engine']['objects']['primary'] = spectra
                     stage = 'response_fit'
                     fit = fit_standard_response(frame, spectra, directory)
+                    counts['flux_response'] = fit
                     entry = dict(frame=frame, counts=counts, fit=fit, calibration=prepared['bundle']['record'])
                     run['standards'].append(entry)
                     if fit['status'] != 'response_built_unvalidated':
                         raise ValueError(fit.get('error',fit['status']))
                     fitted.append(entry); objects[frame['path']] = spectra[0]
-                    chosen = select_response(frame, fitted)
+                stage = 'response_selection'
+                chosen = select_response(frame, fitted)
+                counts['selected_response'] = chosen['fit']['response']
+                if counts['pending_checks']:
+                    continue
                 stage = 'flux_export'
                 deliver(frame, prepared, chosen)
+                state.update(stage='flux_export', status='flux_calibrated_experimental')
             except Exception as exc:
                 failure(frame, stage, exc, directory)
-                if getattr(exc,'code',None)=='wavelength_validation_failed':
-                    # Preserve a useful extraction without promoting a failed
-                    # wavelength solution to science flux delivery.
-                    review_root=output/'wavelength-review'
-                    review_dir=review_root/'exposures'/Path(frame['path']).stem
-                    review_dir.mkdir(parents=True)
-                    try:
-                        association=associations[frame['path']];key=calibration_key(association)
-                        cached=cache.get(key) or directory/'calibration'
-                        review=prepare(frame,association['raw_calibrations'],review_dir,548.,
-                            cached=cached,arc_supported_only=True,arc_only_review=True,
-                            reviewed_source=reviews.get(Path(frame['path']).name))
-                        counts,_=export_counts(review,review_dir)
-                        counts.update(wavelength_validation_error=str(exc),
-                                      flux_response={'status':'not_applied','independent_flux_validation':False})
+                state.update(stage=stage, status='failed' if counts is None else 'counts_extracted')
+                if counts is not None:
+                    counts['pending_checks'].append(stage.replace('_',' ')+': '+str(exc))
+                    run['errors'][-1]['counts_review']=counts['product']
+                else:
+                    state['pending_checks'].append(str(exc))
+                    run['review_counts_errors'].append(dict(raw=frame['path'], object=frame['metadata']['OBJECT'],
+                        stage=stage, error=str(exc), diagnostics=getattr(exc,'diagnostics',{})))
+            finally:
+                if counts is not None:
+                    state['pending_checks']=list(counts['pending_checks'])
+                    if counts['pending_checks']:
+                        counts['delivery_status']='Counts extracted; flux calibration pending'
                         run['review_counts'].append(counts)
-                        run['errors'][-1]['counts_review']=counts['product']
-                    except Exception as review_exc:
-                        (review_dir/'error.log').write_text(traceback.format_exc())
-                        run['review_counts_errors'].append(dict(raw=frame['path'],object=frame['metadata']['OBJECT'],
-                            error=str(review_exc),log=str(review_dir/'error.log'),
-                            diagnostics=getattr(review_exc,'diagnostics',{})))
+                    save_json(directory/'extraction.json', counts)
+                save_json(output/'run.json', run)
         save_json(output/'run.json', run)
 
     # Distinct exposures only. These diagnostics do not certify the absolute scale.
@@ -220,16 +253,17 @@ def reduce_daily(input_dir, output, *, night, targets=None, reviewed_sources=Non
                 run['held_out'].append(dict(qa, training_raw=a['path'], setup=b['setup']))
             except Exception as exc:
                 run['held_out_errors'].append(dict(training_raw=a['path'], test_raw=b['path'], error=str(exc)))
-    run['execution_status'] = ('partial' if run['results'] else 'failed') if (run['errors'] or run['skipped'] or run['held_out_errors']) else 'complete'
+    run['execution_status'] = ('partial' if run['results'] or run['counts'] else 'failed') if (run['errors'] or run['skipped'] or run['held_out_errors'] or run['review_counts']) else 'complete'
     if run['review_counts'] or run['review_counts_errors']:
         root=output/'wavelength-review'
         save_json(root/'inputs.json',inv)
-        save_json(root/'run.json',dict(night=night,method='native_optical_counts_diagnostic',
+        save_json(root/'setup-checks.json',readiness)
+        save_json(root/'run.json',dict(night=night,method='native_nightly_counts_diagnostic',
             status='partial' if run['review_counts_errors'] else 'complete',
             results=run['review_counts'],errors=run['review_counts_errors'],
             scientific_status='EXPERIMENTAL',limitations=[
-                'Science wavelength validation failed; these are review counts with unshifted arc wavelengths.',
-                'No flux calibration or accepted exposure-specific flexure; target identity may remain unverified.']))
+                'Counts are retained at the actual completed stage; each exposure lists the remaining calibration checks.',
+                'No flux calibration; wavelength and flexure status are exposure-specific. Target identity may remain unverified.']))
         run['review_counts_run']=str(root)
     save_json(output/'run.json', run)
     return run
