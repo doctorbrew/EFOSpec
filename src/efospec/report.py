@@ -237,6 +237,12 @@ def build_report(run_directory, *, plot_python=None, render_plots=True):
     run = Path(run_directory).resolve()
     manifest = json.loads((run/'run.json').read_text())
     error = None
+    if render_plots:
+        from .failure_profiles import plot_failure_profiles
+        try:
+            plot_failure_profiles(run)
+        except (OSError,ValueError,KeyError) as exc:
+            error = 'Failed-extraction profile rendering: '+str(exc)
     if render_plots and manifest['results']:
         python = (plot_python or os.environ.get('EFOSPEC_PLOT_PYTHON')
                   or os.environ.get('EPESSTO_PLOT_PYTHON') or sys.executable)

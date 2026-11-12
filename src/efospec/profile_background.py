@@ -53,6 +53,8 @@ def _bounded_arrays(source):
     residual = arrays['data']-arrays['sky']
     good = (arrays['mask'] == 0) & np.isfinite(residual)
     return {'residual':np.where(good, residual, np.nan), 'valid_rows':valid,
+            'sky':arrays['sky'], 'input_mask':arrays['sky_input_mask'], 'accepted_mask':accepted,
+            'spatial_degree':fit['spatial_degree'],
             'x_limits':(source.window.origin[1]+lower, source.window.origin[1]+upper),
             'provenance':None}
 

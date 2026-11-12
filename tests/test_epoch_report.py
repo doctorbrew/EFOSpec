@@ -179,7 +179,7 @@ def test_source_profiles_have_a_separate_full_width_card(epoch_page):
     assert positions == sorted(positions)
     assert '<figure class="plot full-width"><figcaption>AT2026agzp / Spatial Profile and Trace Identification' in html
     profile_card=html[positions[2]:positions[3]]
-    assert 'style="aspect-ratio:2"' in profile_card
+    assert 'style="aspect-ratio:2"' not in profile_card
     assert 'object-fit:contain' in html
 
 

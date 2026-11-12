@@ -7,7 +7,13 @@ from efospec.spatial_profiles import wavelength_binned_profiles
 
 
 class SpatialProfileTests(unittest.TestCase):
-    def test_plot_draws_saved_sky_beside_residual_with_correct_panel_shading(self):
+    def test_before_subtraction_limits_show_zero_and_preserve_negative_data(self):
+        from efospec.profile_plot import _observed_profile_limits
+        for samples,expected in [([0.,100.],(-10.,115.)),([20.,100.],(-10.,115.)),
+                                 ([-30.,100.],(-40.,115.)),([0.,0.],(-.1,.15))]:
+            np.testing.assert_allclose(_observed_profile_limits([np.array(samples)]),expected)
+
+    def test_plot_draws_observed_data_and_saved_background_with_correct_shading(self):
         from scripts.preview_spectrum_style import draw_spatial_profiles
         import matplotlib.pyplot as plt
         x = np.arange(21)
@@ -19,17 +25,21 @@ class SpatialProfileTests(unittest.TestCase):
                     trace=np.full(90,10.), spatial_origin=100, sky_input_mask=bands,
                     sky_spatial_degree=2, box_radius=3.)
         fig, record = draw_spatial_profiles(dict(object='SNtest',grism='Gr13',exptime_s=100.), wave, data)
-        self.assertEqual(len(fig.axes),6)
+        self.assertEqual(len(fig.axes),3)
+        self.assertEqual(fig.axes[0].get_title(),'Before Subtraction: Observed data and fitted background')
+        legend=[t.get_text() for t in fig.axes[0].get_legend().get_texts()]
+        self.assertIn('Observed Data',legend)
+        self.assertIn('Background Sampling',legend)
         for i, panel in enumerate(record['bins']):
-            model, residual = fig.axes[2*i:2*i+2]
+            model = fig.axes[i]
+            self.assertLess(model.get_ylim()[0],0.)
             np.testing.assert_allclose(model.lines[0].get_ydata(),
                                        np.array(panel['summed_data_electrons'])/1000.)
             sky_curve = model.lines[1].get_ydata()
             np.testing.assert_allclose(sky_curve[3:18], np.array(panel['summed_sky_electrons'])[3:18]/1000.)
             self.assertTrue(np.isnan(sky_curve[:3]).all() and np.isnan(sky_curve[18:]).all())
-            np.testing.assert_allclose(residual.lines[0].get_ydata(),
-                                       np.array(panel['summed_electrons'])/1000.)
-            for ax in (model,residual):
+            self.assertNotIn('After subtraction', model.get_title())
+            for ax in (model,):
                 self.assertEqual(ax.images[0].get_transform(),ax.get_xaxis_transform())
         self.assertEqual(record['sky_model']['spatial_degree'],2)
         plt.close(fig)

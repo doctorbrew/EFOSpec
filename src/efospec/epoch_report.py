@@ -150,8 +150,17 @@ class EpochPage:
                                                 setup.get('filter'), setup.get('slit')]))
                 title += self.exposure_time(item, frames)
                 section_order.append(source_order(item))
+                from .failure_profiles import load_failure_profile
+                saved_profile=load_failure_profile(run_dir,item.get('path',''))
+                profile=''
+                if saved_profile:
+                    folder,preview=saved_profile
+                    profile=self.figure(folder/'profiles.png',title+' / Spatial profile before subtraction')
+                    if preview.get('caption'):
+                        profile+='<p class="caption">'+_text(preview['caption'])+'</p>'
                 sections.append(f'<article class="exposure" id="{_text(id_prefix)}-{group}-{i}">'
                     f'<h3>{_text(title)}</h3>'+self.failure_notice(run_dir, item)
+                    +profile
                     +'<p class="caption">'+_text(Path(item.get('path', '')).name)+'</p></article>')
         return ''.join(html for _, html in sorted(zip(section_order, sections), key=lambda pair: pair[0])) or '<p>No spectra recorded in this revision.</p>'
 
@@ -290,7 +299,7 @@ class EpochPage:
                                   ('acquisition-1', 'Acquisition 1'), ('acquisition-2', 'Acquisition 2')]:
                 matches = sorted(folder.glob(f'FitQC_*_{suffix}.jpg'))
                 if matches:
-                    ratio = 2 if suffix=='profiles' else 5/3 if suffix in ('science','traces') else None
+                    ratio = 5/3 if suffix in ('science','traces') else None
                     cards.append(self.figure(matches[0], title+' / '+label,
                                              full_width=suffix=='profiles', aspect_ratio=ratio))
             candidates = ', '.join(f'C{c.get("number", i+1)}: x={c.get("anchor_raw_x", c.get("raw_spatial_pixel", 0)):.2f}'
@@ -306,6 +315,11 @@ class EpochPage:
                 profile_description += 'The profiles use a retained two-sided PypeIt fit; the 2D panels above retain the parent reduction state. '
             if profile_info.get('profile_background_x_limits'):
                 profile_description += 'Curves are shown only within the supported background interval; candidate markers can lie outside it. '
+            current_layout=profile_info.get('layout')=='three wavelength panels; before subtraction only'
+            if current_layout:
+                profile_description=('Three equal air-wavelength intervals show summed data before subtraction, '
+                    'with the saved sky model overlaid where available. No new background is fitted. '
+                    'Candidate labels retain the saved review IDs and do not establish target identity. ')
             sections.append((source_order(review), f'<article class="exposure"><h3>{_text(title)}</h3>'
                 f'<p class="caption">{_text(raw)} · Identity {_text(review.get("identity", "unverified").lower())}</p>'
                 f'<p class="caption">{_text(provenance)}</p>'
@@ -313,15 +327,31 @@ class EpochPage:
                 '<p class="caption">Raw detector: full frame and extraction window. Candidate traces: saved source paths. '
                 'Sky residual: background-subtracted window, shown without and with those paths. '
                 'Where no sky fit exists, the plots are labeled as counts including sky. '
-                + profile_description +
-                'Q2 and Q3 are the second and third quarters of the extraction window along y; '
-                'the legend gives inclusive raw-pixel ranges. '
-                'Line-style markers locate candidates at the middle row.</p>'
+                + profile_description
+                +('' if current_layout else 'Q2 and Q3 are the second and third quarters of the extraction window along y; '
+                'the legend gives inclusive raw-pixel ranges. Line-style markers locate candidates at the middle row.')+'</p>'
                 f'<div class="qc-plots">{"".join(cards)}</div>'
                 + ('<p class="caption">Candidate line styles: solid, dashed, dash-dot, dotted. '
                    'Candidate IDs remain fixed. '
                    + self.download(folder/'profile-display.json', 'Profile display details')+'</p>'
                    if (folder/'profile-display.json').is_file() else '')+'</article>'))
+            # An explicit current review supersedes old candidate drawings.
+            # Keep historical evidence accessible without presenting its rejected
+            # markers as the current source geometry.
+            error=next((e for e in run.get('errors', []) if Path(e.get('path','')).name==raw),None)
+            if error:
+                from .failure_profiles import load_failure_profile
+                selected=load_failure_profile(revision/'reduction',error['path'])
+                if selected and selected[1].get('selection'):
+                    selected_folder,display=selected
+                    current_profile=(f'<article class="exposure"><h3>{_text(title)}</h3>'
+                        '<p class="caption">Current reviewed aperture geometry.</p>'
+                        '<div class="qc-plots">'+self.figure(selected_folder/'profiles.png',
+                            title+' / Reviewed spatial profile',full_width=True)+'</div>'
+                        '<p class="caption">'+_text(display.get('caption',''))+'</p></article>')
+                    order,older=sections[-1]
+                    sections[-1]=(order,current_profile+'<details><summary>Earlier candidate diagnostics (superseded)</summary>'
+                                  +older+'</details>')
             # Discover saved polynomial experiments; never invent a global C3 recipe.
             rows, background_cards, experiments = [], [], {}
             for path in sorted(set(original.glob('*/background.json')) | set(folder.glob('*/background.json'))):
@@ -386,6 +416,12 @@ class EpochPage:
                 +'<p class="caption">The saved historical curves are shown unchanged: solid C1, dashed C2, '
                 'dash-dot C3, with thicker lines. These diagnostics do not establish on-slit centring.</p>'
                 +'<div class="qc-plots">'+''.join(cards)+'</div></article>')
+            error=next((e for e in self.read(manifest).get('errors',[]) if e.get('object')==name),None)
+            if error:
+                from .failure_profiles import load_failure_profile
+                selected=load_failure_profile(revision/'reduction',error['path'])
+                if selected and selected[1].get('selection'):
+                    sections[-1]='<details><summary>'+_text(name)+' / Earlier trace geometry checks</summary>'+sections[-1]+'</details>'
         return ''.join(sections)
 
     def local_background_checks(self, revision, run):

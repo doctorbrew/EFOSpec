@@ -135,103 +135,25 @@ def plot_exposure(exposure, output):
     image_displays['residual'] = residual_image._efospec_display
     save_qc(fig,output,'traces',exposure.result['object'],tick_fontsize=30,title_fontsize=32,label_fontsize=32);plt.close(fig)
 
-    # A separate wide figure remains legible when it spans the report grid.
-    from .profile_background import load_profile_background, summed_profile
-    background = load_profile_background(exposure, output)
-    profile_sky_available = background is not None or sky_available
-    profile_residual = background['residual'] if background else residual
-    valid_rows = (background['valid_rows'] if background else
-                  np.asarray(exposure.images.get('sky_valid_rows', np.ones(ny, dtype=bool))))
-    supported_xlimits = background['x_limits'] if background else xlimits
-    # Candidate positions remain visible even when the fitted background only
-    # supports a smaller interval. Do not extrapolate its profile into that gap.
-    anchors = [trace[ny//2] for trace in traces if np.isfinite(trace[ny//2])]
-    profile_xlimits = (min([supported_xlimits[0]]+[x-3 for x in anchors]),
-                       max([supported_xlimits[1]]+[x+3 for x in anchors]))
-    fig, profile = plt.subplots(figsize=(20,10), constrained_layout=True)
-    for i, trace in enumerate(traces):
-        profile.axvline(trace[ny//2],color=colors[i],ls=TRACE_STYLES[i%4],lw=4.2)
-    x = np.arange(nx)+x0
-    protected = np.zeros(nx, dtype=bool)
-    for trace in traces:
-        finite = trace[np.isfinite(trace)]
-        if finite.size:
-            protected |= (x >= finite.min()-3) & (x <= finite.max()+3)
-    limit_samples, exclusions, row_ranges = [], {}, {}
-    for indices, style, label in [(np.arange(ny),'k-','All rows'),
-            (np.arange(ny//4,ny//2),'--','Second quarter'),
-            (np.arange(ny//2,3*ny//4),':','Third quarter')]:
-        if profile_sky_available:
-            values, row_count = summed_profile(profile_residual, indices, valid_rows,
-                spatial_columns=((x >= supported_xlimits[0]) & (x <= supported_xlimits[1]))
-                                if background else None)
-        else:
-            values, row_count = np.nanmedian(residual[indices],axis=0), len(indices)
-        if background:
-            values = np.where((x >= supported_xlimits[0]) & (x <= supported_xlimits[1]), values, np.nan)
-        # Slit-boundary columns carry no fitted background and overwhelm the
-        # sources by an order of magnitude; keep them plotted but out of scale.
-        for_limits, excluded = _profile_limit_samples(values, protected,
-                                                      edge_margin=SLIT_EDGE_MARGIN)
-        for_limits[(x < profile_xlimits[0]) | (x > profile_xlimits[1])] = np.nan
-        exclusions[label] = x[excluded].tolist()
-        limit_samples.append(for_limits)
-        first, last = int(y0+indices[0]), int(y0+indices[-1])
-        row_ranges[label] = {'raw_y_first':first, 'raw_y_last':last,
-                             'bounds':'inclusive', 'rows':len(indices), 'used_rows':row_count}
-        short_label = {'All rows':'Full range', 'Second quarter':'Q2', 'Third quarter':'Q3'}[label]
-        coverage = f' ({row_count}/{len(indices)} rows)' if row_count != len(indices) else ''
-        profile.plot(x,values/1000.,style,lw=2.,label=f'{short_label}: y={first}--{last}'+coverage)
-    # Keep every plotted sample, including spikes below the chosen viewport.
-    limits = _profile_limits(limit_samples, background_subtracted=profile_sky_available)
-    if limits is not None:
-        limits = tuple(value/1000. for value in limits)
-        profile.set_ylim(*limits)
-    profile.set_xlim(*profile_xlimits)
-    from matplotlib.ticker import ScalarFormatter
-    formatter = ScalarFormatter(useOffset=False)
-    formatter.set_scientific(False)
-    profile.yaxis.set_major_formatter(formatter)
-    for i, trace in enumerate(traces):
-        _candidate_label(profile, trace[ny//2], f'C{i+1}', colors[i])
-    profile.set_xlabel('Spatial Pixel', fontsize=28.6)
-    profile.set_ylabel((r'Summed Bkg-Subtracted Signal [$10^3\,e^{-}$]' if profile_sky_available
-                       else r'Median Signal [$10^3\,e^{-}$] (sky included)'), fontsize=28.6)
-    # Summation rule and row ranges stay in profile-display.json and the report
-    # caption; the figure keeps a short title.
-    profile.set_title('Spatial profile' if profile_sky_available
-                      else 'Spatial profile (sky included)')
-    if profile_sky_available:
-        profile.axhline(0, color='0.5', lw=.8, zorder=0)
-    profile.legend(ncol=3, fontsize=23.4);profile.grid(False)
-    fig.suptitle(title,fontsize=28)
-    save_qc(fig,output,'profiles',exposure.result['object'],tick_fontsize=24,legend_fontsize=22,
-            title_fontsize=28,label_fontsize=28.6)
+    plot_review_profile(exposure, output, traces=traces)
+
+
+def plot_review_profile(exposure, output, *, traces=None):
+    """Regenerate only the spatial-profile figure from saved inspection arrays."""
+    from .profile_background import load_profile_background
+    from .profile_plot import draw_review_profiles, save_review_profile
+    import matplotlib.pyplot as plt
+    traces=_traces(exposure) if traces is None else traces
+    x0=exposure.window.origin[1]
+    header=fits.getheader(exposure.frame['path'])
+    result=dict(exposure.result,grism=exposure.frame.get('setup',{}).get('grism',header.get('ESO INS GRIS1 NAME','Unknown')),
+                exptime_s=header.get('EXPTIME',0.))
+    background=load_profile_background(exposure,output)
+    fig,record=draw_review_profiles(exposure.images,result,spatial_origin=x0,
+        traces=[t-x0 for t in traces],background=background,spatial_label='Spatial pixel (raw detector)')
+    save_review_profile(fig,output,result['object'])
     plt.close(fig)
-    save_json(Path(output)/'profile-display.json', {
-        'coordinates':'raw_detector_pixels_zero_based', 'candidate_reference_raw_y':int(y0+ny//2),
-        'strength_measure':'median electrons sampled along saved trace; not detection S/N',
-        'sky_subtracted':profile_sky_available,
-        'profile_statistic':('sum of pixel-wise background residuals over the same common valid spectral rows at each displayed spatial x; no filling, smoothing or coverage rescaling'
-                             if profile_sky_available else 'median over selected spectral rows at each fixed spatial x; no fitted background'),
-        'background_source':background['provenance'] if background else None,
-        'profile_x_limits':list(profile_xlimits),
-        'profile_background_x_limits':list(supported_xlimits) if background else None,
-        'profile_row_ranges':row_ranges,
-        'missing_pixel_policy':'exclude a row at every displayed x if any supported non-dead column is missing; fully missing columns remain NaN',
-        'traces':[{'candidate':i+1,'rank':rank+1,'color':colors[i],'linestyle':TRACE_STYLES[i%4],
-                   'median_electrons':strengths[i] if np.isfinite(strengths[i]) else None} for rank,i in enumerate(order)],
-        'display_only':True,'all_profile_samples_plotted':True,
-        'image_display':image_displays,
-        'ylim_excluded_raw_x_by_profile':exclusions,
-        'outlier_rule':'negative deviation from 7-pixel running median >10 MAD-sigma and <=2 columns; positive spikes require >20 MAD-sigma prominence and half-prominence width <=2 pixels, with <=3-column >10-sigma core; protect every saved trace envelope +/-3 pixels; display limits only',
-        'slit_edge_margin_columns':SLIT_EDGE_MARGIN,
-        'slit_edge_rule':f'the outermost {SLIT_EDGE_MARGIN} unprotected columns on each side are excluded from the limit estimate only; they remain plotted',
-        'ylim':limits, 'ylim_rule':('20 percent span below retained minimum; include zero; 10 percent above maximum'
-                                  if profile_sky_available else '10 percent outward padding of retained extrema'),
-        'display_signal_unit':'10^3 electrons', 'display_signal_divisor':1000.,
-        'y_tick_format':'plain numbers in 10^3 electrons',
-    })
+    save_json(Path(output)/'profile-display.json',record)
 
 
 @house_style

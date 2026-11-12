@@ -9,6 +9,62 @@ from astropy.io import fits
 from efospec.recovery_qc import plot_exposure, _profile_limit_samples, _profile_limits
 
 
+@pytest.mark.parametrize('sky_available', [False, True])
+def test_failed_profile_shows_reviewed_c2_and_wavelength_dependent_centroids(sky_available):
+    from efospec.profile_plot import draw_review_profiles
+    import matplotlib.pyplot as plt
+    ny, nx = 60, 101
+    x = np.arange(nx)
+    traces = np.array([np.full(ny, 20.), np.linspace(45., 55., ny)])
+    data = 100+300*np.exp(-.5*((x[None, :]-traces[1, :, None])/3)**2)
+    mask = np.broadcast_to(((x > 28)&(x < 35))|((x > 65)&(x < 72)), data.shape)
+    images = dict(data=data, waveair=np.broadcast_to(np.linspace(4000, 7000, ny)[:, None], data.shape),
+        found_traces=traces, sky=np.full_like(data, 100.), sky_input_mask=mask,
+        sky_mask_stage='bounded_input_and_post_rejection_masks' if sky_available
+                       else 'source_finding_only_no_accepted_background_fit')
+    original = {k:v.copy() for k,v in images.items() if isinstance(v, np.ndarray)}
+    selection = dict(candidate=2, radius_pixels=7., radius_source='review recipe',
+                     aperture_label='Reviewed aperture', method='operator_visual')
+    fig, record = draw_review_profiles(images, dict(object='SNtest', grism='Gr13', exptime_s=900),
+        spatial_origin=100, selection=selection, candidate_notes={'C1':'unconfirmed'})
+    assert record['selection']==selection
+    assert record['display_only'] and not record['extraction_accepted']
+    centers=[]
+    for ax, profile in zip(fig.axes, record['bins']):
+        assert max(profile['aperture_fraction']) > .9
+        assert any(t.get_text()=='C2' and t.get_position()[0]==pytest.approx(profile['median_trace_pixel']+1)
+                   for t in ax.texts)
+        assert all('centre:' not in t.get_text() for t in ax.texts)
+        centers.append(profile['median_trace_pixel'])
+        assert profile['candidate_centroids'][1]['spatial_pixel']==pytest.approx(centers[-1])
+        assert bool(np.any(profile['background_fraction']))==sky_available
+        assert np.max(ax.images[1].get_array()[..., 3]) > 0
+    assert centers[0] < centers[1] < centers[2]
+    for key, value in original.items(): np.testing.assert_array_equal(images[key], value)
+    plt.close(fig)
+
+
+def test_removed_wing_cannot_reappear_and_broad_neighbour_gets_c2_label():
+    from efospec.profile_plot import draw_review_profiles
+    import matplotlib.pyplot as plt
+    shape=(30,201)
+    images=dict(data=np.ones(shape),waveair=np.broadcast_to(np.linspace(4000,7000,30)[:,None],shape),
+                found_traces=np.array([np.full(30,100.),np.full(30,142.)]))
+    selection=dict(candidate=1,radius_pixels=16.,radius_source='proposed FWHM width',method='operator_visual')
+    fig,record=draw_review_profiles(images,dict(object='SNtest',grism='Gr13',exptime_s=900),
+        selection=selection,hidden_candidates=['C2'],candidate_labels={'N1':'C2'},
+        supplemental_traces=[dict(label='N1',trace=np.full(30,160.))])
+    for ax,b in zip(fig.axes,record['bins']):
+        markers=[line.get_xdata()[0] for line in ax.lines if len(line.get_xdata())==2]
+        assert markers==[100.,160.]
+        labels=[t.get_text() for t in ax.texts]
+        assert 'C1' in labels and 'C2' in labels and 'N1' not in labels
+        assert [c['spatial_pixel'] for c in b['candidate_centroids']]==[100.,160.]
+    assert record['hidden_candidates']==['C2'] and record['candidate_labels']=={'N1':'C2'}
+    np.testing.assert_array_equal(images['found_traces'][1],np.full(30,142.))
+    plt.close(fig)
+
+
 @pytest.mark.parametrize('sky_available,bounded', [(True, False), (False, False), (True, True)])
 def test_all_three_candidates_and_median_curves_are_visible(tmp_path, monkeypatch, sky_available, bounded):
     ny, nx = 40, 141
@@ -27,10 +83,13 @@ def test_all_three_candidates_and_median_curves_are_visible(tmp_path, monkeypatc
         candidates=[{'name': n} for n in ['first', 'second', 'third']],
         images={'data': data, 'sky': np.full_like(data, 100) if sky_available else np.zeros_like(data),
                 'found_names': names, 'found_traces': traces,
+                'waveair':np.broadcast_to(np.linspace(4000,7000,ny)[:,None],data.shape),
+                'sky_input_mask':np.broadcast_to((x>5)&(x<135),data.shape),
                 'sky_mask_stage': np.array('bounded_input_and_post_rejection_masks' if sky_available
                                           else 'source_finding_only_no_background_fit')})
     figures = {}
     monkeypatch.setattr('efospec.figure_style.save_qc', lambda fig, output, kind, name, **kw: figures.update({kind: fig}))
+    monkeypatch.setattr('efospec.profile_plot.save_review_profile',lambda fig,*a:figures.update(profiles=fig))
     if bounded:
         monkeypatch.setattr('efospec.profile_background.load_profile_background', lambda *args: {
             'residual': data-exposure.images['sky'], 'valid_rows': np.ones(ny, dtype=bool),
@@ -40,57 +99,24 @@ def test_all_three_candidates_and_median_curves_are_visible(tmp_path, monkeypatc
     assert len(figures['traces'].axes) == 2
     for kind in ('science','traces'):
         assert all(ax.images[0].get_cmap().name=='gray_r' for ax in figures[kind].axes if ax.images)
-    profile = figures['profiles'].axes[0]
-    low, high = profile.get_ylim()
-    residual = data-exposure.images['sky']
-    statistic = np.sum if sky_available else np.median
-    expected = [statistic(residual,axis=0),statistic(residual[ny//4:ny//2],axis=0),
-                statistic(residual[ny//2:3*ny//4],axis=0)]
-    for line, values in zip(profile.lines[3:], expected):
-        if bounded:
-            values[(x+100 < 150) | (x+100 > 230)] = np.nan
-        np.testing.assert_array_equal(line.get_ydata(), values/1000.)
-        assert line.get_linewidth() == 2.
-        if not bounded:
-            assert line.get_ydata()[5] < low
-        assert np.nanmax(line.get_ydata()) < high
-    assert [line.get_xdata()[0] for line in profile.lines[:3]] == [115., 170., 225.]
-    assert [line.get_color() for line in profile.lines[:3]] == ['xkcd:red']*3
-    assert [line.get_linestyle() for line in profile.lines[:3]] == ['-', '--', '-.']
-    assert all(line.get_linewidth() == 4.2 for line in profile.lines[:3])
-    assert profile.get_legend_handles_labels()[1] == ['Full range: y=10--49','Q2: y=20--29','Q3: y=30--39']
-    assert profile.get_legend()._ncols == 3
-    for ax in [figures['science'].axes[1], figures['traces'].axes[1], profile]:
-        assert [text.get_text() for text in ax.texts] == ['C1','C2','C3']
-        for text in ax.texts:
-            assert ax.get_xlim()[0] < text.get_position()[0] < ax.get_xlim()[1]
-            assert text.get_rotation() == 90
-            assert text.get_position()[1] == .03
-            assert text.get_verticalalignment() == 'bottom'
-            assert text.get_fontsize() == pytest.approx(28)
-            assert text.get_bbox_patch().get_alpha() == .7
-    assert figures['traces'].axes[1].get_legend_handles_labels()[1] == []
-    assert figures['science'].axes[1].get_legend_handles_labels()[1] == []
-    assert figures['profiles'].get_figwidth()/figures['profiles'].get_figheight() == 2
-    for line in figures['traces'].axes[1].lines:
-        ax = line.axes
-        assert ax.get_xlim()[0] < min(line.get_xdata()) < ax.get_xlim()[1]
-        assert ax.get_ylim()[0] < min(line.get_ydata()) <= max(line.get_ydata()) < ax.get_ylim()[1]
-    assert ('Summed Bkg-Subtracted Signal' in profile.get_ylabel()) == sky_available
-    assert profile.get_xlabel() == 'Spatial Pixel'
-    assert profile.xaxis.label.get_fontsize() == pytest.approx(28.6)
-    assert profile.yaxis.label.get_fontsize() == pytest.approx(28.6)
-    assert all(text.get_fontsize() == pytest.approx(23.4) for text in profile.get_legend().get_texts())
-    assert figures['profiles']._suptitle.get_text() == 'SNtest'
-    # The figure keeps a short title; the summation rule and row ranges stay in
-    # profile-display.json and the report caption.
-    assert profile.get_title() == ('Spatial profile' if sky_available
-                                   else 'Spatial profile (sky included)')
-    saved = json.loads((tmp_path/'profile-display.json').read_text())
-    assert saved['profile_statistic'].startswith('sum ' if sky_available else 'median ')
-    assert saved['slit_edge_margin_columns'] == 3
-    assert r'10^3\,e^{-}' in profile.get_ylabel()
-    assert ('unavailable' in figures['traces']._suptitle.get_text()) != sky_available
+    panels=figures['profiles'].axes
+    assert len(panels)==3
+    saved=json.loads((tmp_path/'profile-display.json').read_text())
+    for ax,record in zip(panels,saved['bins']):
+        np.testing.assert_allclose(ax.lines[0].get_ydata(),
+            np.asarray(record['summed_data_electrons'],dtype=float)/1000.)
+        assert ax.lines[0].get_color()=='0.3'
+        assert 'After subtraction' not in ax.get_title()
+        markers=[line.get_xdata()[0] for line in ax.lines if len(line.get_xdata())==2]
+        assert markers==[115.,170.,225.]
+        assert ax.get_ylim()[1]>np.nanmax(ax.lines[0].get_ydata())
+    assert saved['model_available']==sky_available
+    assert saved['sky_subtracted'] is False
+    if not sky_available:
+        assert 'no accepted background' in panels[0].get_title()
+        assert all(line.get_color()!='xkcd:dark blue' for line in panels[0].lines)
+    assert all(t.get_fontsize()==pytest.approx(18) for t in panels[0].get_legend().get_texts())
+    assert saved['profile_statistic'].startswith('sum ')
 
 
 def test_limit_samples_exclude_narrow_outliers_and_protect_candidates():

@@ -57,14 +57,25 @@ This identical copy stays beside `report-assets/` and is never overwritten.
 Rebuilding `index.html` can invalidate T3's cached file-identity URL; a new report
 gets a new viewer filename, while existing viewer links keep working.
 
-Spatial-profile figures show the summed data and saved PypeIt sky model beside
-the sky-subtracted profile in each wavelength bin. The three curves use identical
-native pixels, with linear electron units. The spatial degree comes from the saved
+Spatial-profile figures show only the data before subtraction and the saved
+PypeIt sky model in three vertically stacked wavelength bins. Successful and
+failed-review profiles share their renderer, colours, fonts and layout. Failed
+reviews retain candidate markers; an absent sky fit is explicitly labelled and
+never replaced with a zero-valued model curve. The curves use identical native
+pixels, with linear electron units. The spatial degree comes from the saved
 fit; no new polynomial is fitted to the sums. Model curves stop at the common
 background-band envelope rather than displaying unsupported extrapolation. The
 figures carry no explanatory paragraphs or per-panel scale annotations: the
 summation rule, display limits and excluded columns stay in the saved
 diagnostics and the report caption.
+The y-axis extends below zero and 15% above the retained profile peak so a
+near-zero background remains visible. Legends use `Observed Data` and
+`Background Sampling`; the panel heading is `Before Subtraction: Observed data
+and fitted background` when a saved model is available.
+Use `scripts/preview_spectrum_style.py --run RUN --profiles-only` to refresh
+profiles without recomputing spectra. For a separate comparison plot directory,
+add `--plot-directory DIRECTORY` and `--target NAME` as needed. Previous profile
+figures and their record are archived; refreshed figure hashes remain verifiable.
 
 The per-source 2D card shows both sky-subtraction stages on one wavelength axis,
 above and below, so the fitted sky can be judged against its residual.

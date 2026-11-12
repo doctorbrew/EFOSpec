@@ -63,7 +63,7 @@ def plot_filtered_run(run):
                  and p.name != 'plots.json']
         save_json(output/'plots.json', {'product_sha256': record['product_sha256'],
                   'source_sha256': {name: sha256(Path(__file__).parent/name) for name in
-                      ('filtered_plots.py', 'recovery_qc.py', 'profile_background.py', 'figure_style.py')},
+                      ('filtered_plots.py', 'recovery_qc.py', 'profile_background.py', 'profile_plot.py', 'figure_style.py')},
                   'plot_style_sha256': sha256(Path(__file__).resolve().parents[2]/'plot_style.py'),
                   'figures_sha256': {p.name: sha256(p) for p in files}})
 
