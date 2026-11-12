@@ -37,6 +37,16 @@ def redshift_label(source):
     return f'z={float(z):.6g} ({method})'
 
 
+def galaxy_legend_label(source, label):
+    """Show catalogue identity and the original redshift flag without recoding it."""
+    metadata = source['metadata']
+    name = source.get('name') or metadata.get('prefname') or 'name unavailable'
+    z = metadata.get('z')
+    redshift = f'z={float(z):.6g}' if z is not None and math.isfinite(float(z)) else 'z unavailable'
+    flag = str(metadata.get('zflag') or '').strip() or 'code unavailable'
+    return f'{label}: {name} [{redshift}, {flag}]'
+
+
 def query_spec(catalogue, ra, dec, radius):
     if not np.isfinite([ra, dec, radius]).all() or not 0 <= ra < 360 or not -90 <= dec <= 90 or not 0 < radius <= 10:
         raise ValueError('invalid catalogue cone (maximum radius 10 arcmin)')

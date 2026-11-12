@@ -1,5 +1,16 @@
 # EFOSpec development log
 
+## 2026-11-12 — Rounded labels and named galaxy legends
+
+- Rounded the white label boxes, retaining `alpha=0.8`. SN text is red and
+  galaxy text black; marker colours remain blue and red respectively.
+- Galaxy legends include the saved catalogue name, redshift and original
+  redshift code without translating it. Each candidate gets its own legend row.
+- Verification: 19 acquisition tests passed. New display revisions use
+  `QC/target-positions-20261111/displays-v6-rounded/`, preserving prior versions.
+  Both nightly reports refreshed; all 21 catalogue fields and the source-review
+  packet passed raw/reduction and display/report hash checks in `verification.json`.
+
 ## 2026-11-11 — Repository cleanup and acquisition display
 
 - Removed the white stroke around the acquisition target's open circle and label;

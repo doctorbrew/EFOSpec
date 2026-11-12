@@ -86,14 +86,17 @@ unclassified sources even though only galaxy candidates are plotted. Images use
 plain `Galaxy 1`, `Galaxy 2`, … tags, numbered identically across both panels and
 the report table. One shared legend below the panels, titled **NED galaxy candidates**
 for these NED-only results, shows
-`z=... (spec)` or `z=... (phot)` from the NED technique flag; missing redshifts
-or methods are stated explicitly. Positional neighbours do not supply a redshift
-to another source. The nightly table uses the same redshift labels. Acquisition
+`Galaxy 1: <catalogue name> [z=..., <original redshift code>]`, preserving the
+NED flag exactly as saved (including case and uncertainty markers). Missing
+names, redshifts or codes are stated explicitly. Positional neighbours do not
+supply a redshift to another source. The nightly table retains its spec/phot
+summary. Acquisition
 images use `gray_r` (higher signals drawn darker), preserving the original
 pixel values and intensity stretch. The second panel frames all in-image galaxy candidates and the registered OB target, with margins where the detector permits. If no galaxies are available it shows the target vicinity, or the full field when no target is registered. It is not a detector-centre zoom.
 
-Markers and labels use `xkcd:dodger blue` for the SN and `xkcd:red` for galaxy
-candidates. Labels have borderless white boxes with `alpha=0.8`; the text stays
+Markers use `xkcd:dodger blue` for the SN and `xkcd:red` for galaxy candidates.
+SN text is `xkcd:red` and galaxy text is black. Labels have rounded, borderless
+white boxes with `alpha=0.8`; the text stays
 opaque, and the open markers retain no halo. The shared legend uses matching
 galaxy symbols. Numbered labels and marker shapes preserve catalogue identity.
 Tags and their boxes

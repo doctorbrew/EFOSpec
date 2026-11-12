@@ -118,7 +118,7 @@ def target_position(raw, object_name, astrometry=None):
 def draw_target_position(axes, record):
     """Open markers preserve the central source pixels; text identifies provenance."""
     from matplotlib.offsetbox import AnchoredText
-    from .acquisition_display import ANNOTATION_COLORS, LABEL_BOX
+    from .acquisition_display import ANNOTATION_COLORS, TEXT_COLORS, LABEL_BOX
     if 'ra_hms' not in record:
         return
     frame = f"FK5 J{record['equinox']:g}" if record['frame'] == 'fk5' else 'ICRS'
@@ -145,5 +145,5 @@ def draw_target_position(axes, record):
                    edgecolors=[color], linewidths=2.8, zorder=8,
                    gid='acquisition-target-marker')
         ax.annotate(record['object'], (x,y), xytext=(16,0), textcoords='offset points',
-                    va='center', fontsize=20, color=color, clip_on=True,
+                    va='center', fontsize=20, color=TEXT_COLORS['target'], clip_on=True,
                     gid='acquisition-target-label', zorder=9, bbox=LABEL_BOX)

@@ -2,7 +2,8 @@
 import numpy as np
 
 ANNOTATION_COLORS = {'target': 'xkcd:dodger blue', 'galaxy': 'xkcd:red'}
-LABEL_BOX = {'boxstyle': 'square,pad=0.15', 'facecolor': 'white',
+TEXT_COLORS = {'target': 'xkcd:red', 'galaxy': 'black'}
+LABEL_BOX = {'boxstyle': 'round,pad=0.15', 'facecolor': 'white',
              'edgecolor': 'none', 'alpha': 0.8}
 
 

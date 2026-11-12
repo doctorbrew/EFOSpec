@@ -2,8 +2,8 @@
 from pathlib import Path
 
 from .figure_style import house_style, save_qc, style
-from .field_catalogues import galaxy_labels, redshift_label
-from .acquisition_display import candidate_bounds, ANNOTATION_COLORS, LABEL_BOX
+from .field_catalogues import galaxy_labels, galaxy_legend_label
+from .acquisition_display import candidate_bounds, ANNOTATION_COLORS, TEXT_COLORS, LABEL_BOX
 
 GALAXY_COLOR = ANNOTATION_COLORS['galaxy']
 
@@ -65,7 +65,7 @@ def plot_catalogue_field(data, field, output):
     ny, nx = data.shape
     galaxies = [s for s in field['sources'] if s['galaxy_candidate']]
     labels = galaxy_labels(field['sources'])
-    ncol = min(3, max(1, len(galaxies)))
+    ncol = 1
     legend_rows = (len(galaxies) + ncol - 1) // ncol
     legend_height = 2.0 + .42 * legend_rows
     height = 9 + legend_height
@@ -78,7 +78,7 @@ def plot_catalogue_field(data, field, output):
     field['display_geometry']={'panels':['Acquisition field',title],'bounds_xy':bounds,
                                'framing':'all in-frame galaxy candidates and registered OB target; 80 pixel margins where possible'}
     field['annotation_contrast']={'policy':'fixed source colours with translucent white label boxes',
-                                  'colors':ANNOTATION_COLORS,'label_box':LABEL_BOX,'halos':False}
+                                  'colors':ANNOTATION_COLORS,'text_colors':TEXT_COLORS,'label_box':LABEL_BOX,'halos':False}
     for ax, limits, title in zip(axes, bounds, ['Acquisition field', title]):
         _image(ax, data).set_cmap('gray_r')
         ax.set(xlim=limits[:2], ylim=limits[2:], xlabel='Acquisition x pixel', ylabel='Acquisition y pixel', title=title)
@@ -95,7 +95,7 @@ def plot_catalogue_field(data, field, output):
                     ax.annotate(label, (row['x'],row['y']), xytext=(-12 if near_right else 12,0), textcoords='offset points',
                         ha='right' if near_right else 'left',
                         va='center',
-                        color=GALAXY_COLOR, fontsize=15, clip_on=True, bbox=LABEL_BOX)
+                        color=TEXT_COLORS['galaxy'], fontsize=15, clip_on=True, bbox=LABEL_BOX)
     field['slit_orientation'] = draw_slit_orientation(axes[1])
     draw_target_position(axes, field['target_position'])
     catalogues = list(dict.fromkeys(s['catalogue'] for s in galaxies))
@@ -103,7 +103,7 @@ def plot_catalogue_field(data, field, output):
     handles = [Line2D([], [], linestyle='none', marker='o' if s['catalogue']=='NED' else 's',
                       markerfacecolor='none', markeredgecolor=GALAXY_COLOR,
                       markeredgewidth=1.8, markersize=10,
-                      label=labels[s['id']]+': '+redshift_label(s)) for s in galaxies]
+                      label=galaxy_legend_label(s, labels[s['id']])) for s in galaxies]
     style.styled_legend(fig, handles=handles, title=legend_title, title_fontsize=20,
                         ncol=ncol, loc='lower center', bbox_to_anchor=(.5,.5/height),
                         columnspacing=1.3)

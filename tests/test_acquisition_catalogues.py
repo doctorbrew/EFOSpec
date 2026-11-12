@@ -26,7 +26,7 @@ def test_host_overlay_excludes_unclassified_sources_and_preserves_redshift_metho
     from efospec.catalogue_plots import plot_catalogue_field
     from efospec.field_catalogues import redshift_label
     def source(label,galaxy,z,flag,cat='NED'):
-        return {'id':label,'catalogue':cat,'galaxy_candidate':galaxy,'x':40.,'y':45.,
+        return {'id':label,'name':'Name '+label,'catalogue':cat,'galaxy_candidate':galaxy,'x':40.,'y':45.,
                 'metadata':{'z':z,'zflag':flag}}
     rows=[source('N1',True,.0140230004,'SLS'),source('N2',True,.2,'PUN'),
           source('A3',False,None,'','AllWISE'),source('N4',False,None,'')]
@@ -45,7 +45,7 @@ def test_host_overlay_excludes_unclassified_sources_and_preserves_redshift_metho
         legend=fig.legends[0]
         assert legend.get_title().get_text()=='NED galaxy candidates'
         assert [t.get_text() for t in legend.get_texts()]==[
-            'Galaxy 1: z=0.014023 (spec)','Galaxy 2: z=0.2 (phot)']
+            'Galaxy 1: Name N1 [z=0.014023, SLS]','Galaxy 2: Name N2 [z=0.2, PUN]']
         for ax in fig.axes:
             assert ax.images[0].get_cmap().name=='gray_r'
             assert sum(len(c.get_offsets()) for c in ax.collections)==2
@@ -66,8 +66,8 @@ def test_host_overlay_excludes_unclassified_sources_and_preserves_redshift_metho
                         mx,my=ax.transData.transform(xy)
                         assert not box.overlaps(Bbox.from_extents(mx-8*point,my-8*point,mx+8*point,my+8*point))
                 boxes.append(box)
-                from efospec.acquisition_display import ANNOTATION_COLORS
-                assert label.get_color() == ANNOTATION_COLORS['galaxy'] and not label.get_path_effects()
+                from efospec.acquisition_display import TEXT_COLORS
+                assert label.get_color() == TEXT_COLORS['galaxy'] and not label.get_path_effects()
     monkeypatch.setattr('efospec.catalogue_plots.save_qc',inspect)
     raw=tmp_path/'test.fits'
     fits.writeto(raw,np.ones((100,100)))

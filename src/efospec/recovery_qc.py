@@ -241,7 +241,7 @@ def acquisition_images(exposure, output):
     from .acquisition_slit import draw_slit_orientation
     from .acquisition_target import target_position, draw_target_position
     from .catalogue_plots import place_labels
-    from .acquisition_display import candidate_bounds, saved_candidates, ANNOTATION_COLORS, LABEL_BOX
+    from .acquisition_display import candidate_bounds, saved_candidates, ANNOTATION_COLORS, TEXT_COLORS, LABEL_BOX
     from .field_catalogues import galaxy_labels
     import matplotlib.pyplot as plt
     raw = Path(exposure.frame['path']); header = fits.getheader(raw)
@@ -276,7 +276,7 @@ def acquisition_images(exposure, output):
                 color=ANNOTATION_COLORS['galaxy']
                 ax.scatter([x],[y],s=100,facecolors='none',edgecolors=[color],linewidths=1.8)
                 ax.annotate(labels[galaxy['id']],(x,y),xytext=(12,0),textcoords='offset points',
-                            color=color,fontsize=15,clip_on=True,bbox=LABEL_BOX)
+                            color=TEXT_COLORS['galaxy'],fontsize=15,clip_on=True,bbox=LABEL_BOX)
         draw_target_position((full,detail),target)
         for ax in (full,detail):
             ax.set_xlabel('Acquisition raw x');ax.set_ylabel('Acquisition raw y')
