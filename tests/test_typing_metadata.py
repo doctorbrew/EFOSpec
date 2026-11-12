@@ -121,8 +121,8 @@ def test_cli_and_html_use_same_reviewed_record(typing_run, capsys):
                  '--set','adopted_redshift_kind=host_catalogue','--set','adopted_redshift_source=Catalogue record',
                  '--accept-host','--accept-redshift']) == 0
     html = spectrum_metadata(None, records_for_run(typing_run)['products/ATtest.asci'])
-    assert 'Galaxy &lt;one&gt;' in html and 'host catalogue' in html and 'Observer' not in html
-    assert '0.03' in html
+    assert 'Host: Galaxy &lt;one&gt;' in html and 'Observer' not in html
+    assert '0.03' not in html  # Redshifts now live in their explicitly named table columns.
     with pytest.raises(SystemExit) as exc:
         main(['typing-metadata','edit',str(typing_run),'--reviewer','Observer','--spectrum','ATtest.asci',
               '--set','adopted_redshift=0.04'])
@@ -149,10 +149,12 @@ def test_nightly_html_includes_export_and_rejects_stale_metadata(epoch_page):
     tm.save(run,d,'Observer')
     build_epoch_page(root.name,project)
     html=(root/'index.html').read_text()
-    assert 'Host verification' in html and 'Galaxy &lt;one&gt;' in html
+    assert 'Host verification' not in html and 'Galaxy &lt;one&gt;' in html
+    assert 'Potential host galaxies' in html and 'Metadata and review history' not in html
     assert 'host-tags' not in html.split('<section class="target" id="spectra">')[1].split('</section>')[0]
-    assert 'Typing metadata JSON' in html and 'Not adopted' not in html
-    assert html.index('id="host-verification"') > html.index('id="archive"')
+    assert 'Typing metadata JSON' not in html and 'Not adopted' not in html
+    assert 'id="host-verification"' not in html
+    assert 'Galaxy &lt;one&gt;' in html.split('id="qc"')[1].split('</section>')[0]
     manifest['new_revision']='changed';(run/'run.json').write_text(json.dumps(manifest))
     with pytest.raises(ValueError, match='different reduction revision'):
         build_epoch_page(root.name,project)

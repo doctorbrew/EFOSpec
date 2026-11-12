@@ -72,9 +72,13 @@ efospec typing-metadata report runs/2026-10-28
   accepted fields and reviewer identity/time.
 - `reduction/typing-metadata-revisions/*.json` retains immutable full snapshots;
   the current export is replaced atomically. Concurrent saves are rejected.
-- The HTML uses this same validated export and includes a JSON download and
-  expandable complete evidence in **Host verification** at the bottom. Empty
-  initialization fields are hidden, and spectrum panels contain no host blocks.
+- The HTML reads this validated export and shows association evidence once under
+  **Potential host galaxies** in Source QC. There is no separate Host verification
+  section, metadata download or review-history display. Saved provenance remains
+  on disk. AstroNote links, published-template redshifts and AstroNote-based
+  corroboration are excluded from the report. Both the observing log and galaxy
+  tables separate `z (NED)` from `z (Host Emission)`; a target line system is not
+  assigned to unrelated catalogue neighbours.
   Stale metadata stops rendering;
   it is never presented as current.
 - Metadata belongs to one selected science spectrum in one reduction. Rescue

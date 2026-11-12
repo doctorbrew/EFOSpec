@@ -8,9 +8,9 @@ from .naming import source_order
 def catalogue_qc(page, run):
     from .epoch_report import _text, _table
     from .field_catalogues import galaxy_labels, redshift_label
-    from .typing_report import acquisition_metadata
+    from .typing_report import acquisition_metadata, emission_cell
     current = page.read(page.root/'QC/catalogue-current.json')
-    if not current: return []
+    if not current: current = {'night':page.root.name,'fields':{}}
     if current.get('night') != page.root.name: raise ValueError('catalogue report night mismatch')
     science = {Path(r.get('raw',r.get('path',''))).name for key in ('results','errors','skipped') for r in run.get(key,[])}
     fields = []
@@ -38,7 +38,7 @@ def catalogue_qc(page, run):
                           'This retained catalogue attempt has no galaxy overlay.</p>')
             else:
                 status = '<p class="qc-status-bad">'+_text(field['error'])+'</p>'
-            sections.append((source_order(field), '<article class="exposure">'+content+status+'<p>'+download+'</p>'+acquisition_metadata(page,field['object'])+'</article>'))
+            sections.append((source_order(field), '<article class="exposure">'+content+status+'<p>'+download+'</p>'+acquisition_metadata(page,field['object'],show_candidates=True)+'</article>'))
             continue
         for name, digest in field['figures_sha256'].items():
             p=Path(name);p.resolve().relative_to(page.root)
@@ -67,9 +67,18 @@ def catalogue_qc(page, run):
             neighbours='; '.join(n['catalogue']+' '+n['name']+f' ({n["separation_arcsec"]:.2f} arcsec)' for n in source['positional_neighbours']) or 'None within 2 arcsec'
             rows.append([labels[source['id']],_text(source['catalogue']),_text(source['name']),
                          f'{source["ra"]:.6f}, {source["dec"]:.6f}',
-                         _text(redshift_label(source)),_text(neighbours)])
-        content += _table(['Marker','Catalogue','Galaxy candidate','ICRS RA, Dec (deg)','Redshift / method','Positional neighbours'],rows) if rows else '<p>No catalogue-classified galaxies returned inside this image by the available queries.</p>'
+                         _text(redshift_label(source)) if source['catalogue']=='NED' else '—',
+                         next((emission_cell(page,r,source['name']) for r in getattr(page,'typing_annotations',{}).values()
+                               if r['object_id']==field['object'] and r.get('host_name')==source['name']), 'Not associated'),
+                         _text(neighbours)])
+        content += _table(['Marker','Catalogue','Galaxy candidate','ICRS RA, Dec (deg)','z (NED)','z (Host Emission)','Positional neighbours'],rows) if rows else '<p>No catalogue-classified galaxies returned inside this image by the available queries.</p>'
         links=[page.download(Path(p),Path(p).suffix[1:].upper()+' overlay') for p in field['figures_sha256']]
         content += '<p>'+' · '.join(links)+'</p>'
         sections.append((source_order(field), '<article class="exposure">'+content+'</article>'))
+    # Keep associations without a catalogue image in this same report section.
+    for obj in dict.fromkeys(r['object_id'] for r in getattr(page,'typing_annotations',{}).values()):
+        remaining=acquisition_metadata(page,obj,show_candidates=True)
+        if remaining:
+            sections.append((source_order({'object':obj}), '<article class="exposure"><h3>'+_text(obj+' / Potential host galaxies')
+                +'</h3><p>No saved catalogue acquisition overlay for this target.</p>'+remaining+'</article>'))
     return sections

@@ -1,7 +1,6 @@
 """Compact acquisition annotations and read-only host verification from saved JSON."""
 from hashlib import sha256
 from html import escape
-import json
 from pathlib import Path
 from urllib.parse import urlsplit
 from .typing_metadata import load
@@ -14,13 +13,6 @@ def records_for_run(run):
 
 def review_anchor(record):
     return 'host-review-'+sha256(record['path'].encode()).hexdigest()[:12]
-
-
-def _z(value, uncertainty=None):
-    result = f'{value:.6g}'
-    if uncertainty is not None:
-        result += f' ± {uncertainty:.3g}'
-    return result
 
 
 def spectrum_metadata(page, record, *, link_to_review=True):
@@ -40,17 +32,6 @@ def spectrum_metadata(page, record, *, link_to_review=True):
         separation = None
     if separation is not None:
         chips.append(f'Offset: {separation:.2f} arcsec')
-    if host and record.get('host_redshift') is not None:
-        method = record.get('host_redshift_method') or 'method unknown'
-        chips.append('Catalogue z: '+_z(record['host_redshift'],record.get('host_redshift_uncertainty'))+' ('+method+')')
-    if record.get('redshift_status') == 'accepted' and record.get('adopted_redshift') is not None:
-        chips.append('Adopted z: '+_z(record['adopted_redshift'],record.get('adopted_redshift_uncertainty'))+
-                     ' · '+record['adopted_redshift_kind'].replace('_',' '))
-    else:
-        for candidate in record.get('redshift_candidates', []):
-            if candidate.get('preferred') and candidate.get('redshift') is not None:
-                chips.append('Published z: '+_z(candidate['redshift'],candidate.get('uncertainty'))+
-                             ' · '+candidate['kind'].replace('_',' ')+' (not adopted)')
     if not chips:
         return ''
     review_link = ('<a class="host-tag" href="#'+review_anchor(record)+'">'
@@ -60,14 +41,56 @@ def spectrum_metadata(page, record, *, link_to_review=True):
             +review_link+'</div>')
 
 
-def acquisition_metadata(page, object_id):
-    return ''.join(spectrum_metadata(page,r) for r in getattr(page,'typing_annotations',{}).values()
-                   if r['object_id'] == object_id)
+def acquisition_metadata(page, object_id, *, show_candidates=False):
+    """Render association evidence once, beside the object's acquisition images."""
+    rendered = getattr(page, 'rendered_host_records', set())
+    page.rendered_host_records = rendered
+    content = ''
+    for record in getattr(page,'typing_annotations',{}).values():
+        if record['object_id'] != object_id or record['path'] in rendered:continue
+        rendered.add(record['path'])
+        content += '<div id="'+review_anchor(record)+'">'+verification_details(page,record,show_candidates=show_candidates)+'</div>'
+    return content
+
+
+def record_raw(record):
+    return next((Path(p['raw']).name for p in record.get('provenance',[])
+                 if p.get('kind')=='efospec_reduction' and p.get('raw')), None)
+
+
+def catalogue_redshift(candidate):
+    from .field_catalogues import redshift_label
+    if 'metadata' in candidate:return redshift_label(candidate)
+    value=candidate.get('redshift')
+    if value is None:return 'z unavailable'
+    method=candidate.get('redshift_method') or candidate.get('method') or 'method unknown'
+    return f'z={value:.6g} ({method})'
+
+
+def ned_cell(record):
+    """Only a NED catalogue measurement can populate z (NED)."""
+    name=record.get('host_name') or record.get('preferred_crossmatch',{}).get('name')
+    candidates=record.get('host_candidates',[])+record.get('catalogue_sources',[])
+    candidate=next((c for c in candidates if c.get('catalogue')=='NED' and c.get('name')==name),None)
+    if candidate is None:return None
+    return escape(catalogue_redshift(candidate)+'; '+name+'; candidate association')
+
+
+def emission_cell(page, record, candidate_name):
+    """Do not assign the target's line system to every positional neighbour."""
+    if record.get('host_name')!=candidate_name or record.get('host_status')=='rejected':return 'Not associated'
+    raw=record_raw(record)
+    from .redshift_report import redshift_cells
+    measurement=getattr(page,'redshift_records',{}).get(raw)
+    cell=redshift_cells(measurement,previous_revision=raw in getattr(page,'previous_redshift_raws',set()))[1]
+    if measurement and measurement.get('spectral',{}).get('z_heliocentric') is not None:
+        cell+=' · candidate association'
+    return cell
 
 
 def _link(url, label):
     # Metadata is editable: never put a javascript/data/file URL into an external button.
-    if not isinstance(url, str):
+    if not isinstance(url, str) or 'astronote' in url.casefold() or 'astronote' in label.casefold():
         return ''
     parsed = urlsplit(url)
     if parsed.scheme not in ('https','http') or not parsed.hostname or parsed.username or parsed.password:
@@ -75,49 +98,37 @@ def _link(url, label):
     return '<a class="host-link" href="'+escape(url,quote=True)+'" target="_blank" rel="noopener noreferrer">'+escape(label)+'</a>'
 
 
-def verification_section(page):
-    records = list(getattr(page,'typing_annotations',{}).values())
-    if not records:
-        return ''
-    from .naming import source_order
-    content = ('<p>Check the proposed association against the acquisition image and catalogue records. '
-               'Catalogue, narrow-line and transient-template redshifts remain separate. '
-               'Accept changes in the desktop Host &amp; redshift tab; these proposals are not typing inputs.</p>')
-    for record in sorted(records,key=lambda r:source_order({'object':r['object_id']})):
-        content += '<article class="exposure" id="'+review_anchor(record)+'"><h3>'+escape(record['object_id'])+'</h3>'
-        tags = spectrum_metadata(page,record,link_to_review=False)
-        content += tags or '<p>No proposed cross-match recorded.</p>'
-        preferred = record.get('preferred_crossmatch', {})
-        if preferred.get('name') and record.get('host_name') and preferred['name'] != record['host_name']:
-            content += '<p class="caption">Original catalogue proposal: '+escape(preferred['name'])+'</p>'
-        if preferred.get('rationale'):
-            content += '<p>'+escape(preferred['rationale'])+'</p>'
-        if preferred.get('caveat'):
-            content += '<p class="note">'+escape(preferred['caveat'])+'</p>'
-        links = [_link(v.get('url'),v.get('label','Reference')) for v in record.get('verification_links',[])]
-        if (record.get('host_source','').startswith(('https://','http://'))
-                and record['host_source'] not in {v.get('url') for v in record.get('verification_links',[])}):
-            links.insert(0,_link(record['host_source'],'NED host record'))
-        if record.get('spectrum_url'):
-            links.append(_link(record['spectrum_url'],'Original spectrum'))
-        content += '<div class="host-links">'+''.join(dict.fromkeys(filter(None,links)))+'</div>'
-        candidates = record.get('host_candidates',[])
-        if candidates:
-            from .epoch_report import _table
-            rows=[]
-            for candidate in candidates:
-                m=candidate.get('metadata',{});z=m.get('z',candidate.get('redshift'))
-                method=candidate.get('redshift_method') or {'S':'spectroscopic','P':'photometric'}.get(str(m.get('zflag',''))[:1],'unknown')
-                sep=candidate.get('separation_arcsec')
-                rows.append([escape(str(candidate.get('name',''))),escape(str(candidate.get('catalogue',''))),
-                             f'{sep:.2f}' if sep is not None else '—',_z(z) if z is not None else '—',escape(method)])
-            content += '<details><summary>Catalogue candidates ('+str(len(candidates))+')</summary>'
-            content += _table(['Name','Catalogue','Offset (arcsec)','z','Method'],rows)+'</details>'
-        # Keep full identity/time/uncertainty provenance without cluttering the acquisition tags.
-        content += '<details><summary>Metadata and review history</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere">'
-        content += escape(json.dumps(record,indent=2,ensure_ascii=False))+'</pre></details></article>'
-    content += '<p>'+page.download(page.typing_run/'typing-metadata.json','Typing metadata JSON')+'</p>'
+def verification_details(page, record, *, show_candidates=False):
+    content = spectrum_metadata(page,record,link_to_review=False)
+    preferred = record.get('preferred_crossmatch', {})
+    # Use catalogue facts, not the old assessment's AstroNote/TNS comparisons.
+    if preferred.get('catalogue') and preferred.get('name'):
+        content += '<p>'+escape(preferred['catalogue']+' positional candidate: '+preferred['name'])
+        if preferred.get('separation_arcsec') is not None:
+            content += f" ({preferred['separation_arcsec']:.2f} arcsec from the observing-block target)"
+        content += ('. Association accepted by the operator.</p>' if record.get('host_status')=='accepted'
+                    else '. The association is unconfirmed.</p>')
+    links = [_link(v.get('url'),v.get('label','Reference')) for v in record.get('verification_links',[])]
+    if record.get('host_source'):
+        links.insert(0,_link(record['host_source'],'Host catalogue record'))
+    content += '<div class="host-links">'+''.join(dict.fromkeys(filter(None,links)))+'</div>'
+    if show_candidates and record.get('host_candidates'):
+        from .epoch_report import _table
+        rows=[]
+        for candidate in record['host_candidates']:
+            sep=candidate.get('separation_arcsec')
+            rows.append([escape(candidate.get('name','')),escape(candidate.get('catalogue','')),
+                         f'{sep:.2f}' if sep is not None else '—',
+                         escape(catalogue_redshift(candidate)) if candidate.get('catalogue')=='NED' else '—',
+                         emission_cell(page,record,candidate.get('name'))])
+        content += _table(['Galaxy candidate','Catalogue','Offset (arcsec)','z (NED)','z (Host Emission)'],rows)
     return content
+
+
+def verification_section(page):
+    """Compatibility renderer for saved annotations without acquisition imagery."""
+    return ''.join(acquisition_metadata(page,r['object_id'],show_candidates=True)
+                   for r in getattr(page,'typing_annotations',{}).values())
 
 
 HOST_CSS = '''

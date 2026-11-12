@@ -23,7 +23,7 @@ def test_positional_counterpart_is_not_labelled_a_host():
 def test_reported_template_redshift_stays_distinct_from_host_and_adoption():
     r=record(host_name='Galaxy',redshift_candidates=[dict(preferred=True,redshift=.073,kind='transient_spectral')])
     html=spectrum_metadata(None,r)
-    assert 'Published z: 0.073' in html and 'transient spectral (not adopted)' in html
+    assert '0.073' not in html and 'Published z:' not in html
     assert 'Catalogue z:' not in html and 'Adopted z:' not in html
 
 
@@ -33,9 +33,11 @@ def test_verification_preserves_links_evidence_and_exact_spectrum_identity(tmp_p
                                  dict(label='Unsafe',url='javascript:alert(1)')])
     page=SimpleNamespace(typing_annotations={r['path']:r},typing_run=tmp_path,download=lambda *a:'JSON download')
     html=verification_section(page)
-    assert review_anchor(r) in acquisition_metadata(page,'ATtest')
+    assert review_anchor(r) in html
+    assert acquisition_metadata(page,'ATtest')==''
     assert acquisition_metadata(page,'Other')==''
-    assert 'Selection evidence' in html and '&lt;Galaxy&gt;' in html
+    assert 'Selection evidence' not in html and '&lt;Galaxy&gt;' in html
+    assert 'Metadata and review history' not in html and 'JSON download' not in html
     assert 'href="https://ned.ipac.caltech.edu/byname?objname=a&amp;x=b"' in html
     assert 'href="javascript:' not in html
     assert 'target="_blank" rel="noopener noreferrer"' in html
@@ -63,3 +65,38 @@ def test_acquisition_plot_precedes_tags(tmp_path,monkeypatch):
     html=catalogue_qc(page,dict(results=[dict(raw=str(science))]))[0][1]
     assert html.index('ACQUISITION')<html.index('Proposed host: Galaxy')
     assert 'Not assigned' not in html and 'Host review:' not in html
+
+
+def test_astronote_claims_and_review_history_are_not_in_host_evidence():
+    from copy import deepcopy
+    from efospec.typing_report import verification_details
+    r=record(host_name='Galaxy',preferred_crossmatch=dict(name='Galaxy',catalogue='NED',separation_arcsec=2.5,
+        rationale='Matches AstroNote published z=0.073'),
+        verification_links=[dict(label='AstroNote',url='https://www.wis-tns.org/astronotes/2026-300'),
+                            dict(label='NED',url='https://ned.ipac.caltech.edu/byname?objname=Galaxy')],
+        redshift_candidates=[dict(preferred=True,redshift=.073,kind='transient_spectral')],
+        review={'reviewer':'Private history'})
+    before=deepcopy(r)
+    html=verification_details(SimpleNamespace(),r)
+    assert 'AstroNote' not in html and 'astronote' not in html and '0.073' not in html
+    assert 'Private history' not in html and 'Metadata and review history' not in html
+    assert 'NED positional candidate: Galaxy' in html and '2.50 arcsec' in html
+    assert r==before
+
+
+def test_ned_and_measured_host_emission_are_independent_and_not_assigned_to_neighbours():
+    from efospec.typing_report import ned_cell,emission_cell,verification_details
+    r=record(host_name='Galaxy')
+    r['provenance']=[dict(kind='efospec_reduction',raw='/raw/a.fits')]
+    r['host_candidates']=[dict(name='Galaxy',catalogue='NED',metadata={'z':.025,'zflag':'SUN'})]
+    measurement=dict(raw='/raw/a.fits',ned={'candidate':None,'status':'ok'},
+        spectral=dict(z_heliocentric=.024,z_heliocentric_error=.0001,wavelength_validated=True,status='candidate'))
+    page=SimpleNamespace(redshift_records={'a.fits':measurement})
+    assert '0.025' in ned_cell(r) and '0.024' not in ned_cell(r)
+    assert '0.0240' in emission_cell(page,r,'Galaxy')
+    assert emission_cell(page,r,'Neighbour')=='Not associated'
+    html=verification_details(page,r,show_candidates=True)
+    assert '<th>z (NED)</th>' in html and '<th>z (Host Emission)</th>' in html
+    page.redshift_records={};page.previous_redshift_raws={'a.fits'}
+    assert emission_cell(page,r,'Galaxy')=='Previous revision'
+    assert '0.025' in ned_cell(r)

@@ -189,6 +189,12 @@ class EpochPage:
             from .redshift_report import redshift_cells
             cells=redshift_cells((redshifts or {}).get(raw),standard=frame['role']=='standard_candidate',
                                  previous_revision=raw in getattr(self,'previous_redshift_raws',set()))
+            if frame['role']!='standard_candidate':
+                from .typing_report import record_raw, ned_cell
+                annotation=next((r for r in getattr(self,'typing_annotations',{}).values() if record_raw(r)==raw),None)
+                if annotation:
+                    catalogue_value=ned_cell(annotation)
+                    if catalogue_value is not None:cells[0]=catalogue_value
             target = _text(h.get('OBJECT', ''))
             rows.append([target, _text(start),
                 'Standard' if frame['role'] == 'standard_candidate' else 'Science',
@@ -196,10 +202,10 @@ class EpochPage:
                 _text(setup.get('slit', '')), _text(seconds),
                 outcomes.get(raw, 'Outside selected targets' if targets and h.get('OBJECT') not in targets else 'Not reduced'),*cells])
         note = {
-            'not_run':'Redshift measurements are a separate post-reduction step; no saved run is available for this observing night.',
-            'previous_revision':'Saved redshifts belong to an earlier reduction revision. Rerun the redshift step for the current spectra; earlier values have not been reused.'
+            'not_run':'Host-emission measurements are a separate post-reduction step; no saved run is available for this observing night.',
+            'previous_revision':'Saved host-emission measurements belong to an earlier reduction revision and have not been reused. Current NED values may still be available from the saved catalogue associations.'
         }.get(getattr(self,'redshift_status',None), '')
-        return (_table(['Target', 'UTC start', 'Role', 'Setup', 'Slit', 'Seconds', 'Result', 'z (NED)', 'z (spectral)'], rows)
+        return (_table(['Target', 'UTC start', 'Role', 'Setup', 'Slit', 'Seconds', 'Result', 'z (NED)', 'z (Host Emission)'], rows)
                 + ('<p class="caption">'+_text(note)+'</p>' if note else ''))
 
     def problems(self, run, run_dir=None):
@@ -342,9 +348,9 @@ class EpochPage:
                     + '<div class="qc-plots">'+''.join(background_cards)+'</div></article>')
         from .catalogue_report import catalogue_qc
         sections.extend(catalogue_qc(self, run))
+        from .report_evidence import background_evidence
         return (self.trace_geometry_review(revision)+''.join(html for _, html in sorted(sections, key=lambda item:item[0])) or '<p>No source-review packets for this revision.</p>',
-                (''.join(backgrounds)+self.local_background_checks(revision,run))
-                or '<p>No retained polynomial background experiments for these exposures.</p>')
+                background_evidence(run)+''.join(backgrounds)+self.local_background_checks(revision,run))
 
     def trace_geometry_review(self, revision):
         """Render an explicitly selected, hash-bound diagnostic revision."""
@@ -479,6 +485,7 @@ class EpochPage:
         run = self.read(revision/'reduction/run.json')
         if run.get('flux_calibration') != 'same-night':
             return historical
+        from .report_evidence import calibration_overview, response_status
         responses = []
         for entry in run.get('standards', []):
             frame, fit = entry['frame'], entry['fit']
@@ -491,10 +498,10 @@ class EpochPage:
                 download = self.download(path, 'Response FITS')
             responses.append([_text(frame['metadata']['OBJECT']), _text(frame['metadata']['DATE-OBS']),
                 _text(setup['grism']+' / '+setup['filter']+' / '+setup['slit']),
-                '<span class="qc-status-bad">'+_text(fit['status'].replace('_',' '))+'</span>', download])
+                response_status(fit), download])
         associations = [[_text(r['object']), _text(r['sensitivity'].get('standard_name','')),
                          _text(Path(r['sensitivity']['standard_raw']).name)] for r in run.get('results', [])]
-        current = '<h3>Same-night standard responses</h3><p class="qc-status-bad">Experimental flux scale; absolute accuracy unvalidated. Standards retain arc-only wavelengths. No slit-loss, telluric or second-order correction.</p>'
+        current = calibration_overview(run)
         current += (_table(['Standard','UTC start','Setup','Status','Download'],responses)
                     if responses else '<p>No contemporary response was built; see failed exposures.</p>')
         current += _table(['Spectrum','Reference standard','Observed standard exposure'], associations)
@@ -611,9 +618,12 @@ def build_epoch_page(night, project_root='.'):
                 for path,digest in result['product_sha256'].items():
                     if sha256(Path(path))!=digest:raise ValueError('provisional product changed')
             rescue=candidate
-    from .typing_report import records_for_run, verification_section, HOST_CSS
+    from .typing_report import records_for_run, HOST_CSS
     page.typing_run = revision/'reduction'
     page.typing_annotations = records_for_run(page.typing_run) if (page.typing_run/'typing-metadata.json').exists() else {}
+    from .redshift_report import load_redshifts,redshift_section
+    redshifts=load_redshifts(page,revision/'reduction',rescue_path if rescue else None)
+    page.redshift_records=redshifts
     qc, background = page.qc(revision, run)
     if rescue:
         audit=page.read(rescue_path/'verification.json')
@@ -633,8 +643,6 @@ def build_epoch_page(night, project_root='.'):
             background+=_table(['Target','Left gap (pixels)','Right gap (pixels)','Minimum retained pixels per side'],geometry)
             background+='<p>'+page.download(rescue_path/'verification.json','Provisional product and background audit')+'</p>'
             background+='<h3>Other retained background diagnostics</h3>'+retained_background
-    from .redshift_report import load_redshifts,redshift_section
-    redshifts=load_redshifts(page,revision/'reduction',rescue_path if rescue else None)
     # Redshift evidence is its own tab: it has its own inputs, figures and
     # provenance, and reads as a separate measurement from source QC.
     redshift_content=redshift_section(page,redshifts)
@@ -666,10 +674,6 @@ def build_epoch_page(night, project_root='.'):
         iraf_content='<p><a href="iraf-comparison.html">Open separate IRAF comparison report</a>. The nightly spectra above show PypeIt only.</p>'
         titles.insert(2,('iraf-comparison','IRAF comparison'))
         content.insert(2,iraf_content)
-    verification = verification_section(page)
-    if verification:
-        titles.append(('host-verification', 'Host verification'))
-        content.append(verification)
     sections = ''.join(f'<section class="target" id="{anchor}"><h2>{title}</h2>{body}</section>'
                        for (anchor, title), body in zip(titles, content))
     stats = ' · '.join(f'{len(run.get(k, []))} {label}' for k, label in [('results','spectra'), ('errors','failed'), ('skipped','unsupported')])
