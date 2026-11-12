@@ -7,11 +7,21 @@ from efospec.spatial_profiles import wavelength_binned_profiles
 
 
 class SpatialProfileTests(unittest.TestCase):
-    def test_before_subtraction_limits_show_zero_and_preserve_negative_data(self):
+    def test_before_subtraction_limits_follow_background_instead_of_forcing_zero(self):
         from efospec.profile_plot import _observed_profile_limits
-        for samples,expected in [([0.,100.],(-10.,115.)),([20.,100.],(-10.,115.)),
-                                 ([-30.,100.],(-40.,115.)),([0.,0.],(-.1,.15))]:
+        for samples,expected in [([0.,100.],(-10.,115.)),([20.,100.],(18.,115.)),
+                                 ([-30.,100.],(-43.,115.)),([0.,0.],(-.1,.15))]:
             np.testing.assert_allclose(_observed_profile_limits([np.array(samples)]),expected)
+        for background in (200.,400.,600.):
+            for peak in (background+50.,background*100.):
+                low,high=_observed_profile_limits([np.array([background-2.,peak])],
+                    background=np.array([background-2.,background-1.,background,background+1.,background+2.]))
+                self.assertGreater(low,0.)
+                self.assertLess(low,background-2.)
+                self.assertAlmostEqual(high,1.15*peak)
+        low,_=_observed_profile_limits([np.array([.01,100.])],
+            background=np.array([.01,.02,.03,.04,.05]))
+        self.assertLess(low,0.)
 
     def test_plot_draws_observed_data_and_saved_background_with_correct_shading(self):
         from scripts.preview_spectrum_style import draw_spatial_profiles
@@ -32,7 +42,7 @@ class SpatialProfileTests(unittest.TestCase):
         self.assertIn('Background Sampling',legend)
         for i, panel in enumerate(record['bins']):
             model = fig.axes[i]
-            self.assertLess(model.get_ylim()[0],0.)
+            self.assertGreater(model.get_ylim()[0],0.)
             np.testing.assert_allclose(model.lines[0].get_ydata(),
                                        np.array(panel['summed_data_electrons'])/1000.)
             sky_curve = model.lines[1].get_ydata()

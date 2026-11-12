@@ -31,6 +31,9 @@ def test_failed_profile_shows_reviewed_c2_and_wavelength_dependent_centroids(sky
     assert record['display_only'] and not record['extraction_accepted']
     centers=[]
     for ax, profile in zip(fig.axes, record['bins']):
+        # A positive observed baseline stays positive even when an unavailable
+        # model has saved sampling bands but must not be drawn as zero.
+        assert ax.get_ylim()[0]>0
         assert max(profile['aperture_fraction']) > .9
         assert any(t.get_text()=='C2' and t.get_position()[0]==pytest.approx(profile['median_trace_pixel']+1)
                    for t in ax.texts)

@@ -26,7 +26,7 @@ def saved_profile(tmp_path, monkeypatch):
         telluric_pair={'provenance':'retained'})
     path=folder/'FitSpectrum_SNtest_slit1.5.json';path.write_text(json.dumps(record))
     wave=np.linspace(4000.,7000.,90);x=np.arange(21)
-    sky=np.full((90,21),.1);signal=50.*np.exp(-.5*((x-10)/2.)**2)
+    sky=np.zeros((90,21));signal=50.*np.exp(-.5*((x-10)/2.)**2)
     data=dict(data=sky+signal,sky=sky,waveair=np.broadcast_to(wave[:,None],sky.shape),
         trace=np.full(90,10.),spatial_origin=0,box_radius=3.,
         sky_input_mask=np.broadcast_to(((x>=3)&(x<=6))|((x>=14)&(x<=17)),sky.shape))

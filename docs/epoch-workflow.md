@@ -68,8 +68,10 @@ background-band envelope rather than displaying unsupported extrapolation. The
 figures carry no explanatory paragraphs or per-panel scale annotations: the
 summation rule, display limits and excluded columns stay in the saved
 diagnostics and the report caption.
-The y-axis extends below zero and 15% above the retained profile peak so a
-near-zero background remains visible. Legends use `Observed Data` and
+The y-axis follows each panel's local profile range, with 15% headroom above
+the retained peak. Positive backgrounds keep a positive lower limit; a
+background median within three robust scatter estimates of zero gets negative
+space. Real negative values remain visible. Legends use `Observed Data` and
 `Background Sampling`; the panel heading is `Before Subtraction: Observed data
 and fitted background` when a saved model is available.
 Use `scripts/preview_spectrum_style.py --run RUN --profiles-only` to refresh

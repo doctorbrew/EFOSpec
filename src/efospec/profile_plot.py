@@ -14,14 +14,26 @@ PYPEIT_COLOUR = to_hex(.6*np.array(to_rgb('xkcd:red'))+.4)
 BACKGROUND_COLOUR = 'xkcd:pastel blue'
 
 
-def _observed_profile_limits(profiles):
-    """Keep zero and negative values visible, with 15% headroom above the peak."""
+def _observed_profile_limits(profiles, *, background=None):
+    """Pad the local range; include zero only for a near-zero background."""
     values=np.concatenate(profiles)
     values=values[np.isfinite(values)]
     if not values.size:return None
     low,high=float(values.min()),float(values.max())
-    scale=max(abs(low),abs(high)) or 1.
-    return min(0.,low)-.1*scale, max(0.,high)+.15*(abs(high) or scale)
+    samples=values if background is None else np.asarray(background)
+    samples=samples[np.isfinite(samples)]
+    if not samples.size:samples=values
+    median=float(np.median(samples))
+    scatter=1.4826*float(np.median(np.abs(samples-median))) if samples.size>=5 else 0.
+    near_zero=abs(median)<=3*scatter
+    scale=high-low or max(abs(low),abs(high)) or 1.
+    lower=low-.1*scale
+    if near_zero:
+        lower=min(0.,low)-.1*scale
+    elif low>0:
+        # A bright source must not pull a positive background down to zero.
+        lower=max(lower,.9*low)
+    return lower, high+.15*(abs(high) or scale)
 
 
 def _candidate_centroid(candidate, data, bounds, *, last):
@@ -143,8 +155,12 @@ def draw_spatial_profiles(result, wave, data, *, display=None):
             for candidate in annotations:
                 candidate['background_extrapolated']=not background_span[0]<=candidate['spatial_pixel']<=background_span[1]
         limits = _profile_limits([limit_values],background_subtracted=True)
-        raw_limits = _observed_profile_limits([np.where(np.isfinite(limit_values), raw, np.nan),
-                                     np.where(supported, fitted, np.nan)])
+        retained=np.isfinite(limit_values)
+        baseline=retained & (profile['background_fraction']>0) & ~protected
+        if not baseline.any():baseline=retained & ~protected
+        raw_limits = _observed_profile_limits([np.where(retained, raw, np.nan),
+                                     np.where(supported & model_available, fitted, np.nan)],
+                                     background=raw[baseline])
         if raw_limits is not None:model_ax.set_ylim(*raw_limits)
         profile.update(ylim=list(limits) if limits is not None else None,ylim_excluded_spatial_pixels=x[excluded].tolist(),
                        data_model_ylim=list(model_ax.get_ylim()),
@@ -179,7 +195,7 @@ def draw_spatial_profiles(result, wave, data, *, display=None):
     diagnostics = {
         'display_settings':display, 'layout':'three wavelength panels; before subtraction only',
         'model_available':model_available, 'sky_subtracted':False,
-        'data_model_ylim_rule':'negative lower bound with 10% padding below min(0, retained minimum); 15% headroom above retained peak; display exclusions unchanged',
+        'data_model_ylim_rule':'10% local-span lower padding; positive minima stay at or above 90% of their value unless the background median is within 3 MAD-sigma of zero; retain negative data; 15% headroom above retained peak; only plotted models contribute; display exclusions unchanged',
         'ylim_rule':'QC limits: exclude isolated negative outliers and positive peaks with >20 MAD-sigma prominence, half-prominence width <=2 pixels and <=3-column >10-sigma core outside protected sources; explicit display exclusions also apply; include zero and pad outward',
         'display_only':True,'all_profile_samples_plotted':True,
         'binning': 'three equal air-wavelength intervals over the displayed spectrum range',
