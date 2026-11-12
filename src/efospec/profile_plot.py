@@ -250,8 +250,8 @@ def draw_review_profiles(images, result, *, spatial_origin=0, traces=None, backg
             raise ValueError('review aperture needs radius provenance and selection method')
         prepared.update(trace=np.asarray(traces[candidate-1]), box_radius=radius,
             show_aperture=True, show_trace=True, selected_label=f'C{candidate}', trace_colour='xkcd:red',
-            aperture_label=selection.get('aperture_label', 'Review aperture'),
-            sky_label='Saved trial PypeIt sky', bands_label='Background Sampling (saved trial)')
+            aperture_label='Adopted Aperture',
+            sky_label='PypeIt sky', bands_label='Background Sampling')
     notes = candidate_notes or {}
     labels = candidate_labels or {}
     original_labels = {c['label'] for c in prepared['candidate_traces']}

@@ -2,7 +2,7 @@
 
 ## Current display and automatic detection policy
 
-The selected review is now `QC/aperture-labels-20261112/`, retaining the validation
+The selected review is now `QC/adopted-apertures-20261112/`, retaining the validation
 from `QC/SN2026ayt-candidate-validation-20261112/`.
 SN2026ayt retains only the former C2, now displayed as **C1** because it is the
 only supported aperture. Its historical C1 and C3 lack a supported spatial peak.

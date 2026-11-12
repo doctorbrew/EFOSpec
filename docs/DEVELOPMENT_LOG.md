@@ -1,5 +1,19 @@
 # EFOSpec development log
 
+## 2026-11-12 — Adopted aperture labels and development cleanup
+
+- Replaced trial/review legend wording with `Adopted Aperture`, `PypeIt sky`
+  and `Background Sampling`; refreshed the selected 28 October profiles and report.
+  Aperture geometry, candidate identities and extraction status are unchanged.
+- Removed 1,112 disposable files (699.8 MiB): stale viewer copies,
+  unused report assets, build outputs, caches, test artifacts and draft graphics.
+  Retained raw data, reduction revisions, scientific evidence and reference manuals.
+- Verification caught omitted cached-download types in the initial cleanup filter;
+  restored those from retained payloads and rebuilt current cache manifests from
+  unchanged portable reports. All 2194 checked report links and 354 asset hashes pass;
+  all 348 protected inputs are unchanged. Focused profile tests: 24 passed.
+  The deletion audit is `outputs/housekeeping-20261112/cleanup.json`.
+
 ## 2026-11-12 — Rounded labels and named galaxy legends
 
 - Rounded the white label boxes, retaining `alpha=0.8`. SN text is red and
