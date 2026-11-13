@@ -200,6 +200,8 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
             np.savez_compressed(stream,data=data,waveair=waveair,sky=sky,**selection)
             diagnostic=Path(stream.name)
         exc.diagnostics['candidate_evidence'] = dict(evidence)
+        if aperture_info is not None:
+            exc.diagnostics['aperture'] = aperture_info
         exc.diagnostics['diagnostic_file']=str(diagnostic.resolve())
         exc.diagnostics['native_spec2d']=write_spec2d(
             directory/('spec2d_'+diagnostic.stem+'.fits'),sci,slits,
@@ -259,8 +261,9 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
             initial_found = [{'window_pixel':float(s.SPAT_PIXPOS),
                               'fwhm_pixels':float(np.nanmedian(s.FWHM))} for s in found]
             # Test the initial detections against the full calibrated frame.
-            # A restricted later search cannot establish that an outside source
-            # disappeared. Unmeasurable flanks retain a conservative guard.
+            # A validated outside source keeps its guard even if the later
+            # restricted search cannot see it. An unmeasurable raw pedestal is
+            # retained as evidence, not assigned an unbounded exclusion width.
             initial_neighbours = []
             for source, record in zip(found, initial_found):
                 if source.NAME == primary.NAME:
@@ -268,11 +271,14 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
                 check = trace_evidence(data, sci.ivar, source.TRACE_SPAT,
                     record['fwhm_pixels'], support=sci.select_flag(invert=True))
                 record['local_contrast'] = check
-                if check['accepted'] or not all(b['supported'] for b in check['bins']):
+                if check['accepted']:
                     initial_neighbours.append(source)
                     record['guard_retained'] = True
                 else:
                     record['guard_retained'] = False
+                    record['guard_reason'] = ('raw peak lacks measurable flanks; retained for review'
+                        if not all(b['supported'] for b in check['bins']) else
+                        'raw proposal fails positive-peak validation')
             seed_trace=primary.TRACE_SPAT
             seed_radius=max(15.,1.5*float(np.nanmedian(primary.FWHM)))
             try:
@@ -306,14 +312,20 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
                 # as a narrower source after the provisional subtraction.
                 neighbours.append((source.TRACE_SPAT, fw, background_radius))
             if manual is None:
+                aperture_info = dict(policy='configured_aperture_with_diagnostic_wings',
+                    adopted_radius_pixels=background_radius, total_flux_guaranteed=False)
                 try:
-                    background_radius, aperture_info = measured_aperture(
+                    measured_radius, wing_info = measured_aperture(
                         data-seed['sky'], np.where(sci.select_flag(invert=True),sci.ivar,0.),
                         sky_trace, fwhm, neighbours=neighbours)
+                    aperture_info.update(wing_measurement_status='measured',
+                        measured_radius_pixels=measured_radius, wing_measurement=wing_info)
                 except ValueError as error:
-                    exc = BackgroundSupportError(str(error))
-                    save_detection_failure(exc, found, seed['sky'])
-                    raise exc from error
+                    aperture_info.update(wing_measurement_status='unavailable',
+                        wing_measurement_error=str(error))
+                # Wing growth is a diagnostic, not a total-flux requirement.
+                # Keep the configured radius for extraction and validate its
+                # actual two-sided background support below.
             # Let the sampled residuals choose the band width and spatial
             # degree. A steeply varying background under the slit is not
             # described by the default wide band and quadratic term.

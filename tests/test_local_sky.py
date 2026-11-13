@@ -168,13 +168,36 @@ def test_pypeit_optimal_extraction_holds_bounded_quadratic_model(tmp_path):
 
 
 @pytest.mark.parametrize('background_curvature',[0.,.12])
-def test_automatic_bounded_default_recovers_flux_without_full_slit_fit(tmp_path,monkeypatch,background_curvature):
+@pytest.mark.parametrize('wing_measurement',['measured','unavailable','raw_pedestal'])
+def test_automatic_bounded_default_recovers_flux_without_full_slit_fit(tmp_path,monkeypatch,background_curvature,wing_measurement):
     from astropy.io import fits
     from test_pypeit_adapter import write_raw
     from test_extraction import synthetic_image
     from efospec.pypeit_adapter import EFOSpecEFOSC2Spectrograph
     from efospec.extraction import extract_spectra
     from pypeit.core import skysub
+    from efospec import trace_geometry
+    if wing_measurement == 'raw_pedestal':
+        from copy import deepcopy
+        from pypeit.find_objects import MultiSlitFindObjects
+        original=MultiSlitFindObjects.find_objects
+        calls=[]
+        def with_raw_pedestal(self,*args,**kwargs):
+            objects,count=original(self,*args,**kwargs)
+            if not calls:
+                pedestal=deepcopy(objects[0])
+                pedestal.NAME='UNVALIDATED_RAW_PEDESTAL'
+                pedestal.TRACE_SPAT=np.full_like(pedestal.TRACE_SPAT,110.)
+                pedestal.SPAT_PIXPOS=110.
+                pedestal.FWHM=90.
+                objects.add_sobj(pedestal);count+=1
+            calls.append(True)
+            return objects,count
+        monkeypatch.setattr(MultiSlitFindObjects,'find_objects',with_raw_pedestal)
+    if wing_measurement == 'unavailable':
+        def unavailable(*args, **kwargs):
+            raise ValueError('no uncontaminated room to measure both aperture wings')
+        monkeypatch.setattr(trace_geometry, 'measured_aperture', unavailable)
     def forbidden(*args,**kwargs):raise AssertionError('full-slit global sky called')
     monkeypatch.setattr(skysub,'global_skysub',forbidden)
     data,wave,truth=synthetic_image()
@@ -188,6 +211,19 @@ def test_automatic_bounded_default_recovers_flux_without_full_slit_fit(tmp_path,
     obj=result['objects']['primary'][0];rows=obj.OPT_MASK&(np.arange(160)>25)&(np.arange(160)<135)
     assert abs(np.median(obj.OPT_COUNTS[rows]/truth['primary'][rows])-1)<.02
     assert 15<=result['background_fit']['selection']['actual_width_spatial_pixels']<=30
+    aperture=result['trace_geometry']['aperture']
+    configured=EFOSpecEFOSC2Spectrograph().default_pypeit_par()['reduce']['extraction']['boxcar_radius']/(float(detector['platescale'])*2)
+    assert obj.BOX_R_PIX == pytest.approx(configured)
+    assert aperture['adopted_radius_pixels'] == pytest.approx(configured)
+    assert aperture['wing_measurement_status'] == ('measured' if wing_measurement=='raw_pedestal' else wing_measurement)
+    assert aperture['total_flux_guaranteed'] is False
+    assert result['background_fit']['minimum_side_samples']>=5
+    if wing_measurement=='raw_pedestal':
+        proposals=result['background_fit']['selection']['preliminary_source_candidates']
+        rejected=next(p for p in proposals if p['fwhm_pixels']==90.)
+        assert not rejected['guard_retained']
+        assert not rejected['local_contrast']['accepted']
+        assert any(p['guard_retained'] for p in proposals if p.get('local_contrast',{}).get('accepted'))
 
 
 def test_reviewed_source_can_recompute_automatic_bounded_bands(tmp_path):
