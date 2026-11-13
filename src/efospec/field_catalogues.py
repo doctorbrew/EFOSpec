@@ -29,7 +29,7 @@ def redshift_label(source):
     metadata = source['metadata']
     z = metadata.get('z')
     if z is None or not math.isfinite(float(z)):
-        return 'z unavailable'
+        return '— no catalogued redshift'
     flag = str(metadata.get('zflag') or '').strip().upper()
     method = {'S': 'spec', 'P': 'phot'}.get(flag[:1], 'method unknown')
     if '?' in flag:
@@ -42,9 +42,10 @@ def galaxy_legend_label(source, label):
     metadata = source['metadata']
     name = source.get('name') or metadata.get('prefname') or 'name unavailable'
     z = metadata.get('z')
-    redshift = f'z={float(z):.6g}' if z is not None and math.isfinite(float(z)) else 'z unavailable'
-    flag = str(metadata.get('zflag') or '').strip() or 'code unavailable'
-    return f'{label}: {name} [{redshift}, {flag}]'
+    if z is None or not math.isfinite(float(z)):
+        return f'{label}: {name} — no catalogued redshift'
+    flag = str(metadata.get('zflag') or '').strip()
+    return f'{label}: {name} [z={float(z):.6g}'+(f', {flag}' if flag else '')+']'
 
 
 def query_spec(catalogue, ra, dec, radius):

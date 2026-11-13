@@ -32,7 +32,7 @@ def test_host_overlay_excludes_unclassified_sources_and_preserves_redshift_metho
           source('A3',False,None,'','AllWISE'),source('N4',False,None,'')]
     assert redshift_label(rows[0])=='z=0.014023 (spec)'
     assert redshift_label(rows[1])=='z=0.2 (phot)'
-    assert redshift_label(source('N5',True,None,''))=='z unavailable'
+    assert redshift_label(source('N5',True,None,''))=='— no catalogued redshift'
     assert redshift_label(source('N6',True,.1,''))=='z=0.1 (method unknown)'
     assert redshift_label(source('N7',True,.1,'S1L?'))=='z=0.1 (spec; uncertain)'
     def inspect(fig,*args,**kwargs):

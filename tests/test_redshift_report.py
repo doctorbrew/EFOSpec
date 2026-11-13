@@ -21,7 +21,7 @@ def test_nearest_galaxy_without_z_never_borrows_farther_redshift(tmp_path,monkey
     assert r['candidate']['name']=='nearest' and r['candidate']['metadata']['z'] is None
     assert len(r['candidates'])==2
     cells=redshift_cells(dict(ned=r,spectral=dict(status='no_reliable_line_system'),raw='raw.fits'))
-    assert 'z unavailable' in cells[0] and '0.2' not in cells[0]
+    assert 'no catalogued redshift' in cells[0] and '0.2' not in cells[0]
     assert 'Insufficient matching lines' in cells[1]
 
 

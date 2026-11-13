@@ -62,7 +62,7 @@ def catalogue_redshift(candidate):
     from .field_catalogues import redshift_label
     if 'metadata' in candidate:return redshift_label(candidate)
     value=candidate.get('redshift')
-    if value is None:return 'z unavailable'
+    if value is None:return '— no catalogued redshift'
     method=candidate.get('redshift_method') or candidate.get('method') or 'method unknown'
     return f'z={value:.6g} ({method})'
 
