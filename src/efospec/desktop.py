@@ -65,7 +65,8 @@ class ExtractionWindow(Q.QMainWindow):
         layout.addWidget(top)
         self.tabs=Q.QTabWidget();layout.addWidget(self.tabs,1)
         body=Q.QWidget();body_layout=Q.QHBoxLayout(body);body_layout.setContentsMargins(20,20,20,10);body_layout.setSpacing(16)
-        self.tabs.addTab(body,'Spectra')
+        self.spectra_stack=Q.QStackedWidget();self.spectra_stack.addWidget(body)
+        self.tabs.addTab(self.spectra_stack,'Spectra')
         sidebar=Q.QWidget();sidebar.setFixedWidth(342);side=Q.QVBoxLayout(sidebar);side.setContentsMargins(0,0,0,0);side.setSpacing(12)
         body_layout.addWidget(sidebar)
         self.exposures=Q.QComboBox();self.exposures.setAccessibleName('Exposure');self.exposures.currentIndexChanged.connect(self.change_exposure)
@@ -219,6 +220,10 @@ class ExtractionWindow(Q.QMainWindow):
             for e in new.exposures if new else []:self.exposures.addItem(f'{e["object"]} · {e["grism"]} · {e["exptime"]:g} s',e['id'])
             index=self.exposures.findData(previous)
             if index>=0:self.exposures.setCurrentIndex(index)
+            for item in failures(session.manifest):
+                name=Path(item.get('path','')).name
+                if name and self.exposures.findData({'raw':name})<0:self.exposures.addItem(f'{item.get("object",name)} · recovery',{'raw':name})
+            self.spectra_stack.setCurrentIndex(0)
             self.exposures.blockSignals(False);self.change_exposure();self.refresh_history()
             self.clear_review()
             self.reviews.blockSignals(True);self.reviews.clear();self.reviews.addItem('Select a source-review exposure…',None)
@@ -244,8 +249,12 @@ class ExtractionWindow(Q.QMainWindow):
                 for ax in (self.spectrum_ax,self.image_ax,self.profile_ax):ax.clear()
                 self.canvas.draw_idle()
             if session.reviews and (not new or session.selected.name=='review.json'):
-                self.reviews.setCurrentIndex(1);self.tabs.setCurrentIndex(1)
+                packet=json.loads(session.reviews[0].read_text())
+                self.select_raw(packet['raw_name'])
             if raw:self.select_raw(raw)
+            elif not new and self.reviews.count()>1:
+                entry=self.reviews.itemData(1)
+                self.select_raw(entry['raw'] if isinstance(entry,dict) else json.loads(Path(entry).read_text())['raw_name'])
             if self.settings:self.settings.setValue('last_run',str(session.selected));self.settings.sync()
         except (OSError,ValueError,KeyError,ImportError) as exc:self.error(exc)
 
@@ -255,9 +264,34 @@ class ExtractionWindow(Q.QMainWindow):
             data=self.reviews.itemData(index)
             name=data['raw'] if isinstance(data,dict) else json.loads(Path(data).read_text())['raw_name']
             if name==raw:
-                self.reviews.setCurrentIndex(index);self.tabs.setCurrentIndex(1)
+                self.reviews.setCurrentIndex(index)
+                self.open_failed_spectrum(data,raw)
                 return
         raise ValueError('No failed exposure with this filename in the selected run: '+raw)
+
+    def open_failed_spectrum(self, data, raw):
+        from .background_gui import BackgroundEditor
+        if self.is_running() or (self.review_editor and self.review_editor.is_running()):
+            raise ValueError('Finish or cancel extraction before changing exposure.')
+        self.exposure=None
+        self.clear_review()
+        if isinstance(data,dict):
+            item=next(e for e in failures(self.session.manifest) if Path(e['path']).name==raw)
+            data=dict(parent_run=str(self.session.run),raw_name=raw,object=item.get('object',raw))
+        panel=BackgroundEditor(data,self.reference_root,parent=self.spectra_stack)
+        page=Q.QWidget();layout=Q.QVBoxLayout(page)
+        back=Q.QPushButton('Back to exposure list');layout.addWidget(back);layout.addWidget(panel,1)
+        def return_to_list():
+            self.spectra_stack.setCurrentIndex(0)
+            if self.backend:
+                self.exposures.setCurrentIndex(0);self.change_exposure()
+        back.clicked.connect(return_to_list)
+        panel.runningChanged.connect(lambda running:back.setEnabled(not running))
+        self.review_editor=panel;panel.runningChanged.connect(self.poll_job)
+        while self.spectra_stack.count()>1:
+            old=self.spectra_stack.widget(1);self.spectra_stack.removeWidget(old);old.deleteLater()
+        self.spectra_stack.addWidget(page);self.spectra_stack.setCurrentWidget(page)
+        self.tabs.setCurrentIndex(0)
 
     def choose_review(self):
         path,_=Q.QFileDialog.getOpenFileName(self,'Open source-review packet','','Review packet (review.json)')
@@ -322,7 +356,12 @@ class ExtractionWindow(Q.QMainWindow):
 
     def change_exposure(self,*_):
         from pypeit.pkg.exceptions import PypeItError
-        if not self.backend or not self.exposures.currentData():return
+        data=self.exposures.currentData()
+        if isinstance(data,dict):
+            try:self.open_failed_spectrum(data,data['raw'])
+            except (OSError,ValueError,KeyError) as exc:self.error(exc)
+            return
+        if not self.backend or not data:return
         try:
             self.exposure=self.backend.exposure(self.exposures.currentData())
             mode='raw-only' if self.exposure.context.calibration else 'archived references'
@@ -531,7 +570,7 @@ class ExtractionWindow(Q.QMainWindow):
     def poll_job(self,*_):
         review_running=bool(self.review_editor and self.review_editor.is_running())
         running=self.is_running()
-        self.tabs.setTabEnabled(0,not review_running);self.tabs.setTabEnabled(1,not running)
+        self.tabs.setTabEnabled(0,not review_running or self.spectra_stack.isAncestorOf(self.review_editor));self.tabs.setTabEnabled(1,not (running or review_running))
         self.open_button.setEnabled(not (running or review_running))
         self.review_open.setEnabled(not (running or review_running));self.reviews.setEnabled(not review_running)
         if not self.backend:return

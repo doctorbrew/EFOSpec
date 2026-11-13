@@ -18,6 +18,13 @@ efospec background-gui 'runs/2026-10-28/QC/EFOSC.2026-10-29T05:12:40.988/review.
 - Native macOS evidence: `runs/background-gui-check/interactions-final/result.json`, logs and window screenshot. Actual canvas drags, saved-recipe replay, a successful extraction worker with arrays equal to the preview, cancellation and unchanged raw hash were checked. Offscreen tests are additional regression checks, not Linux desktop certification.
 - This editor handles failed-exposure QC packets and one-source polynomial experiments. `efospec gui` opens the native completed-night browser and extraction controls; `efospec browser-prototype` retains the earlier browser editor.
 
+## Native failed-exposure links (2026-11-13)
+
+- Failed links and recovery entries in the Spectra exposure list open the native aperture/background editor in **Spectra**. Select a candidate, edit aperture and two finite 15–50 pixel background bands, preview, then Extract new revision.
+- Same-night native failures no longer require archive calibration packets. The loader verifies the raw hash, calibration masters, exact processed detector crop and saved wavelength map before editing; recipes bind those inputs.
+- Native previews use the processing inverse variance and bad-pixel mask. Wavelength failures remain masked in exported counts. These are experimental polynomial boxcar spectra, not flux-calibrated PypeIt optimal products or validated host subtraction.
+- macOS Cocoa interactions for all four failed science exposures, a real extraction, exact saved-recipe replay, cancellation and unchanged parent products are recorded in `runs/2026-10-28/nightly/20261113T141208Z-6fee4b/QC/gui-recovery/verification.json`. Linux native interaction verification has not been repeated for this change.
+
 ## Reproducible science contract
 
 ```sh

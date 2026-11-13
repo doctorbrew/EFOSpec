@@ -27,9 +27,15 @@ class BackgroundEditor(QtWidgets.QWidget):
 
     def __init__(self, packet, reference_root=None, parent=None):
         super().__init__(parent)
-        self.packet=Path(packet).resolve()
-        self.review=json.loads(self.packet.read_text())
+        self.packet=Path(packet['parent_run'])/'review.json' if isinstance(packet,dict) else Path(packet).resolve()
+        self.review=deepcopy(packet) if isinstance(packet,dict) else json.loads(self.packet.read_text())
         self.exposure=FailedExposure(self.review['parent_run'],self.review['raw_name'],reference_root)
+        if 'candidates' not in self.review:
+            self.review['candidates']=[]
+            for i,c in enumerate(self.exposure.candidates,1):
+                recipe=self.exposure.default_recipe();recipe['source_mode']='manual'
+                recipe['objects']=[dict(id='primary',label=self.review['object'],kind='point',spec=float(self.exposure.window.origin[0]+self.exposure.window.shape[0]//2),spat=c['raw_spatial_pixel'],radius=7.,fwhm=4.)]
+                self.review['candidates'].append(dict(number=i,anchor_raw_x=c['raw_spatial_pixel'],recipe=recipe))
         self.worker=None;self.last_result=None;self.loaded_object=None
         self.setWindowTitle('EFOSpec — aperture and local background review')
         self.resize(1500,1050)
@@ -37,6 +43,8 @@ class BackgroundEditor(QtWidgets.QWidget):
         layout.addWidget(label(self.review['object'],'targetTitle'))
         layout.addWidget(label('Select a trace using the acquisition image and observing records. '
             'This experimental background fit produces count-level boxcar spectra.','notice',True))
+        if self.exposure.context.calibration and not self.exposure.context.sky_qa.get('held_out_6363_pass',False):
+            layout.addWidget(label('Wavelength validation failed in the parent run. Extracted counts remain review-only; wavelength-valid samples stay masked.','notice',True))
         split=QtWidgets.QSplitter();layout.addWidget(split,1)
         scroll=QtWidgets.QScrollArea();scroll.setWidgetResizable(True);scroll.setMinimumWidth(300)
         scroll.setMaximumWidth(400);split.addWidget(scroll)
@@ -134,7 +142,8 @@ class BackgroundEditor(QtWidgets.QWidget):
     def recipe(self):
         index=self.candidate.currentIndex()-1
         if index<0:raise ValueError('Select a candidate; source identity is never inferred from brightness.')
-        value=deepcopy(json.loads(Path(self.review['candidates'][index]['recipe']).read_text()))
+        saved=self.review['candidates'][index]['recipe']
+        value=deepcopy(saved if isinstance(saved,dict) else json.loads(Path(saved).read_text()))
         if self.loaded_object is not None:value['objects'][0]=deepcopy(self.loaded_object)
         bands=[]
         for text in self.bands.text().split(','):

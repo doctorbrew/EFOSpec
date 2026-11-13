@@ -82,21 +82,30 @@ def fit_background(data, variance, trace, *, x_origin, radius, regions, exclude=
 def calculate(exposure, recipe):
     recipe=validate_recipe(recipe,exposure.window,exposure.hashes)
     if recipe['sky']['mode']!='polynomial':raise ValueError('a polynomial background recipe is required')
+    if exposure.context.calibration and (len(recipe['sky']['include'])!=2 or any(not 15<=hi-lo<=50 for lo,hi in recipe['sky']['include'])):
+        raise ValueError('Native recovery requires two finite background bands, each 15–50 pixels wide.')
     obj=recipe['objects'][0];row=int(obj['spec']-exposure.window.origin[0])
     traces=exposure.images['found_traces']+exposure.window.origin[1]
     seed=traces[np.argmin(abs(traces[:,row]-obj['spat']))].copy()
     seed+=obj['spat']-seed[row]
     data=exposure.context.data;h=exposure.frame['metadata']
     variance=np.maximum(data,0.)+float(h['ESO DET OUT1 RON'])**2
+    good=None
+    if exposure.context.processed is not None:
+        processed=exposure.context.processed
+        variance=np.divide(1.,processed['ivar'],out=np.full_like(data,np.nan),where=processed['ivar']>0)
+        good=~processed['bad_pixels'].astype(bool)
     detector=exposure.context.detector
     saturated=data>=float(detector['saturation'])*float(detector['gain'][0])
     result=fit_background(data,variance,seed,x_origin=exposure.window.origin[1],radius=obj['radius'],
         regions=recipe['sky']['include'],exclude=recipe['sky']['exclude'],degree=recipe['sky']['degree'],
-        sigma_clip=recipe['sky']['sigma_clip'],good=~saturated)
+        sigma_clip=recipe['sky']['sigma_clip'],good=(~saturated if good is None else good&~saturated))
     x=np.arange(data.shape[1])+exposure.window.origin[1]
     result['wave_air']=np.array([np.interp(t,x,w) for t,w in zip(seed,exposure.context.waveair)])
     lines=np.asarray(exposure.context.arc_qa['reference_lines'])+exposure.context.shift
     result['spectrum_valid']=result['valid']&(result['wave_air']>=lines.min())&(result['wave_air']<=lines.max())
+    if exposure.context.calibration and not exposure.context.sky_qa.get('held_out_6363_pass',False):
+        result['spectrum_valid'][:]=False
     return recipe,result
 
 
@@ -113,7 +122,7 @@ def extract_background(run, raw_name, recipe, output, reference_root=None):
         ('VALID','L',None,result['spectrum_valid'])]]
     header=fits.Header({'OBJECT':exposure.result['object'],'EPSTATUS':'EXPERIMENTAL',
         'IDENTITY':'UNVERIFIED','METHOD':'POLY-BOXCAR','WAVEMED':'air','BUNIT':'electron',
-        'FLUXCAL':'NONE','BGDEG':recipe['sky']['degree'],'RAWFILE':raw_name})
+        'FLUXCAL':'NONE','WAVEVAL':bool(exposure.context.sky_qa.get('held_out_6363_pass',False)), 'BGDEG':recipe['sky']['degree'],'RAWFILE':raw_name})
     fits.HDUList([fits.PrimaryHDU(header=header),fits.BinTableHDU.from_columns(columns,name='SPECTRUM')]).writeto(output/'boxcar-background.fits',checksum=True)
     source=output/'source';source.mkdir()
     for p in Path(__file__).parent.glob('*.py'):shutil.copyfile(p,source/p.name)
@@ -133,6 +142,12 @@ def extract_background(run, raw_name, recipe, output, reference_root=None):
             'Poisson plus read-noise model; full coefficient covariance propagated to boxcar sum; no model-choice uncertainty.',
             'Side bands are half-open; fractional aperture overlaps, invalid and saturated pixels are excluded.',
             'Aperture cosmic rays, bias/flat calibration and trace uncertainty are not corrected by this experiment.',
-            'No calibrated flux delivery; uses the saved archive wavelength map.']}
+            'No calibrated flux delivery; wavelength validation is retained from the parent run.']}
+    if exposure.context.calibration:
+        qa['wavelength_validated']=bool(exposure.context.sky_qa.get('held_out_6363_pass',False))
+        qa['noise_model']='saved native processing inverse variance and bad-pixel mask'
+        qa['limitations']=[v for v in qa['limitations'] if not v.startswith(('Poisson plus','Aperture cosmic'))]+[
+            'Reuses verified native bias/flat calibration and processing masks; trace and model-choice uncertainty remain unquantified.',
+            'Parent wavelength failures remain masked; a background fit does not repair wavelength calibration.']
     save_json(output/'background.json',qa)
     return qa

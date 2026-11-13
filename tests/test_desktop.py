@@ -125,3 +125,21 @@ def test_last_night_preference_and_missing_directory_fallback(qtbot,saved_exposu
     settings.setValue('last_run',str(tmp_path/'missing'))
     assert initial_run(None,settings) is None
     w.close()
+
+
+def test_failed_link_opens_extraction_panel_in_spectra(window,monkeypatch):
+    from PySide6 import QtWidgets
+    import efospec.background_gui as gui
+    class Panel(QtWidgets.QWidget):
+        runningChanged=QtCore.Signal(bool)
+        def __init__(self,packet,*a,parent=None):super().__init__(parent);self.packet=packet
+        def is_running(self):return False
+    monkeypatch.setattr(gui,'BackgroundEditor',Panel)
+    w=window;raw='failed.fits'
+    w.session.manifest['errors'].append({'path':raw,'object':'Failed target','code':'background_support_required','error':'background'})
+    w.reviews.addItem('Failed target',{'raw':raw})
+    w.select_raw(raw)
+    assert w.tabs.currentIndex()==0
+    assert w.review_editor.isVisible()
+    assert w.review_editor.packet['raw_name']==raw
+    assert w.exposure is None  # never edit a stale successful spectrum
