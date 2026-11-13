@@ -186,7 +186,7 @@ class EpochPage:
                     +'<p class="caption">'+_text(Path(item.get('path', '')).name)+'</p></article>')
         return ''.join(html for _, html in sorted(zip(section_order, sections), key=lambda pair: pair[0])) or '<p>No spectra recorded in this revision.</p>'
 
-    def observations(self, revision, run, provisional=None, redshifts=None):
+    def observations(self, revision, run, provisional=None, redshifts=None, manuals=()):
         targets = self.read(revision/'night.json').get('targets')
         outcomes = {}
         for group, label in [('results', 'Spectrum'), ('errors', 'Failed'), ('skipped', 'Unsupported')]:
@@ -206,6 +206,10 @@ class EpochPage:
             outcomes[raw] = f'<a class="qc-status-bad" href="#spectrum-counts-{i}">{_text(label)} ↓</a>'
         for i,result in enumerate((provisional or {}).get('results',[])):
             outcomes[Path(result['raw']).name]=f'<a class="qc-status-bad" href="#rescue-spectrum-{i}">Provisional flux; wavelength unvalidated ↓</a>'
+        for j,(_,manual) in enumerate(manuals):
+            for i,result in enumerate(manual['results']):
+                raw=Path(result['raw']).name
+                outcomes[raw]=f'<a href="#manual-{j}-spectrum-{i}">Manual flux recovery (review) ↓</a><br>'+outcomes.get(raw,'')
         rows = []
         for frame in sorted(self.read(revision/'observing-log.json').get('frames', []), key=source_order):
             if frame.get('role') not in {'science', 'standard_candidate'} or 'duplicate_of' in frame:
@@ -709,7 +713,9 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
     page.typing_run = revision/'reduction'
     page.typing_annotations = records_for_run(page.typing_run) if (page.typing_run/'typing-metadata.json').exists() else {}
     from .redshift_report import load_redshifts,redshift_section
-    redshifts=load_redshifts(page,revision/'reduction',rescue_path if rescue else None)
+    from .manual_recovery_report import selected_manual_recoveries
+    manuals=selected_manual_recoveries(revision/'reduction')
+    redshifts=load_redshifts(page,revision/'reduction',rescue_path if rescue else None,manuals=[p for p,_ in manuals])
     page.redshift_records=redshifts
     qc, background = page.qc(revision, run)
     if rescue:
@@ -745,10 +751,13 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
         calibration_content+=page.download(native/'validation.json','Native validation record')
         calibration_content+=page.wavelength_checks(native)
     spectra=page.spectra(revision/'reduction',run)
+    for j,(manual_path,manual_run) in enumerate(manuals):
+        spectra+='<h3>Checked manual recovery — retained for review</h3><p>Native PypeIt extraction with explicit two-sided background and passing wavelength checks. Original failures remain below; absolute flux and host subtraction remain unvalidated.</p>'
+        spectra+=page.spectra(manual_path,manual_run,id_prefix=f'manual-{j}-spectrum')
     if rescue:
         spectra+='<h3>Provisional rescue spectra</h3><p class="qc-status-bad">Same-night flux calibration; science wavelengths remain unvalidated. No flexure correction applied. These do not replace accepted products.</p>'
         spectra+=page.spectra(rescue_path,rescue,id_prefix='rescue-spectrum')
-    content = [page.observations(revision, run, rescue, redshifts), spectra, page.problems(run,revision/'reduction'), qc,
+    content = [page.observations(revision, run, rescue, redshifts, manuals), spectra, page.problems(run,revision/'reduction'), qc,
                background, calibration_content, page.archive(revision)+page.archive_folders_and_logs(revision)]
     if redshift_content:
         content.insert(4, redshift_content)
@@ -765,6 +774,7 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
                        for (anchor, title), body in zip(titles, content))
     stats = ' · '.join(f'{len(run.get(k, []))} {label}' for k, label in [('results','spectra'), ('errors','failed'), ('skipped','unsupported')])
     if run.get('review_counts'):stats+=' · '+str(len(run['review_counts']))+' review counts'
+    if manuals:stats+=' · '+str(sum(len(r['results']) for _,r in manuals))+' checked manual recovery spectra'
     if rescue:stats+=' · '+str(len(rescue['results']))+' provisional flux spectra'
     warning = '<p class="note">'+_text('; '.join(page.warnings))+'</p>' if page.warnings else ''
     scope = ('<p class="caption">Selected targets: '+_text(', '.join(state['targets']))

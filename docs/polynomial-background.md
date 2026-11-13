@@ -22,7 +22,7 @@ efospec background-gui 'runs/2026-10-28/QC/EFOSC.2026-10-29T05:12:40.988/review.
 
 - Failed links and recovery entries in the Spectra exposure list open the native aperture/background editor in **Spectra**. Select a candidate, edit aperture and two finite 15–50 pixel background bands, preview, then Extract new revision.
 - Same-night native failures no longer require archive calibration packets. The loader verifies the raw hash, calibration masters, exact processed detector crop and saved wavelength map before editing; recipes bind those inputs.
-- Native previews use the processing inverse variance and bad-pixel mask. Wavelength failures remain masked in exported counts. These are experimental polynomial boxcar spectra, not flux-calibrated PypeIt optimal products or validated host subtraction.
+- Native previews use the processing inverse variance and bad-pixel mask. Wavelength failures remain masked in exported counts. The default remains experimental polynomial boxcar counts. The optional Checked native PypeIt + flux recovery control reruns native extraction with the explicit bands and a verified same-night response; it refuses wavelength-failed inputs and saves a separate revision. Neither route establishes validated host subtraction.
 - macOS Cocoa interactions for all four failed science exposures, a real extraction, exact saved-recipe replay, cancellation and unchanged parent products are recorded in `runs/2026-10-28/nightly/20261113T141208Z-6fee4b/QC/gui-recovery/verification.json`. Linux native interaction verification has not been repeated for this change.
 
 ## Reproducible science contract
@@ -66,3 +66,5 @@ See `runs/2026-10-28/QC/EFOSC.2026-10-29T05:12:40.988/C3-background-review.html`
 - [IRAF row/column background](https://iraf.readthedocs.io/en/latest/tasks/noao/imred/generic/background.html): polynomial fitting and rejection along image rows/columns.
 
 These references motivate local fitting; they do not validate this exposure's source identity or prove that a polynomial adequately describes its host.
+
+Native-flux follow-up evidence: `runs/2026-10-28/nightly/20261113T141208Z-6fee4b/QC/recovery-followup-20261113/`. SN2026ayt passes bounded native extraction and wavelength checks. SN2026abgb's nearby-band trial completes but samples the broad neighbour's wing; it remains an unselected diagnostic trial. AT2026agvs/AT2026agzp remain wavelength-blocked. The report retains the original outcomes beside the checked manual recovery. Telluric extrapolation remains review-only.

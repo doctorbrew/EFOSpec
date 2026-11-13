@@ -96,9 +96,10 @@ def test_off_center_raw_can_be_recovered_with_hash_bound_manual_recipe(tmp_path,
     shell=ExtractionWindow(packet/'review.json',REFERENCE)
     qtbot.addWidget(shell);shell.show()
     editor=shell.review_editor
-    assert editor is not None and editor.parentWidget() is shell.review_page
-    assert shell.backend is None  # All exposures failed; source review still opens.
-    assert shell.tabs.currentIndex()==1 and editor.candidate.currentIndex()==0
+    assert editor is not None and shell.spectra_stack.isAncestorOf(editor)
+    assert shell.tabs.currentIndex()==0
+    assert shell.backend is None  # All exposures failed; Spectra still provides extraction.
+    assert editor.candidate.currentIndex()==0
     try:
         assert editor.preview() is None  # no automatic target selection
         editor.candidate.setCurrentIndex(1)

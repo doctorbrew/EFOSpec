@@ -84,6 +84,7 @@ class BackgroundEditor(QtWidgets.QWidget):
         button=QtWidgets.QPushButton('Preview background');button.clicked.connect(self.preview);buttons.addWidget(button,1,0,1,2)
         self.extract_button=QtWidgets.QPushButton('Extract new revision');self.extract_button.setObjectName('primary')
         self.extract_button.clicked.connect(self.extract);controls.addWidget(self.extract_button)
+        self.native_flux=QtWidgets.QCheckBox('Checked native PypeIt + flux recovery');self.native_flux.setVisible(bool(self.exposure.context.calibration));controls.addWidget(self.native_flux)
         self.cancel_button=QtWidgets.QPushButton('Cancel extraction');self.cancel_button.clicked.connect(self.cancel)
         self.cancel_button.setEnabled(False);controls.addWidget(self.cancel_button);controls.addStretch()
         diagnostics,plots=card('Source and background diagnostics');split.addWidget(diagnostics);split.setStretchFactor(1,1)
@@ -213,7 +214,7 @@ class BackgroundEditor(QtWidgets.QWidget):
         self.worker.errorOccurred.connect(self.worker_error)
         self.worker.start(sys.executable,['-m','efospec','background-extract',str(self.exposure.run),
             '--failed-raw',self.review['raw_name'],'--recipe',str(recipe_file),'--output',str(output),
-            '--reference-root',str(self.exposure.context.reference_root)])
+            '--reference-root',str(self.exposure.context.reference_root)]+(['--native-flux'] if self.native_flux.isChecked() else []))
         self.message.setText('Extracting to a new revision: '+str(output))
         self.runningChanged.emit(True)
 

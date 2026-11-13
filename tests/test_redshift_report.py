@@ -58,3 +58,12 @@ def test_redshifts_from_previous_reduction_are_not_labelled_never_measured(tmp_p
     assert page.previous_redshift_raws=={'old-science.fits'}
     assert redshift_cells(None,previous_revision=True)==['Previous revision','Previous revision']
     assert redshift_cells(None,previous_revision=True,standard=True)==['—','—']
+
+
+def test_dated_revision_redshift_paths_are_confined(tmp_path):
+    from efospec.redshift_report import evidence_inside_night
+    root=tmp_path/'night'
+    assert evidence_inside_night(root/'QC/new/redshifts.json',root)
+    assert evidence_inside_night(root/'nightly/revision/QC/new/redshifts.json',root)
+    assert not evidence_inside_night(root/'nightly/revision/reduction/run.json',root)
+    assert not evidence_inside_night(root/'QC/../../outside.json',root)

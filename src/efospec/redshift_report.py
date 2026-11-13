@@ -6,18 +6,26 @@ from .inventory import sha256
 from .field_catalogues import redshift_label
 
 
-def load_redshifts(page, parent, rescue=None):
+def evidence_inside_night(path, root):
+    path=Path(path).resolve();root=Path(root).resolve()
+    if path.is_relative_to(root/'QC'):return True
+    relative=path.relative_to(root) if path.is_relative_to(root) else None
+    return bool(relative and len(relative.parts)>=4 and relative.parts[0]=='nightly' and relative.parts[2]=='QC')
+
+
+def load_redshifts(page, parent, rescue=None, *, manuals=()):
     page.redshift_status='not_run'
     page.previous_redshift_raws=set()
     path=page.root/'QC/redshift-current.json'
     if not path.exists():return {}
     pointer=page.read(path);manifest_path=(page.root/pointer['path']).resolve()
-    if not manifest_path.is_relative_to(page.root/'QC') or pointer['night']!=page.root.name:
+    if not evidence_inside_night(manifest_path,page.root) or pointer['night']!=page.root.name:
         raise ValueError('invalid redshift pointer')
     if sha256(manifest_path)!=pointer['sha256']:raise ValueError('redshift manifest changed')
     manifest=page.read(manifest_path)
     expected={str(parent/'run.json'):sha256(parent/'run.json')}
     if rescue:expected[str(rescue/'run.json')]=sha256(rescue/'run.json')
+    for manual in manuals:expected[str(manual/'run.json')]=sha256(manual/'run.json')
     if manifest['night']!=page.root.name or manifest['parent_run_sha256']!=expected:
         page.redshift_status='previous_revision'
         page.previous_redshift_raws={Path(item['raw']).name for item in manifest.get('results',[]) if item.get('raw')}
@@ -25,7 +33,8 @@ def load_redshifts(page, parent, rescue=None):
     page.redshift_status='current'
     records={}
     for item in manifest['results']:
-        path=Path(item['path']);path.resolve().relative_to(page.root/'QC')
+        path=Path(item['path'])
+        if not path.resolve().is_relative_to(manifest_path.parent):raise ValueError('redshift record outside its evidence revision')
         if sha256(path)!=item['sha256']:raise ValueError('redshift record changed')
         record=page.read(path)
         for key in ('raw','product','images','diagnostic_arrays'):

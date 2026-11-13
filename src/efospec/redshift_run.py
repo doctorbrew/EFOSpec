@@ -56,7 +56,10 @@ def measure_night(night,output,*,project_root='.',rescue=None):
     pointer=json.loads((root/'nightly/current.json').read_text())
     if pointer['night']!=night:raise ValueError('night mismatch')
     parent=root/'nightly'/pointer['revision']/'reduction';run=json.loads((parent/'run.json').read_text())
-    runs=[(parent,run)]
+    from .manual_recovery_report import selected_manual_recoveries
+    manuals=selected_manual_recoveries(parent)
+    runs=[(parent,run)]+manuals
+    automatic_rescue=rescue is None;excluded_rescue=None
     if rescue is None and (root/'rescue/current.json').exists():
         saved=json.loads((root/'rescue/current.json').read_text())
         rescue=(root/saved['path']).resolve()
@@ -64,10 +67,15 @@ def measure_night(night,output,*,project_root='.',rescue=None):
             raise ValueError('invalid current rescue pointer')
     if rescue:
         rescue=Path(rescue).resolve();extra=json.loads((rescue/'run.json').read_text())
-        if extra['night']!=night or extra['parent_sha256']!=sha256(parent/'run.json'):raise ValueError('rescue parent mismatch')
-        runs.append((rescue,extra))
-    output=Path(output).resolve();output.relative_to(root/'QC');output.mkdir(parents=True,exist_ok=False)
-    manifest=dict(night=night,method='independent_2d_emission_line_redshifts',status='running',results=[],errors=[],
+        if extra['night']!=night or extra['parent_sha256']!=sha256(parent/'run.json'):
+            if not automatic_rescue:raise ValueError('rescue parent mismatch')
+            excluded_rescue=dict(path=str(rescue),reason='previous reduction revision');rescue=None
+        else:runs.append((rescue,extra))
+    from .redshift_report import evidence_inside_night
+    output=Path(output).resolve()
+    if not evidence_inside_night(output,root):raise ValueError('redshift evidence must stay inside dated QC')
+    output.mkdir(parents=True,exist_ok=False)
+    manifest=dict(night=night,excluded_rescue=excluded_rescue,method='independent_2d_emission_line_redshifts',status='running',results=[],errors=[],
         parent_run_sha256={str(p/'run.json'):sha256(p/'run.json') for p,_ in runs},source_sha256=snapshot_sources(output),
         limitations=['Automatic line-system candidates, not confirmed hosts.','No NED prior enters spectral fitting.','Formal errors exclude wavelength, background and resampling systematics.','Search covers -0.003 <= z <= 1 and optical emission lines; absorption-only galaxies may have no estimate.'])
     save_json(output/'redshifts.json',manifest)
@@ -131,17 +139,22 @@ def activate_measurements(directory, *, project_root='.'):
     from .redshift_report import load_redshifts
     directory=Path(directory).resolve();path=directory/'redshifts.json'
     manifest=json.loads(path.read_text());root=Path(project_root).resolve()/'runs'/manifest['night']
-    directory.relative_to(root/'QC')
+    from .redshift_report import evidence_inside_night
+    if not evidence_inside_night(directory,root):raise ValueError('redshift evidence outside dated QC')
     if manifest['status']!='complete':raise ValueError('redshift run must complete before promotion')
     current=json.loads((root/'nightly/current.json').read_text())
     parent=root/'nightly'/current['revision']/'reduction';rescue=None
     if (root/'rescue/current.json').exists():
         saved=json.loads((root/'rescue/current.json').read_text());rescue=(root/saved['path']).resolve()
         if sha256(rescue/'run.json')!=saved['run_sha256']:raise ValueError('rescue pointer changed')
-    expected={str(p/'run.json'):sha256(p/'run.json') for p in (parent,rescue) if p is not None}
+        extra=json.loads((rescue/'run.json').read_text())
+        if extra.get('parent_sha256')!=sha256(parent/'run.json'):rescue=None
+    from .manual_recovery_report import selected_manual_recoveries
+    manuals=[p for p,_ in selected_manual_recoveries(parent)]
+    expected={str(p/'run.json'):sha256(p/'run.json') for p in [parent,rescue]+manuals if p is not None}
     if manifest['parent_run_sha256']!=expected:raise ValueError('measurements do not match current accepted/rescue reductions')
     pointer=root/'QC/redshift-current.json';previous=pointer.read_bytes() if pointer.exists() else None
-    archive=root/'archive/reports'/datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S-redshift-update')
+    archive=directory/'previous-report'/datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S-redshift-update')
     archive.mkdir(parents=True,exist_ok=False)
     if previous is not None:copy2(pointer,archive/pointer.name)
     if (root/'index.html').exists():
@@ -155,7 +168,7 @@ def activate_measurements(directory, *, project_root='.'):
     try:
         save_json(pointer,dict(night=manifest['night'],path=str(path.relative_to(root)),sha256=sha256(path)))
         # Fail closed on changed products, plots or provenance before rendering.
-        load_redshifts(EpochPage(root),parent,rescue)
+        load_redshifts(EpochPage(root),parent,rescue,manuals=manuals)
         return build_epoch_page(manifest['night'],project_root)
     except Exception:
         if previous is None:pointer.unlink(missing_ok=True)

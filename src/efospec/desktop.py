@@ -273,12 +273,18 @@ class ExtractionWindow(Q.QMainWindow):
         from .background_gui import BackgroundEditor
         if self.is_running() or (self.review_editor and self.review_editor.is_running()):
             raise ValueError('Finish or cancel extraction before changing exposure.')
-        self.exposure=None
-        self.clear_review()
         if isinstance(data,dict):
             item=next(e for e in failures(self.session.manifest) if Path(e['path']).name==raw)
             data=dict(parent_run=str(self.session.run),raw_name=raw,object=item.get('object',raw))
-        panel=BackgroundEditor(data,self.reference_root,parent=self.spectra_stack)
+        try:
+            panel=BackgroundEditor(data,self.reference_root,parent=self.spectra_stack)
+        except (OSError,ValueError,KeyError,ImportError) as exc:
+            # Missing calibration/windows remain inspectable; never erase the original error log.
+            self.change_review();self.review_notice.setText('Extraction unavailable: '+str(exc))
+            self.tabs.setCurrentIndex(1);self.run_button.setEnabled(False)
+            return
+        self.exposure=None
+        self.clear_review()
         page=Q.QWidget();layout=Q.QVBoxLayout(page)
         back=Q.QPushButton('Back to exposure list');layout.addWidget(back);layout.addWidget(panel,1)
         def return_to_list():
@@ -448,7 +454,8 @@ class ExtractionWindow(Q.QMainWindow):
         self.redraw()
 
     def is_running(self):
-        return bool(self.backend and self.backend.job and self.backend.job['status']=='running')
+        job=self.backend.job_status() if self.backend else None
+        return bool(job and job['status']=='running')
 
     def redraw(self,*_):
         if self.loading or not self.exposure:return
