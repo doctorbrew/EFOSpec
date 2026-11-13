@@ -210,7 +210,7 @@ class EpochPage:
         for j,(_,manual) in enumerate(manuals):
             for i,result in enumerate(manual['results']):
                 raw=Path(result['raw']).name
-                outcomes[raw]=f'<a href="#manual-{j}-spectrum-{i}">Manual flux recovery (review) ↓</a><br>'+outcomes.get(raw,'')
+                outcomes[raw]=f'<a href="#manual-{j}-spectrum-{i}">Manual flux recovery (review) ↓</a><br>Original attempt: '+outcomes.get(raw,'')
         rows = []
         for frame in sorted(self.read(revision/'observing-log.json').get('frames', []), key=source_order):
             if frame.get('role') not in {'science', 'standard_candidate'} or 'duplicate_of' in frame:
@@ -753,12 +753,17 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
         calibration_content+=page.wavelength_checks(native)
     spectra=page.spectra(revision/'reduction',run)
     for j,(manual_path,manual_run) in enumerate(manuals):
-        spectra+='<h3>Checked manual recovery — retained for review</h3><p>Native PypeIt extraction with explicit two-sided background and passing wavelength checks. Original failures remain below; absolute flux and host subtraction remain unvalidated.</p>'
+        spectra+='<h3>Checked manual recovery — retained for review</h3><p>Native PypeIt extraction with explicit two-sided background and passing wavelength checks. Original attempts remain listed separately; absolute flux and host subtraction remain unvalidated.</p>'
+        if manual_run.get('validation_policy')=='two-anchor':
+            spectra+='<p>Wavelength acceptance: 5577 and 6300 Å quality and agreement checks. The 6363 Å line is diagnostic only; its measured discrepancy is retained in the sky-check download.</p>'
         spectra+=page.spectra(manual_path,manual_run,id_prefix=f'manual-{j}-spectrum')
     if rescue:
         spectra+='<h3>Provisional rescue spectra</h3><p class="qc-status-bad">Same-night flux calibration; science wavelengths remain unvalidated. No flexure correction applied. These do not replace accepted products.</p>'
         spectra+=page.spectra(rescue_path,rescue,id_prefix='rescue-spectrum')
-    content = [page.observations(revision, run, rescue, redshifts, manuals), spectra, page.problems(run,revision/'reduction'), qc,
+    issues=page.problems(run,revision/'reduction')
+    if manuals:
+        issues='<p>Failures from the original nightly attempts are retained here. Later checked manual recoveries are listed separately in Spectra and the observing log.</p>'+issues
+    content = [page.observations(revision, run, rescue, redshifts, manuals), spectra, issues, qc,
                background, calibration_content, page.archive(revision)+page.archive_folders_and_logs(revision)]
     if redshift_content:
         content.insert(4, redshift_content)

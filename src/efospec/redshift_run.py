@@ -1,5 +1,6 @@
 """One-night redshift evidence with independent NED and spectral measurements."""
 from pathlib import Path
+from .native_sky import wavelength_accepted
 import json
 import warnings
 
@@ -97,8 +98,10 @@ def measure_night(night,output,*,project_root='.',rescue=None):
                     if spectral['z'] is not None and not spatial['passed']:
                         spectral.update(status='spatially_inconsistent',z=None)
                 header=fits.getheader(result['raw'])
-                wavelength_validated=bool(result['sky_flexure'].get('held_out_6363_pass'))
+                wavelength_validated=wavelength_accepted(result['sky_flexure'])
                 spectral['wavelength_validated']=wavelength_validated
+                spectral['wavelength_acceptance_policy']=result['sky_flexure'].get('validation_policy','three-line')
+                spectral['diagnostic_6363_error']=result['sky_flexure'].get('diagnostic_6363_error')
                 spectral['method_parameters']=dict(nominal_fwhm_angstrom=fwhm,aperture_radius_pixels=20.,
                     minimum_independent_groups=3,minimum_line_snr=5.,minimum_delta_chi2=30.,
                     search_range=[-.003,1.],redshift_error='fit covariance with unresolved-blend centroid floors; excludes wavelength and background systematics')

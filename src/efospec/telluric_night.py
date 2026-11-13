@@ -1,4 +1,5 @@
 """Fit and validate one night's standard-star telluric models in a new revision."""
+from .native_sky import wavelength_accepted
 import json
 from pathlib import Path
 import numpy as np
@@ -189,7 +190,7 @@ def apply_products(run,report,entries,atmosphere,output,protected,*,review_extra
         protected[raw]=item['raw_sha256']
         if sha256(Path(raw))!=protected[raw]:raise ValueError('science raw input changed')
         frame=inspect_file(Path(raw))
-        if not item.get('sky_flexure',{}).get('held_out_6363_pass'):
+        if not wavelength_accepted(item.get('sky_flexure',{})):
             report['skipped'].append(dict(raw=raw,reason='Science wavelength validation required'));continue
         candidates=[f for f in report['fits'] if matches(frame,entries[f['raw']]['frame'])]
         candidates.sort(key=lambda f:abs(frame['metadata']['MJD-OBS']-f['mjd']))

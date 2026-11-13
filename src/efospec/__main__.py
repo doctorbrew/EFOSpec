@@ -116,6 +116,7 @@ def main(argv=None):
     qc.add_argument('--test-recipes', action='store_true')
     background = commands.add_parser('background-extract', help='Experimental polynomial sky+host background and boxcar counts')
     background.add_argument('--native-flux',action='store_true',help='Use bounded native PypeIt and checked same-night response; wavelength failures block export')
+    background.add_argument('--sky-validation', choices=['three-line','two-anchor'], default='three-line', help='Explicit native wavelength acceptance policy; 6363 remains diagnostic for two-anchor')
     background.add_argument('path')
     background.add_argument('--failed-raw',required=True)
     background.add_argument('--recipe',required=True)
@@ -187,10 +188,12 @@ def main(argv=None):
         if args.command == 'background-extract':
             from pathlib import Path
             from .polynomial_background import extract_background
+            if not args.native_flux and args.sky_validation!='three-line':
+                raise ValueError('--sky-validation requires --native-flux')
             if args.native_flux:
                 from .native_recovery import extract_native as extract_background
             result=extract_background(args.path,args.failed_raw,json.loads(Path(args.recipe).read_text()),
-                                      args.output,**({} if args.native_flux else {'reference_root':args.reference_root}))
+                                      args.output,**({'validation_policy':args.sky_validation} if args.native_flux else {'reference_root':args.reference_root}))
             print(json.dumps(result,indent=2,allow_nan=False))
             return 0
         if args.command == 'recovery-qc':

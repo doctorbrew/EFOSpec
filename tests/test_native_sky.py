@@ -121,3 +121,43 @@ def test_displaced_held_out_line_does_not_validate_anchor_shift():
     image+=np.random.default_rng(43).normal(0,8,image.shape)
     with pytest.raises(SkyValidationError,match='residual'):
         measure_flexure(image,wave,slit_width_pixels=width_pixels)
+
+
+@pytest.mark.parametrize('check', [False, True])
+def test_two_anchor_acceptance_preserves_failed_6363_diagnostic(check):
+    from efospec.native_sky import measure_flexure, wavelength_accepted
+    image,wave=sky_image(check)
+    if check:
+        image-=200.*np.exp(-.5*((wave-(6363.776+6.))/7.5)**2)
+        image+=200.*np.exp(-.5*((wave-(6363.776+13.))/7.5)**2)
+    shift,qa=measure_flexure(image,wave,validation_policy='two-anchor')
+    assert shift==pytest.approx(-6.,abs=.2)
+    assert wavelength_accepted(qa) and not qa['held_out_6363_pass']
+    assert qa['diagnostic_6363_error'] and qa['validation_policy']=='two-anchor'
+    if check:assert abs(qa['held_out_6363_residual_angstrom'])>3
+    # A label alone never promotes the historical failure.
+    assert not wavelength_accepted(dict(qa,validation_passed=False))
+
+
+@pytest.mark.parametrize('failure', ['missing_anchor','disagree','centroid'])
+def test_two_anchor_policy_keeps_anchor_gates(failure,monkeypatch):
+    from efospec import native_sky
+    image,wave=sky_image()
+    if failure in {'missing_anchor','disagree'}:
+        image-=600.*np.exp(-.5*((wave-(6300.304+6.))/7.5)**2)
+        if failure=='disagree':image+=600.*np.exp(-.5*((wave-(6300.304+13.))/7.5)**2)
+    else:
+        original=native_sky.curve_fit
+        def uncertain(*args,**kwargs):
+            p,cov=original(*args,**kwargs);cov[1,1]=4.;return p,cov
+        monkeypatch.setattr(native_sky,'curve_fit',uncertain)
+    with pytest.raises(native_sky.SkyValidationError):
+        native_sky.measure_flexure(image,wave,validation_policy='two-anchor')
+
+
+def test_unknown_policy_cannot_accept_wavelength():
+    from efospec.native_sky import measure_flexure,wavelength_accepted
+    image,wave=sky_image()
+    with pytest.raises(ValueError,match='unknown'):
+        measure_flexure(image,wave,validation_policy='unchecked')
+    assert not wavelength_accepted({'validation_policy':'unchecked','held_out_6363_pass':True})

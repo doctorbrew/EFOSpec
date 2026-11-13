@@ -331,7 +331,12 @@ hash checks. Raw data and the preserved legacy checkout were outside deletion sc
 - Same observing night and identical grism/filter/slit/binning/readout are required.
   Among successful fits, choose the nearest observation in MJD; ties fail explicitly.
 - Standards and science use the same native raw processing and bounded extraction.
-  Science retains both sky anchors and the independent 6363 Å check. Short standards
+  By default, science requires both sky anchors and the independent 6363 Å check.
+  An explicitly requested native manual replay can use `background-extract
+  --native-flux --sky-validation two-anchor`: 5577/6300 must retain their quality,
+  agreement (3 Å), and shift (20 Å) gates; 6363 remains a measured diagnostic.
+  The policy is recorded in new manifests/FITS/ASCII and respected by report,
+  telluric and redshift validation. Earlier products are never relabelled. Short standards
   remain labelled arc-only; their wavelength status accompanies the applied response.
 - Missing/failed standards never trigger an archived-response fallback. Counts from
   a successfully extracted standard survive a response-fit failure.

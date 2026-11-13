@@ -1,4 +1,5 @@
 """Explicit presentation selection for checked native manual recovery trials."""
+from .native_sky import wavelength_accepted
 import json
 from pathlib import Path
 from .inventory import sha256
@@ -20,7 +21,7 @@ def selected_manual_recoveries(parent):
         run=json.loads((path/'run.json').read_text())
         if run.get('parent_sha256')!=selection['parent_sha256'] or run.get('execution_status')!='complete':raise ValueError('manual recovery is incomplete or stale')
         for result in run['results']:
-            if not result['sky_flexure'].get('held_out_6363_pass'):raise ValueError('manual recovery wavelength check failed')
+            if not wavelength_accepted(result['sky_flexure']):raise ValueError('manual recovery wavelength check failed')
             if sha256(Path(result['raw']))!=result['raw_sha256']:raise ValueError('manual recovery raw changed')
             for key in ('product','native_spec1d'):
                 if result[key] not in item['sha256']:raise ValueError('unbound manual recovery product')

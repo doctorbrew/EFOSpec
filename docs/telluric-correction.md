@@ -241,3 +241,11 @@ Pre-push verification on 2026-11-12: the complete suite passed **547 tests** wit
 passed. GitHub CI now installs that model before testing. The suite also caught
 a legacy sky-mask replay mismatch: replay now uses the recorded trace polynomial
 degree and still rejects a different fit without weakening its position tolerance.
+
+## Explicit two-anchor wavelength acceptance
+
+Native manual replays may explicitly select the 5577/6300 acceptance policy.
+Telluric application checks the recorded anchor measurements and policy; a failed
+6363 diagnostic alone no longer blocks these explicitly selected products. Legacy
+failed checks remain failures. Background, per-band transfer, time and airmass
+gates are unchanged, and each new spectrum requires a fresh hash-bound transfer.

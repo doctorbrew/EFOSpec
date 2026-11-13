@@ -77,6 +77,11 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None, 
     subheader.update({'TARGET':h['OBJECT'],'PYP_SPEC':inst.name,'PYPELINE':'MultiSlit',
                      'WAVEMED':'vacuum','SPECSYS':'TOPOCENT','EPSTATUS':'EXPERIMENTAL',
                      'EXTRACT':'JOINTFIX' if joint else 'PYPEIT'})
+    if sky_qa.get('validation_policy')=='two-anchor':
+        from .native_sky import wavelength_accepted
+        subheader.update(WAVEPOL='two-anchor', WAVEVAL=wavelength_accepted(sky_qa),
+                         SKY6363=bool(sky_qa['held_out_6363_pass']))
+        subheader['HISTORY']='5577/6300 quality and agreement required; 6363 diagnostic only.'
     if provisional:
         subheader.update(EPSTATUS='PROVISIONAL',WAVEVAL=False,FLEXURE='UNVALIDATED')
     objects.write_to_fits(subheader,str(native),overwrite=False)
@@ -156,7 +161,8 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None, 
                   fits.ImageHDU(np.array([masks[primary],masks[secondary],sky_mask,masks[primary]],dtype=np.uint8),name='VALID')]
                  ).writeto(final,checksum=True)
     np.savetxt(final.with_suffix('.asci'),np.column_stack([grid,bands[primary]]),fmt='%.8e',
-        **({'header':'PROVISIONAL: unshifted arc wavelengths; science sky validation failed.\nair_wavelength_A flux_erg_s-1_cm-2_A-1; statistical errors exclude wavelength and response systematics.'} if provisional else {}))
+        **({'header':'PROVISIONAL: unshifted arc wavelengths; science sky validation failed.\nair_wavelength_A flux_erg_s-1_cm-2_A-1; statistical errors exclude wavelength and response systematics.'} if provisional else
+           {'header':'Wavelength acceptance: 5577/6300 anchors; 6363 diagnostic only. Absolute flux unvalidated.\nair_wavelength_A flux_erg_s-1_cm-2_A-1'} if sky_qa.get('validation_policy')=='two-anchor' else {}))
     prefix='OPT' if primary==0 else 'BOX'
     snmask = s[prefix+'_MASK'] & (s[prefix+'_COUNTS_IVAR']>0) & (wave>4000)&(wave<8500)
     qa = {'raw':str(path),'raw_sha256':frame['sha256'],'object':h['OBJECT'],

@@ -30,7 +30,51 @@ def exposure_flexure(data, waveair, *, required, **options):
     return shift, dict(record, status='validated_sky', applied_shift_angstrom=shift)
 
 
-def measure_flexure(data,waveair, *, slit_width_pixels=None, good_pixels=None):
+def wavelength_accepted(record):
+    """Accept legacy three-line checks or explicitly recorded two-anchor checks."""
+    if record.get('validation_policy') not in {None, 'three-line', 'two-anchor'}:
+        return False
+    if record.get('validation_policy') != 'two-anchor':
+        return record.get('held_out_6363_pass') is True
+    lines = record.get('lines', [])
+    if len(lines) < 2 or not record.get('validation_passed'):
+        return False
+    for line, rest in zip(lines[:2], (5577.338, 6300.304)):
+        if (line.get('rest_air_angstrom') != rest or line_failure_message(line)
+                or not np.isfinite([line['peak_snr'], line['measured_air_angstrom']]).all()):
+            return False
+    offsets = np.array([line['offset_angstrom'] for line in lines[:2]])
+    shift = record.get('shift_angstrom', np.nan)
+    return bool(np.all(np.isfinite(offsets)) and abs(offsets[0]-offsets[1]) <= 3
+                and abs(shift) <= 20 and np.isclose(shift, offsets.mean(), atol=1e-8, rtol=0))
+
+
+def measure_flexure(data, waveair, *, validation_policy='three-line', **options):
+    """Explicit two-anchor acceptance keeps the independent line diagnostic."""
+    if validation_policy not in {'three-line', 'two-anchor'}:
+        raise ValueError('unknown sky validation policy')
+    try:
+        shift, record = _measure_three_lines(data, waveair, **options)
+    except SkyValidationError as exc:
+        if validation_policy != 'two-anchor':
+            raise
+        lines = exc.diagnostics['lines']
+        shift = float(np.mean([line['offset_angstrom'] for line in lines[:2]])) if len(lines)>=2 else np.nan
+        record = dict(exc.diagnostics, validation_policy=validation_policy,
+                      validation_passed=True, shift_angstrom=shift)
+        if not wavelength_accepted(record):
+            raise
+        for line in lines:
+            line['residual_after_shift_angstrom'] = line['measured_air_angstrom']+shift-line['rest_air_angstrom']
+        record.update(diagnostic_6363_error=str(exc),
+                      held_out_6363_residual_angstrom=lines[2]['residual_after_shift_angstrom'] if len(lines)>2 else None)
+    record.update(validation_policy=validation_policy, validation_passed=True,
+                  policy=('5577/6300 quality and agreement required; 6363 diagnostic only'
+                          if validation_policy=='two-anchor' else record['policy']))
+    return shift, record
+
+
+def _measure_three_lines(data,waveair, *, slit_width_pixels=None, good_pixels=None):
     """Two offset anchors, then a genuinely isolated 6363-A validation window."""
     data,waveair=np.asarray(data,float),np.asarray(waveair,float)
     if data.ndim!=2 or data.shape!=waveair.shape or data.shape[1]<40:

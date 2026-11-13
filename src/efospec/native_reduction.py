@@ -24,7 +24,7 @@ def arc_supported_rows(wavevac, limits):
 
 def prepare(frame, associations, directory, position, cached=None, *, arc_supported_only=False,
             spatial_half_width=100, background_review=None, red_counts_only=False,
-            reviewed_source=None, arc_only_review=False, adaptive_window=False):
+            reviewed_source=None, arc_only_review=False, adaptive_window=False, validation_policy="three-line"):
     """Expand only a calibrated inspection window when finite sky bands cannot fit.
 
     Expansion never relaxes source guards, wavelength coverage, or two-sided
@@ -43,7 +43,7 @@ def prepare(frame, associations, directory, position, cached=None, *, arc_suppor
             result = _prepare_window(frame, associations, destination, position, cached,
                 arc_supported_only=arc_supported_only, spatial_half_width=width,
                 background_review=background_review, red_counts_only=red_counts_only,
-                reviewed_source=reviewed_source, arc_only_review=arc_only_review)
+                reviewed_source=reviewed_source, arc_only_review=arc_only_review, validation_policy=validation_policy)
             attempts.append(dict(spatial_half_width=width, directory=str(destination), status='extracted'))
             result['engine']['background_fit']['window_attempts'] = attempts
             save_json(directory/'window-attempts.json', attempts)
@@ -63,7 +63,7 @@ def prepare(frame, associations, directory, position, cached=None, *, arc_suppor
 
 def _prepare_window(frame, associations, directory, position, cached=None, *, arc_supported_only=False,
             spatial_half_width=100, background_review=None, red_counts_only=False,
-            reviewed_source=None, arc_only_review=False):
+            reviewed_source=None, arc_only_review=False, validation_policy="three-line"):
     """Preserve the calibrated PypeIt noise model in a bounded raw-pixel window."""
     from pypeit.core.wave import vactoair
     from .extraction import extract_spectra
@@ -123,7 +123,7 @@ def _prepare_window(frame, associations, directory, position, cached=None, *, ar
         sky.update(policy='raw_arc_only; failed science wavelength validation; review counts only',
                    status='unvalidated',applied_shift_angstrom=None)
     elif frame['role'] in {'science','standard_candidate'}:
-        from .native_sky import exposure_flexure, SkyValidationError
+        from .native_sky import exposure_flexure, SkyValidationError, wavelength_accepted
         slit_pixels=float(frame['setup']['slit'].removeprefix('slit'))/(float(image.detector['platescale'])*frame['setup']['binx'])
         # Wavelength measurements can use the long slit without changing the
         # bounded background model used for source extraction. Exclude slit
@@ -137,7 +137,7 @@ def _prepare_window(frame, associations, directory, position, cached=None, *, ar
         sky_good &= abs(np.arange(sky_xlo,sky_xhi)[None,:]-position)>30.
         try:
             shift,sky=exposure_flexure(image.image[sky_cut],sky_wave,
-                required=frame['role']=='science',slit_width_pixels=slit_pixels,good_pixels=sky_good)
+                required=frame['role']=='science',slit_width_pixels=slit_pixels,good_pixels=sky_good, validation_policy=validation_policy)
         except SkyValidationError as exc:
             from .native_calibration import save_json
             directory.mkdir(parents=True,exist_ok=True)
@@ -148,9 +148,9 @@ def _prepare_window(frame, associations, directory, position, cached=None, *, ar
             raise
         sky['measurement_raw_bounds_yx']=[ylo,yhi,sky_xlo,sky_xhi]
         sky['target_exclusion_radius_pixels']=30.
-        if frame['role']=='science' and not sky['held_out_6363_pass']:
-            raise ValueError('native science requires an independent 6363-A sky-line check')
-        if sky['held_out_6363_pass']:
+        if frame['role']=='science' and not wavelength_accepted(sky):
+            raise ValueError('native science requires passing configured sky-line checks')
+        if sky['held_out_6363_pass'] and validation_policy=='three-line':
             sky['policy']='two sky lines plus independent 6363-A check'
         waveair+=shift
     directory.mkdir(parents=True,exist_ok=True)

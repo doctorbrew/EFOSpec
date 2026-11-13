@@ -162,6 +162,11 @@ def load_trace_data(result):
         if not np.array_equal(target.data['TRACE_SPAT'], data['trace']):
             raise ValueError('saved detector trace differs from the extracted target')
     paths.append(native)
+    if result['target'].get('association')=='UNVERIFIED_manual_background_recovery':
+        data.update(aperture_label='Adopted Aperture', selected_label='C1')
+        data['candidate_traces']=[dict(label='C1',
+            source_label=result['target']['selected'],
+            trace=data['trace']+float(data['spatial_origin']))]
     return data, paths, stage
 
 
