@@ -26,6 +26,14 @@ def review_command(run, raw):
     return shlex.join(['efospec', 'gui', str(Path(run).resolve()), '--raw', Path(raw).name])
 
 
+def counts_delivery_status(counts, manifest):
+    """Name the recorded blocking stage instead of implying a missing response."""
+    if any(item.get('path') == counts['raw'] and item.get('code') == 'wavelength_validation_failed'
+           for item in manifest.get('errors', [])):
+        return 'Counts extracted; flux withheld — wavelength validation failed'
+    return counts.get('delivery_status', 'Review counts; wavelength unvalidated')
+
+
 def failures(manifest):
     items = manifest.get('errors', []) + manifest.get('skipped', [])
     recorded = {Path(item.get('path', '')).name for item in items}

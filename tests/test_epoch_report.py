@@ -56,6 +56,17 @@ def test_pending_response_counts_show_actual_stage_and_direct_anchor(epoch_page)
     assert 'id="spectrum-counts-0"' in html and 'href="#spectrum-counts-0"' in html
     assert 'efospec://review?' in html and 'Open in EFOSpec GUI' in html
 
+    # A retained count product may have a response but fail the earlier sky gate.
+    manifest['errors']=[dict(path=record['raw'],object=record['object'],setup=record['setup'],
+        code='wavelength_validation_failed',stage='wavelength_validation',
+        error='independent 6363-A residual is -4.16 A')]
+    record['pending_checks']=['Exposure-specific wavelength/flexure validation failed']
+    before=json.dumps(manifest,sort_keys=True)
+    html=page.spectra(run,manifest)+page.observations(revision,manifest)
+    assert html.count('Counts extracted; flux withheld — wavelength validation failed')==2
+    assert 'flux calibration pending' not in html
+    assert json.dumps(manifest,sort_keys=True)==before
+
 
 def test_review_report_keeps_selected_page_and_pointer_unchanged(epoch_page):
     from efospec.epoch_report import build_epoch_page

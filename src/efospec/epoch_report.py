@@ -158,10 +158,10 @@ class EpochPage:
             links=' · '.join([self.download(Path(result['product']),'Counts FITS'),self.download(Path(result['ascii']),'Counts ASCII')])
             section_order.append(source_order(result))
             pending=result.get('pending_checks', ['Wavelength validation failed; unshifted arc wavelengths, no flux calibration.'])
-            from .review_handoff import failures
+            from .review_handoff import failures, counts_delivery_status
             handoff=next((item for item in failures(run) if item.get('path')==result['raw']), None)
             sections.append(f'<article class="exposure" id="{_text(id_prefix)}-counts-{i}"><h3>'+_text(title)+'</h3>'
-                '<p class="qc-status-bad">'+_text(result.get('delivery_status','Review counts'))+'. '+_text(' '.join(pending))+'</p>'
+                '<p class="qc-status-bad">'+_text(counts_delivery_status(result,run))+'. '+_text(' '.join(pending))+'</p>'
                 +(self.failure_notice(run_dir,handoff) if handoff else '')
                 +'<p>'+links+'</p><div class="plots">'+''.join(self.figure(plots/(kind+'.png'),title+' / '+kind)
                     for kind in ('counts','traces','profiles'))+'</div></article>')
@@ -202,7 +202,8 @@ class EpochPage:
             outcomes.setdefault(raw, 'Standard counts; response unvalidated')
         for i,result in enumerate(run.get('review_counts',[])):
             raw = Path(result['raw']).name
-            label=result.get('delivery_status','Review counts; wavelength unvalidated')
+            from .review_handoff import counts_delivery_status
+            label=counts_delivery_status(result,run)
             outcomes[raw] = f'<a class="qc-status-bad" href="#spectrum-counts-{i}">{_text(label)} ↓</a>'
         for i,result in enumerate((provisional or {}).get('results',[])):
             outcomes[Path(result['raw']).name]=f'<a class="qc-status-bad" href="#rescue-spectrum-{i}">Provisional flux; wavelength unvalidated ↓</a>'
