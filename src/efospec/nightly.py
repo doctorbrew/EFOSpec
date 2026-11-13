@@ -238,7 +238,10 @@ def _index(state, output):
     relative=quote(output.name+'/index.html')
     (output.parent/'index.html').write_text(f'<!doctype html><meta charset="utf-8"><title>{state["night"]} nightly log</title><meta http-equiv="refresh" content="0;url={relative}"><a href="{relative}">Observing night {state["night"]}</a>')
     from .epoch_report import build_epoch_page
-    build_epoch_page(state['night'], output.parents[3])
+    # A new inventory has no reduction manifest yet. Keep its revision index,
+    # and refresh the full dated report once products can be provenance-checked.
+    if manifest.is_file():
+        build_epoch_page(state['night'], output.parents[3])
 
 
 def run_epoch(night, *, stage='all', project_root='.', plot_python=None, native_calibrations=None,

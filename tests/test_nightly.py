@@ -94,6 +94,22 @@ def test_separate_steps_preserve_products_and_new_log_starts_new_revision(epoch,
     assert first['output_dir']!=second['output_dir'] and sha256(manifest)==before
 
 
+def test_new_inventory_with_prior_redshift_evidence_needs_no_reduction_manifest(epoch):
+    root, _ = epoch
+    dated = root/'runs/2026-10-28'
+    qc = dated/'QC'; qc.mkdir(parents=True)
+    prior = qc/'prior.json'
+    prior.write_text(json.dumps(dict(night='2026-10-28',
+        parent_run_sha256={'old/run.json': 'old'}, results=[])))
+    (qc/'redshift-current.json').write_text(json.dumps(dict(night='2026-10-28',
+        path='QC/prior.json', sha256=sha256(prior))))
+    page = dated/'index.html'; page.write_text('Previous completed nightly report')
+    state = nightly.run_epoch('2026-10-28', stage='log', project_root=root)
+    assert state['status'] == 'prepared'
+    assert (Path(state['output_dir'])/'index.html').is_file()
+    assert page.read_text() == 'Previous completed nightly report'
+
+
 def test_new_revision_preserves_verified_operator_selection(epoch):
     root,raw=epoch
     recipe=root/'recipe.json';recipe.write_text('{}')
