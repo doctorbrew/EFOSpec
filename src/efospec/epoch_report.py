@@ -767,6 +767,8 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
         spectra+='<h3>Checked manual recovery — retained for review</h3><p>Native PypeIt extraction with explicit two-sided background and passing wavelength checks. Original attempts remain listed separately; absolute flux and host subtraction remain unvalidated.</p>'
         if manual_run.get('validation_policy')=='two-anchor':
             spectra+='<p>Wavelength acceptance: 5577 and 6300 Å quality and agreement checks. The 6363 Å line is diagnostic only; its measured discrepancy is retained in the sky-check download.</p>'
+        if manual_run.get('validation_policy')=='full-spectrum':
+            spectra+='<p>Wavelength acceptance: full-sky template correlation with peak-quality, coverage and three regional residual checks. The 6363 Å line is not independently certified. The correction and quality evidence are retained in the sky-check download.</p>'
         spectra+=page.spectra(manual_path,manual_run,id_prefix=f'manual-{j}-spectrum')
     if rescue:
         spectra+='<h3>Provisional rescue spectra</h3><p class="qc-status-bad">Same-night flux calibration; science wavelengths remain unvalidated. No flexure correction applied. These do not replace accepted products.</p>'

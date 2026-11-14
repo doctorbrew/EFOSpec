@@ -85,14 +85,14 @@ Replay `selected-recipe.json` with `background-extract --native-counts` to expor
 new PypeIt review counts without requiring validated wavelengths. These retain
 uncorrected arc wavelengths, masks and extraction uncertainties; background-model
 covariance and model-choice uncertainty are not included. No old product is replaced.
-The search is a CLI/backend feature; no new Qt control is claimed.
+The Spectra background editor offers **Compare nearby background bands**, cancellation, and a wavelength-policy selector for native flux extraction. Successful searches load their selected bands; extraction remains a separate action. Native counts are the default for native-calibrated failed exposures.
 
 `efospec sky-compare RUN --failed-raw RAW --recipe RECIPE --output NEW_DIR`
 compares sky sampled in the reviewed bands with PypeIt's Paranal sky template,
 in vacuum wavelengths, across the full 5200–9000 Å interval and three separate
 ranges. It retains shifts, correlation arrays, raw/calibration/source hashes and
-template hash. This diagnoses flexure beyond the two-anchor check; it does not
-yet replace wavelength acceptance or apply a correction to science products.
+template hash. This command remains diagnostic. Native flux replay can explicitly select
+`--sky-validation full-spectrum` to apply the checked correction described below.
 Full-spectrum matching follows PypeIt's `spec_flex_shift`; regional agreement
 alone cannot establish reliability for featureless or contaminated spectra.
 
@@ -101,3 +101,26 @@ scores selected the original nearby bands and degree 2. Native review counts
 were extracted. A temporary full-sky wavelength correction reduced regional
 residual shifts to +0.65, −0.20 and +0.24 Å. Evidence is retained under the selected
 nightly revision's `QC/agvs-background-search-20261114/` directory.
+
+## Full-spectrum acceptance and desktop verification
+
+- Explicit `full-spectrum` policy uses the reviewed local bands when supplied;
+  other callers use the masked interior long slit. Sampling geometry is recorded.
+- Version `full-sky-v1` requires four measured ranges, at least 90% valid coverage,
+  normalized high-pass correlation >=0.5, competing peaks separated by >=4 pixels
+  lower by >=0.05, a concave non-edge peak, and agreement with PypeIt within 1 pixel.
+- Three regional offsets must agree within 3 Å and with the full-spectrum result
+  within 3 Å. Shifts larger than 20 Å are rejected. The scalar air-wavelength
+  correction is remeasured; all four residual shifts must be <=1.5 Å and retain
+  the same correlation checks. No per-line outlier is silently discarded.
+- These conservative implementation thresholds are explicit, not a calibrated
+  false-positive probability. Synthetic shifted-line, noise, flat-spectrum, alias,
+  missing-coverage and wavelength-distortion checks exercise the failure paths.
+- Native FITS/ASCII and manifests identify the policy. `SKY6363=False` remains
+  honest: acceptance uses regional spectra, not an independent 6363 line test.
+- AT2026agvs local-band native flux replay passed. The first long-slit attempt
+  failed the blue residual check and remains retained. The same-night response
+  was applied; absolute flux and clean SN/host separation remain unvalidated.
+- Native macOS/Cocoa interactions verified search, loading selected bands,
+  cancellation, restart and full-spectrum flux extraction. Linux was not tested
+  for these new controls. Evidence: the dated QC `full-sky-feature-validation-20261114`.

@@ -117,7 +117,7 @@ def main(argv=None):
     background = commands.add_parser('background-extract', help='Experimental polynomial sky+host background and boxcar counts')
     background.add_argument('--native-counts',action='store_true',help='Native bounded PypeIt review counts on the uncorrected arc grid')
     background.add_argument('--native-flux',action='store_true',help='Use bounded native PypeIt and checked same-night response; wavelength failures block export')
-    background.add_argument('--sky-validation', choices=['three-line','two-anchor'], default='three-line', help='Explicit native wavelength acceptance policy; 6363 remains diagnostic for two-anchor')
+    background.add_argument('--sky-validation', choices=['three-line','two-anchor','full-spectrum'], default='three-line', help='Explicit native wavelength acceptance policy; 6363 remains diagnostic for two-anchor')
     background.add_argument('path')
     background.add_argument('--failed-raw',required=True)
     background.add_argument('--recipe',required=True)

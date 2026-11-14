@@ -31,7 +31,13 @@ def exposure_flexure(data, waveair, *, required, **options):
 
 
 def wavelength_accepted(record):
-    """Accept legacy three-line checks or explicitly recorded two-anchor checks."""
+    """Recheck the evidence for the explicitly recorded wavelength policy."""
+    if record.get('validation_policy')=='full-spectrum':
+        from .sky_comparison import quality_passed
+        before=record.get('full_sky',{});after=record.get('corrected_full_sky',{})
+        return bool(record.get('validation_passed') is True and record.get('quality_policy')=='full-sky-v1' and quality_passed(before) and quality_passed(after)
+            and np.isclose(record.get('shift_angstrom',np.nan),before['ranges'][0]['approximate_shift_angstrom'],atol=1e-8,rtol=0)
+            and max(abs(r['approximate_shift_angstrom']) for r in after['ranges'])<=1.5)
     if record.get('validation_policy') not in {None, 'three-line', 'two-anchor'}:
         return False
     if record.get('validation_policy') != 'two-anchor':
@@ -51,6 +57,10 @@ def wavelength_accepted(record):
 
 def measure_flexure(data, waveair, *, validation_policy='three-line', **options):
     """Explicit two-anchor acceptance keeps the independent line diagnostic."""
+    if validation_policy=='full-spectrum':
+        from .sky_comparison import measure_validated
+        good=options.get('good_pixels')
+        return measure_validated(data,waveair,np.ones_like(data,dtype=bool) if good is None else good)
     if validation_policy not in {'three-line', 'two-anchor'}:
         raise ValueError('unknown sky validation policy')
     try:

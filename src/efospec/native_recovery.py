@@ -68,7 +68,7 @@ def extract_native(run, raw_name, recipe, output, *, validation_policy="three-li
     from .products import export_spectrum
     from .run_record import snapshot_sources
     from .native_sky import wavelength_accepted
-    if validation_policy not in {'three-line','two-anchor'}:raise ValueError('unknown sky validation policy')
+    if validation_policy not in {'three-line','two-anchor','full-spectrum'}:raise ValueError('unknown sky validation policy')
     e=FailedExposure(run,raw_name)
     if not e.context.calibration:raise ValueError('Native recovery requires native raw calibration')
     recipe=validate_recipe(recipe,e.window,e.hashes)

@@ -42,7 +42,7 @@ class BackgroundEditor(QtWidgets.QWidget):
         layout=QtWidgets.QVBoxLayout(self);layout.setContentsMargins(0,0,0,0)
         layout.addWidget(label(self.review['object'],'targetTitle'))
         layout.addWidget(label('Select a trace using the acquisition image and observing records. '
-            'This experimental background fit produces count-level boxcar spectra.','notice',True))
+            'Compare nearby bands, then extract native review counts or checked flux in a new revision.','notice',True))
         if self.exposure.context.calibration and not self.exposure.context.sky_qa.get('held_out_6363_pass',False):
             layout.addWidget(label('Wavelength validation failed in the parent run. Extracted counts remain review-only; wavelength-valid samples stay masked.','notice',True))
         split=QtWidgets.QSplitter();layout.addWidget(split,1)
@@ -85,6 +85,8 @@ class BackgroundEditor(QtWidgets.QWidget):
         self.extract_button=QtWidgets.QPushButton('Extract new revision');self.extract_button.setObjectName('primary')
         self.extract_button.clicked.connect(self.extract);controls.addWidget(self.extract_button)
         self.native_flux=QtWidgets.QCheckBox('Checked native PypeIt + flux recovery');self.native_flux.setVisible(bool(self.exposure.context.calibration));controls.addWidget(self.native_flux)
+        self.search_button=QtWidgets.QPushButton('Compare nearby background bands');self.search_button.clicked.connect(lambda:self.extract(search=True));controls.addWidget(self.search_button)
+        self.sky_policy=QtWidgets.QComboBox();self.sky_policy.addItems(['three-line','two-anchor','full-spectrum']);self.sky_policy.setToolTip('Wavelength acceptance for native flux extraction');controls.addWidget(self.sky_policy)
         self.cancel_button=QtWidgets.QPushButton('Cancel extraction');self.cancel_button.clicked.connect(self.cancel)
         self.cancel_button.setEnabled(False);controls.addWidget(self.cancel_button);controls.addStretch()
         diagnostics,plots=card('Source and background diagnostics');split.addWidget(diagnostics);split.setStretchFactor(1,1)
@@ -194,7 +196,7 @@ class BackgroundEditor(QtWidgets.QWidget):
             self.preview()
         except Exception as exc:self.message.setText(str(exc))
 
-    def extract(self):
+    def extract(self, checked=False, *, search=False):
         if self.worker is not None and self.worker.state()!=QtCore.QProcess.ProcessState.NotRunning:
             self.message.setText('A worker is already running.');return
         result=self.preview()
@@ -210,21 +212,33 @@ class BackgroundEditor(QtWidgets.QWidget):
         output=Path(parent)/('background-'+token)
         self.worker=QtCore.QProcess(self)
         self.worker.setStandardOutputFile(str(output)+'.log');self.worker.setStandardErrorFile(str(output)+'-error.log')
-        self.worker.finished.connect(lambda code,status:self.worker_finished(code,output))
+        self.worker.finished.connect(lambda code,status:self.worker_finished(code,output,search=search))
         self.worker.errorOccurred.connect(self.worker_error)
-        self.worker.start(sys.executable,['-m','efospec','background-extract',str(self.exposure.run),
+        self.worker.start(sys.executable,['-m','efospec','background-search' if search else 'background-extract',str(self.exposure.run),
             '--failed-raw',self.review['raw_name'],'--recipe',str(recipe_file),'--output',str(output),
-            '--reference-root',str(self.exposure.context.reference_root)]+(['--native-flux'] if self.native_flux.isChecked() else []))
-        self.message.setText('Extracting to a new revision: '+str(output))
+            ]+([] if search else (['--native-flux','--sky-validation',self.sky_policy.currentText()] if self.native_flux.isChecked() else (['--native-counts'] if self.exposure.context.calibration else ['--reference-root',str(self.exposure.context.reference_root)]))))
+        self.message.setText(('Comparing background bands: ' if search else 'Extracting to a new revision: ')+str(output))
         self.runningChanged.emit(True)
 
     def is_running(self):
         return self.worker is not None and self.worker.state()!=QtCore.QProcess.ProcessState.NotRunning
 
     def update_worker_controls(self,running):
-        self.extract_button.setEnabled(not running);self.cancel_button.setEnabled(running)
+        self.extract_button.setEnabled(not running);self.search_button.setEnabled(not running);self.sky_policy.setEnabled(not running);self.cancel_button.setEnabled(running)
 
-    def worker_finished(self,code,output):
+    def worker_finished(self,code,output, *, search=False):
+        if search and code==0:
+            try:
+                value=validate_recipe(json.loads((output/'selected-recipe.json').read_text()),self.exposure.window,self.exposure.hashes)
+                # Reject a result if the user edited the aperture while its worker ran.
+                if self.recipe()['objects']!=value['objects']:
+                    raise ValueError('Aperture changed while searching; saved result was not loaded')
+                self.bands.setText(', '.join(f'{lo:g}:{hi:g}' for lo,hi in value['sky']['include']))
+                self.degree.setValue(value['sky']['degree'])
+                self.message.setText('Search complete; selected bands loaded. Review and extract a new revision: '+str(output))
+            except Exception as exc:self.message.setText(str(exc))
+            self.runningChanged.emit(False)
+            return
         self.message.setText(f'Worker exit {code}; new revision: {output}')
         self.runningChanged.emit(False)
 

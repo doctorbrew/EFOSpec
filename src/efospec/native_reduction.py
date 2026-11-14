@@ -106,6 +106,12 @@ def _prepare_window(frame, associations, directory, position, cached=None, *, ar
     qa=bundle['record']['wavelength']
     arc=dict(qa,arc=associations['arc']['files'][0],
              reference_lines=vactoair(np.array(qa['reference_lines_vacuum'])*u.AA).value.tolist())
+    arguments = {'bounded_background': True}
+    if reviewed_source is not None:
+        if background_review is not None:raise ValueError('select one native background recipe')
+        from .reviewed_sources import native_review_arguments
+        arguments,source_evidence=native_review_arguments(reviewed_source,frame,data.shape,
+                                                         (ylo,xlo),directory)
     shift=0.
     # Attempt standards too; weak standard sky must not borrow a science shift.
     sky={'shift_angstrom':0.,'policy':'raw_arc_only; science sky check required',
@@ -135,6 +141,14 @@ def _prepare_window(frame, associations, directory, position, cached=None, *, ar
         sky_wave=vactoair(bundle['wavevac'][sky_cut]*u.AA).value
         sky_good=~image.fullmask.flagged()[sky_cut]
         sky_good &= abs(np.arange(sky_xlo,sky_xhi)[None,:]-position)>30.
+        if validation_policy=='full-spectrum' and 'sky_input_mask' in arguments:
+            sky_xlo,sky_xhi=xlo,xhi
+            sky_cut=cut
+            sky_wave=waveair.copy()
+            obj=arguments['manual'][0]
+            guard=max(obj['radius']+.5,1.5*obj['fwhm'])
+            sky_good=(~planes['bad_pixels']) & arguments['sky_input_mask']
+            sky_good &= abs(np.arange(xhi-xlo)[None,:]-obj['spat'])>guard
         try:
             shift,sky=exposure_flexure(image.image[sky_cut],sky_wave,
                 required=frame['role']=='science',slit_width_pixels=slit_pixels,good_pixels=sky_good, validation_policy=validation_policy)
@@ -147,7 +161,8 @@ def _prepare_window(frame, associations, directory, position, cached=None, *, ar
             exc.diagnostics['review_file']=str(check)
             raise
         sky['measurement_raw_bounds_yx']=[ylo,yhi,sky_xlo,sky_xhi]
-        sky['target_exclusion_radius_pixels']=30.
+        sky['target_exclusion_radius_pixels']=guard if validation_policy=='full-spectrum' and 'sky_input_mask' in arguments else 30.
+        sky['spatial_sampling']='reviewed_local_bands' if validation_policy=='full-spectrum' and 'sky_input_mask' in arguments else 'interior_long_slit'
         if frame['role']=='science' and not wavelength_accepted(sky):
             raise ValueError('native science requires passing configured sky-line checks')
         if sky['held_out_6363_pass'] and validation_policy=='three-line':
@@ -159,12 +174,6 @@ def _prepare_window(frame, associations, directory, position, cached=None, *, ar
     for sub in ('products','native','qa','QA/PNGs'):(directory/sub).mkdir(parents=True,exist_ok=True)
     h=frame['metadata'];setup=frame['setup']
     basename=product_name(science_stem(h['OBJECT'],h['DATE-OBS'],setup['grism'],setup['filter'],setup['slit']),h['DATE-OBS'],{},'_f')[:-7]
-    arguments = {'bounded_background': True}
-    if reviewed_source is not None:
-        if background_review is not None:raise ValueError('select one native background recipe')
-        from .reviewed_sources import native_review_arguments
-        arguments,source_evidence=native_review_arguments(reviewed_source,frame,data.shape,
-                                                         (ylo,xlo),directory)
     if background_review is not None:
         from .filtered_background import review_arguments
         arguments, background_evidence = review_arguments(background_review, frame, data, waveair,
