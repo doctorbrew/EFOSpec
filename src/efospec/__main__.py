@@ -115,6 +115,7 @@ def main(argv=None):
     qc.add_argument('--reference-root')
     qc.add_argument('--test-recipes', action='store_true')
     background = commands.add_parser('background-extract', help='Experimental polynomial sky+host background and boxcar counts')
+    background.add_argument('--native-counts',action='store_true',help='Native bounded PypeIt review counts on the uncorrected arc grid')
     background.add_argument('--native-flux',action='store_true',help='Use bounded native PypeIt and checked same-night response; wavelength failures block export')
     background.add_argument('--sky-validation', choices=['three-line','two-anchor'], default='three-line', help='Explicit native wavelength acceptance policy; 6363 remains diagnostic for two-anchor')
     background.add_argument('path')
@@ -122,6 +123,16 @@ def main(argv=None):
     background.add_argument('--recipe',required=True)
     background.add_argument('--output',required=True)
     background.add_argument('--reference-root')
+    search = commands.add_parser('background-search', help='Compare nearby bounded bands around a reviewed aperture')
+    search.add_argument('path')
+    search.add_argument('--failed-raw', required=True)
+    search.add_argument('--recipe', required=True)
+    search.add_argument('--output', required=True)
+    sky_compare = commands.add_parser('sky-compare', help='Compare full sky spectrum and independent ranges with PypeIt')
+    sky_compare.add_argument('path')
+    sky_compare.add_argument('--failed-raw',required=True)
+    sky_compare.add_argument('--recipe',required=True)
+    sky_compare.add_argument('--output',required=True)
     editor=commands.add_parser('background-gui',help='Experimental native desktop aperture/background editor')
     editor.add_argument('packet',help='QC exposure review.json')
     download = commands.add_parser('download', help='Download a night of raw EFOSC2 data into data/YYYY-MM-DD')
@@ -185,15 +196,28 @@ def main(argv=None):
         if args.command == 'background-gui':
             from .background_gui import launch
             return launch(args.packet)
+        if args.command == 'sky-compare':
+            from pathlib import Path
+            from .sky_comparison import run_comparison
+            result=run_comparison(args.path,args.failed_raw,json.loads(Path(args.recipe).read_text()),args.output)
+            print(json.dumps(result,indent=2,allow_nan=False))
+            return 0
+        if args.command == 'background-search':
+            from pathlib import Path
+            from .background_search import run_search
+            result=run_search(args.path,args.failed_raw,json.loads(Path(args.recipe).read_text()),args.output)
+            print(json.dumps(result,indent=2,allow_nan=False))
+            return 0
         if args.command == 'background-extract':
             from pathlib import Path
             from .polynomial_background import extract_background
+            if args.native_counts and args.native_flux:raise ValueError('Choose native counts or native flux')
             if not args.native_flux and args.sky_validation!='three-line':
                 raise ValueError('--sky-validation requires --native-flux')
-            if args.native_flux:
+            if args.native_flux or args.native_counts:
                 from .native_recovery import extract_native as extract_background
             result=extract_background(args.path,args.failed_raw,json.loads(Path(args.recipe).read_text()),
-                                      args.output,**({'validation_policy':args.sky_validation} if args.native_flux else {'reference_root':args.reference_root}))
+                                      args.output,**({'validation_policy':args.sky_validation,'counts_only':args.native_counts} if (args.native_flux or args.native_counts) else {'reference_root':args.reference_root}))
             print(json.dumps(result,indent=2,allow_nan=False))
             return 0
         if args.command == 'recovery-qc':

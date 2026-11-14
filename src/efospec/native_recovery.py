@@ -58,7 +58,7 @@ def load_failed(exposure, raw_name):
     exposure.candidates=[{'raw_spatial_pixel':float(t[ny//2]+x)} for t in images['found_traces']]
 
 
-def extract_native(run, raw_name, recipe, output, *, validation_policy="three-line"):
+def extract_native(run, raw_name, recipe, output, *, validation_policy="three-line", counts_only=False):
     """Replay explicit raw geometry through bounded PypeIt and same-night response gates."""
     from .revisions import FailedExposure
     from .recipes import validate_recipe
@@ -76,7 +76,7 @@ def extract_native(run, raw_name, recipe, output, *, validation_policy="three-li
         raise ValueError('Select one source and explicit polynomial background bands')
     if len(recipe['sky']['include'])!=2 or any(not 15<=hi-lo<=50 for lo,hi in recipe['sky']['include']):
         raise ValueError('Select two finite 15–50 pixel background bands')
-    if validation_policy=='three-line' and not wavelength_accepted(e.context.sky_qa):raise ValueError('Parent wavelength check failed; flux recovery withheld')
+    if not counts_only and validation_policy=='three-line' and not wavelength_accepted(e.context.sky_qa):raise ValueError('Parent wavelength check failed; flux recovery withheld')
     output=Path(output).resolve();output.mkdir(parents=True,exist_ok=False)
     recipe['sky']['mode']='pypeit_local';save_json(output/'recipe.json',recipe)
     frame=e.frame;assoc=next(x['raw_calibrations'] for x in json.loads((e.run/'setup-checks.json').read_text())['exposures'] if x['path']==frame['path'])
@@ -88,11 +88,18 @@ def extract_native(run, raw_name, recipe, output, *, validation_policy="three-li
     selection=dict(recipe_path=str(output/'recipe.json'),recipe_sha256=sha256(output/'recipe.json'),raw_sha256=frame['sha256'],
         parent_run=str(e.run),raw_name=raw_name,object=e.result['object'],identity=dict(method='operator_background',candidate=candidate,evidence='Explicit manual raw-coordinate recipe; identity not newly inferred'))
     manifest=dict(night=e.manifest['night'],input_dir=e.manifest['input_dir'],output_dir=str(output),parent_run=str(e.run),parent_sha256=sha256(e.run/'run.json'),
-        method='native_raw_calibration_manual_recovery',validation_policy=validation_policy,flux_calibration='same-night',status='EXPERIMENTAL',results=[],errors=[],skipped=[],
+        method='native_raw_calibration_manual_recovery',validation_policy=validation_policy,flux_calibration='none' if counts_only else 'same-night',status='EXPERIMENTAL',results=[],errors=[],skipped=[],
         standards=e.manifest['standards'],held_out=e.manifest.get('held_out',[]),source_sha256=snapshot_sources(output),
         limitations=['Explicit manual background trial; not accepted automatically.','Absolute flux and host deblending remain unvalidated.'])
     try:
-        p=prepare(frame,assoc,output,position,cached=groups[0].parent,arc_supported_only=True,spatial_half_width=(e.window.shape[1]-1)//2,reviewed_source=selection,validation_policy=validation_policy)
+        p=prepare(frame,assoc,output,position,cached=groups[0].parent,arc_supported_only=True,spatial_half_width=(e.window.shape[1]-1)//2,reviewed_source=selection,validation_policy=validation_policy,arc_only_review=counts_only)
+        if counts_only:
+            from .filtered_reduction import export_counts
+            counts,_=export_counts(p,output)
+            manifest['review_counts']=[counts]
+            if FailedExposure(run,raw_name).hashes!=e.hashes:raise ValueError('Recovery inputs changed')
+            manifest['execution_status']='complete'
+            return manifest
         chosen=select_response(frame,e.manifest['standards']);response=chosen['fit']['response']
         calibration=dict(mode='native_raw_only',sensitivity=response,extinction=response['extinction'],raw_inputs={**chosen['calibration']['raw_inputs'],**p['bundle']['record']['raw_inputs']},groups=[chosen['counts']['calibration_directory'],str(groups[0].parent)])
         context=PreparedExposure(frame,e.run,p['detector'],p['data'],p['waveair'],p['xlo']-99,p['ylo'],position-99.,dict(association='UNVERIFIED_manual_background_recovery',**p['engine']['source_selection']),p['arc'],Path(response['path']),p['shift'],p['sky'],calibration,p['processed'])

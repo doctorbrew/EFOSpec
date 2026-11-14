@@ -68,3 +68,36 @@ See `runs/2026-10-28/QC/EFOSC.2026-10-29T05:12:40.988/C3-background-review.html`
 These references motivate local fitting; they do not validate this exposure's source identity or prove that a polynomial adequately describes its host.
 
 Native-flux follow-up evidence: `runs/2026-10-28/nightly/20261113T141208Z-6fee4b/QC/recovery-followup-20261113/`. SN2026ayt passes bounded native extraction and wavelength checks. SN2026abgb's nearby-band trial completes but samples the broad neighbour's wing; it remains an unselected diagnostic trial. AT2026agvs/AT2026agzp remain wavelength-blocked. The report retains the original outcomes beside the checked manual recovery. Telluric extrapolation remains review-only.
+
+## Nearby-band search (implemented)
+
+`efospec background-search RUN --failed-raw RAW --recipe RECIPE --output NEW_DIR`
+keeps one reviewed aperture/trace fixed and compares band displacements of −2,
+0 and +2 pixels with spatial degrees 2 and 3. Each band remains 15–50 pixels;
+aperture/core guards and explicit neighbour exclusions remain active. Common
+withheld pixels rank PypeIt predictions independently of aperture flux and
+training residuals. The selected model is refitted using all allowed samples.
+This is local sky+host interpolation, not SN/host deblending. A lowest score is
+conditional on the supplied geometry; close scores do not identify a unique
+physical background. `search.json` retains every trial and the selected recipe.
+
+Replay `selected-recipe.json` with `background-extract --native-counts` to export
+new PypeIt review counts without requiring validated wavelengths. These retain
+uncorrected arc wavelengths, masks and extraction uncertainties; background-model
+covariance and model-choice uncertainty are not included. No old product is replaced.
+The search is a CLI/backend feature; no new Qt control is claimed.
+
+`efospec sky-compare RUN --failed-raw RAW --recipe RECIPE --output NEW_DIR`
+compares sky sampled in the reviewed bands with PypeIt's Paranal sky template,
+in vacuum wavelengths, across the full 5200–9000 Å interval and three separate
+ranges. It retains shifts, correlation arrays, raw/calibration/source hashes and
+template hash. This diagnoses flexure beyond the two-anchor check; it does not
+yet replace wavelength acceptance or apply a correction to science products.
+Full-spectrum matching follows PypeIt's `spec_flex_shift`; regional agreement
+alone cannot establish reliability for featureless or contaminated spectra.
+
+AT2026agvs (2026-10-28): all six background trials converged; common withheld-pixel
+scores selected the original nearby bands and degree 2. Native review counts
+were extracted. A temporary full-sky wavelength correction reduced regional
+residual shifts to +0.65, −0.20 and +0.24 Å. Evidence is retained under the selected
+nightly revision's `QC/agvs-background-search-20261114/` directory.
