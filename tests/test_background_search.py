@@ -26,3 +26,14 @@ def test_search_preserves_core_and_recovers_curved_background():
 def test_search_refuses_unbounded_trials():
     with pytest.raises(ValueError,match='five pixels'):
         search(*fixture(),offsets=(-20,0,20))
+
+
+def test_isolated_bad_holdout_row_does_not_discard_supported_exposure():
+    args=list(fixture())
+    args[1][3,21:39]=0
+    recipe,fit,record=search(*args)
+    assert 3 in record['excluded_holdout_rows']
+    assert fit['valid_rows'].mean()>=.9
+    args[1][:20,21:39]=0
+    with pytest.raises(ValueError,match='holdout'):
+        search(*args)

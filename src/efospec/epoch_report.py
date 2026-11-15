@@ -215,6 +215,9 @@ class EpochPage:
             for i,result in enumerate(manual['results']):
                 raw=Path(result['raw']).name
                 outcomes[raw]=f'<a href="#manual-{j}-spectrum-{i}">Manual flux recovery (review) ↓</a><br>Original attempt: '+outcomes.get(raw,'')
+            for i,result in enumerate(manual.get('review_counts',[])):
+                raw=Path(result['raw']).name
+                outcomes[raw]=f'<a class="qc-status-bad" href="#manual-{j}-spectrum-counts-{i}">New review counts; wavelength unresolved ↓</a><br>Original attempt: '+outcomes.get(raw,'')
         rows = []
         for frame in sorted(self.read(revision/'observing-log.json').get('frames', []), key=source_order):
             if frame.get('role') not in {'science', 'standard_candidate'} or 'duplicate_of' in frame:
@@ -764,7 +767,9 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
         calibration_content+=page.wavelength_checks(native)
     spectra=page.spectra(revision/'reduction',run)
     for j,(manual_path,manual_run) in enumerate(manuals):
-        spectra+='<h3>Checked manual recovery — retained for review</h3><p>Native PypeIt extraction with explicit two-sided background and passing wavelength checks. Original attempts remain listed separately; absolute flux and host subtraction remain unvalidated.</p>'
+        if manual_run.get('review_counts'):
+            spectra+='<h3>New manual count extraction — retained for review</h3><p>Background refitted on native pixels. Wavelength acceptance remains unresolved; no calibrated flux or telluric correction is claimed.</p>'
+        else:spectra+='<h3>Checked manual recovery — retained for review</h3><p>Native PypeIt extraction with explicit two-sided background and passing wavelength checks. Original attempts remain listed separately; absolute flux and host subtraction remain unvalidated.</p>'
         if manual_run.get('validation_policy')=='two-anchor':
             spectra+='<p>Wavelength acceptance: 5577 and 6300 Å quality and agreement checks. The 6363 Å line is diagnostic only; its measured discrepancy is retained in the sky-check download.</p>'
         if manual_run.get('validation_policy')=='full-spectrum':
@@ -793,6 +798,8 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
                        for (anchor, title), body in zip(titles, content))
     stats = ' · '.join(f'{len(run.get(k, []))} {label}' for k, label in [('results','spectra'), ('errors','failed'), ('skipped','unsupported')])
     if run.get('review_counts'):stats+=' · '+str(len(run['review_counts']))+' review counts'
+    manual_count_total=sum(len(r.get('review_counts',[])) for _,r in manuals)
+    if manual_count_total:stats+=' · '+str(manual_count_total)+' new manual review counts'
     if manuals:stats+=' · '+str(sum(len(r['results']) for _,r in manuals))+' checked manual recovery spectra'
     if rescue:stats+=' · '+str(len(rescue['results']))+' provisional flux spectra'
     warning = '<p class="note">'+_text('; '.join(page.warnings))+'</p>' if page.warnings else ''

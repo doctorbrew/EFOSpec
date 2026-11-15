@@ -107,3 +107,20 @@ def test_native_flux_export_requires_supported_response_and_records_failures(tmp
         with pytest.raises(ValueError,match='supported calibrated flux'):extract_native(run,'test.fits',recipe,tmp_path/'output')
         saved=json.loads((tmp_path/'output/run.json').read_text());assert saved['execution_status']=='failed' and not saved['results']
     assert recipe['sky']['mode']=='polynomial'  # caller's saved recipe stays unchanged
+
+
+def test_manual_count_presentation_requires_bound_products(tmp_path):
+    from efospec.manual_recovery_report import selected_manual_recoveries
+    parent=tmp_path/'reduction';parent.mkdir();(parent/'run.json').write_text('{}')
+    trial=tmp_path/'QC/counts';trial.mkdir(parents=True)
+    raw=tmp_path/'raw.fits';raw.write_bytes(b'raw')
+    paths={key:trial/key for key in ('product','ascii','native_spec1d','images')}
+    for p in paths.values():p.write_bytes(b'counts')
+    hashes={str(p):sha256(p) for p in paths.values()}
+    record=dict(raw=str(raw),raw_sha256=sha256(raw),flux_calibrated=False,science_validated=False,product_sha256=hashes,**{k:str(p) for k,p in paths.items()})
+    manifest=trial/'run.json';manifest.write_text(json.dumps(dict(parent_sha256=sha256(parent/'run.json'),execution_status='complete',results=[],review_counts=[record])))
+    pointer=tmp_path/'QC/manual-recovery-selection.json'
+    selection=dict(parent_sha256=sha256(parent/'run.json'),runs=[dict(path=str(trial),sha256={**hashes,str(manifest):sha256(manifest)})])
+    pointer.write_text(json.dumps(selection));assert len(selected_manual_recoveries(parent))==1
+    selection['runs'][0]['sha256'].pop(str(paths['images']));pointer.write_text(json.dumps(selection))
+    with pytest.raises(ValueError,match='unbound manual review'):selected_manual_recoveries(parent)

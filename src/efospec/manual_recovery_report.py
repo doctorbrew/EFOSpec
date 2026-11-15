@@ -25,5 +25,16 @@ def selected_manual_recoveries(parent):
             if sha256(Path(result['raw']))!=result['raw_sha256']:raise ValueError('manual recovery raw changed')
             for key in ('product','native_spec1d'):
                 if result[key] not in item['sha256']:raise ValueError('unbound manual recovery product')
+        for result in run.get('review_counts',[]):
+            if result.get('flux_calibrated') is not False or result.get('science_validated') is not False:
+                raise ValueError('review counts must not claim calibrated science status')
+            if sha256(Path(result['raw']))!=result['raw_sha256']:
+                raise ValueError('manual review raw changed')
+            for key in ('product','ascii','native_spec1d','images'):
+                if result[key] not in item['sha256']:
+                    raise ValueError('unbound manual review counts')
+            for name,digest in result['product_sha256'].items():
+                if item['sha256'].get(name)!=digest:
+                    raise ValueError('manual review counts binding differs')
         records.append((path,run))
     return records

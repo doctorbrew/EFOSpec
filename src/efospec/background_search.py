@@ -34,8 +34,10 @@ def search(data, ivar, wave, trace, recipe, x_origin, *, offsets=(-2, 0, 2), deg
     common=np.logical_and.reduce([c[2] for c in candidates])
     # Shared, spatially interleaved holdout. Keep full geometry and zero its weights.
     holdout=common&(np.arange(data.shape[1])[None,:]%3==0)&np.isfinite(data)&(ivar>0)
-    if np.min(np.sum(holdout&(x[None,:]<trace[:,None]),axis=1))<2 or np.min(np.sum(holdout&(x[None,:]>trace[:,None]),axis=1))<2:
+    holdout_rows=(np.sum(holdout&(x[None,:]<trace[:,None]),axis=1)>=2)&(np.sum(holdout&(x[None,:]>trace[:,None]),axis=1)>=2)
+    if holdout_rows.mean()<.9:
         raise ValueError('Insufficient common two-sided holdout for placement comparison')
+    holdout &= holdout_rows[:,None]
     tilts=(wave-wave.min())/np.ptp(wave);fits=[]
     for offset,moved,mask in candidates:
         for degree in degrees:
@@ -47,7 +49,7 @@ def search(data, ivar, wave, trace, recipe, x_origin, *, offsets=(-2, 0, 2), deg
             except BackgroundSupportError as exc:record.update(status='failed',reason=str(exc))
             trials.append(record)
     if not fits:raise BackgroundSupportError('No placement/degree fit converged',trials=trials)
-    rows=np.logical_and.reduce([f[1]['valid_rows'] for f in fits]);use=holdout&rows[:,None]
+    rows=holdout_rows & np.logical_and.reduce([f[1]['valid_rows'] for f in fits]);use=holdout&rows[:,None]
     if rows.mean()<.9 or use.sum()<50:raise ValueError('Insufficient common valid holdout rows')
     for record,fit,mask in fits:
         residual=(data-fit['sky'])*np.sqrt(np.maximum(ivar,0))
@@ -58,6 +60,7 @@ def search(data, ivar, wave, trace, recipe, x_origin, *, offsets=(-2, 0, 2), deg
     final=fit_background(data,ivar,tilts,mask,trace-x_origin,radius=obj['radius'],degree=record['degree'],sigma_clip=recipe['sky']['sigma_clip'])
     revised=deepcopy(recipe);revised['sky'].update(include=record['bands'],degree=record['degree'])
     return revised,final,dict(trials=trials,selected=record,holdout_samples=int(use.sum()),
+        excluded_holdout_rows=np.flatnonzero(~rows).tolist(),
         selection='minimum common withheld-pixel mean squared standardized residual; no aperture-flux ranking',
         limitations=['Conditional on reviewed aperture and neighbour exclusions; not SN/host deblending.',
                      'Holdout measures prediction in the bands, not beneath the source.',
