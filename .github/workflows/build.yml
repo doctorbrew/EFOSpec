@@ -75,10 +75,15 @@ jobs:
           mkdir -p test-results
           rm -f test-results/junit.xml test-results/coverage.xml .coverage
           set +e
-          xvfb-run -a python -m pytest -v --junitxml=test-results/junit.xml --cov=efospec --cov-report=term-missing --cov-report=xml:test-results/coverage.xml
+          xvfb-run -a python -m pytest -v --junitxml=test-results/junit.xml --cov=efospec --cov-fail-under=0 --cov-report=term-missing --cov-report=xml:test-results/coverage.xml
           test_status=$?
           printf 'exit_code=%s\n' "$test_status" >> "$GITHUB_OUTPUT"
           exit "$test_status"
+      # Keep test counts independent of the coverage gate. This step still
+      # fails the build when coverage is below pyproject.toml's requirement.
+      - name: Enforce required coverage
+        if: always() && steps.tests.outcome == 'success'
+        run: python -m coverage report
       - name: Prepare automatic badge metrics
         id: metrics
         if: always()

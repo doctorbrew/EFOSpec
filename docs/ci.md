@@ -1,6 +1,6 @@
 # Tests and automatic badges
 
-- Workflow: [build](https://github.com/sPaMFouR/EFOSpec/actions/workflows/build.yml).
+- Workflow: [build](https://github.com/doctorbrew/EFOSpec/actions/workflows/build.yml).
 - Runner: Ubuntu 22.04, Python 3.11; no IRAF/PyRAF installation.
 - Dependencies: project extras plus shared runtime/CI numeric versions in `constraints.txt`.
 - `constraints-ci.txt` remains a compatibility entry point to those same pins.
@@ -65,16 +65,29 @@ QT_API=pyside6 QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBL
 
 ## Setup verification
 
-- [First verified run](https://github.com/sPaMFouR/EFOSpec/actions/runs/41220735230): 31 October 2026, source `51a230e`.
+- [First verified run](https://github.com/doctorbrew/EFOSpec/actions/runs/41220735230): 31 October 2026, source `51a230e`.
 - Step logs: package build passed; **74 tests passed**; **58.6%** package line coverage.
 - Metrics were published successfully; JSON and all four rendered SVG badges were checked.
 - README metrics update automatically; this dated record describes setup verification only.
 
 ## Native/desktop verification — 1 November 2026
 
-- [Verified Linux run](https://github.com/sPaMFouR/EFOSpec/actions/runs/41262157980), tested source `bbd82c0`.
+- [Verified Linux run](https://github.com/doctorbrew/EFOSpec/actions/runs/41262157980), tested source `bbd82c0`.
 - **170 passed; 91.7% coverage**; wheel build and `pip check` passed.
 - Real Qt/XCB startup, source/sky edits, workers, cancellation and replay passed under Xvfb.
 - Synthetic raw-photon reduction passed without legacy calibration access.
 - Initial Qt startup failure traced to three missing XCB libraries; runtime dependencies corrected.
 - This branch generates metric artifacts; default-branch badges remain unchanged until integration.
+
+## Badge interpretation
+
+The Python badge identifies the configured 3.11 observer/CI runtime; the package
+metadata separately declares its minimum Python version. The build badge is the
+whole workflow result. Test count and coverage come from that run's JUnit and
+coverage XML, published automatically on the `badges` branch.
+
+Pytest records assertion results with its coverage threshold disabled for that
+step only. A separate `coverage report` step enforces the unchanged 85% threshold
+from `pyproject.toml`. Thus all tests can pass and the coverage badge can show a
+real percentage while the build correctly fails the coverage gate. Failed or
+incomplete test runs retain the parser's unavailable-coverage behavior.
