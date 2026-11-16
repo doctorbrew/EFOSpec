@@ -223,3 +223,7 @@ extraction do not independently validate host subtraction.
 - All 1,263 recorded pre-existing files and all 72 selected native master files
   were unchanged. Source snapshots match the final code. Detailed evidence is
   `methodology-verification.json` and the dated logs in the final revision.
+
+Full-spectrum failures now retain replayable correlation evidence. See
+[sky-correlation QC](sky-correlation-qc.md) for `efospec sky-diagnose`, controlled
+clipping/edge/window trials, diagnostic correction checks and styled plots.

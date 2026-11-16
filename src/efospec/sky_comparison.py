@@ -40,6 +40,12 @@ def compare(data, waveair, good, *, ranges=((5200.,9000.),(5200.,6800.),(6800.,7
                 approximate_shift_angstrom=shift*float(np.median(np.diff(vacuum[use]))))
             arrays[f'correlation_{index}']=np.asarray(result['corr'])
             arrays[f'lags_{index}']=np.asarray(result['subpix'])
+            # Public PypeIt return values, copied before any diagnostic processing.
+            for key,value in dict(matched_wave=result['sky_spec'].wave,
+                    observed=result['sky_spec'].flux,template=result['arx_spec'].flux,
+                    fit_coefficients=result['polyfit'].fitc,
+                    correlation_centre=result['corr_cen']).items():
+                arrays[f'{key}_{index}']=np.array(value,copy=True)
         except (ValueError,RuntimeError) as exc:record.update(status='failed',reason=str(exc))
         records.append(record)
     return dict(method='pypeit.core.flexure.spec_flex_shift',template=str(template),template_sha256=sha256(template),
@@ -113,18 +119,20 @@ def quality_passed(record):
 
 def measure_validated(data,waveair,good):
     from .native_sky import SkyValidationError
-    before,_=compare(data,waveair,good)
+    before,before_arrays=compare(data,waveair,good)
     if not quality_passed(before):
         error=SkyValidationError('Full-sky correlation quality or regional consistency failed',[])
         error.diagnostics['full_sky']=before
+        error.sky_diagnostic_arrays={'before':before_arrays}
         raise error
     shift=before['ranges'][0]['approximate_shift_angstrom']
     # Existing native products use a scalar air-Angstrom flexure correction.
     # Remeasure on exactly that map; never substitute a pixel-shift approximation silently.
-    after,_=compare(data,waveair+shift,good)
+    after,after_arrays=compare(data,waveair+shift,good)
     if not quality_passed(after) or max(abs(r['approximate_shift_angstrom']) for r in after['ranges'])>1.5:
         error=SkyValidationError('Corrected full-sky residual check failed',[])
         error.diagnostics.update(full_sky=before,corrected_full_sky=after)
+        error.sky_diagnostic_arrays={'before':before_arrays,'after':after_arrays}
         raise error
     return float(shift),dict(validation_policy='full-spectrum',quality_policy='full-sky-v1',
         validation_passed=True,shift_angstrom=float(shift),held_out_6363_pass=False,lines=[],

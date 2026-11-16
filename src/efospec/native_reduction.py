@@ -160,6 +160,16 @@ def _prepare_window(frame, associations, directory, position, cached=None, *, ar
         except SkyValidationError as exc:
             from .native_calibration import save_json
             directory.mkdir(parents=True,exist_ok=True)
+            if hasattr(exc,'sky_diagnostic_arrays'):
+                from .sky_diagnostics import save_failure_packet
+                # Diagnostic I/O must not hide the scientific rejection.
+                try:
+                    exc.diagnostics['sky_diagnostics']=save_failure_packet(
+                        directory/'sky-diagnostics',exc,image.image[sky_cut],sky_wave,
+                        sky_good,raw=frame['path'],raw_sha256=frame['sha256'],
+                        target=frame['metadata']['OBJECT'])
+                except Exception as diagnostic_error:
+                    exc.diagnostics['sky_diagnostic_error']=str(diagnostic_error)
             check=directory/'sky-check-failed.json'
             save_json(check,dict(raw=frame['path'],raw_sha256=frame['sha256'],error=str(exc),
                 measurement_raw_bounds_yx=[ylo,yhi,sky_xlo,sky_xhi],**exc.diagnostics))

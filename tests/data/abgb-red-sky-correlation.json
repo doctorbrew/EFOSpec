@@ -1,0 +1,11 @@
+{
+  "source": "SN2026abgb / observing night 2026-10-28 / EFOSC.2026-10-29T02:54:17.994.fits",
+  "raw_sha256": "7abf410bf7e8e7d94f3f6cd70a8b03e550d75ed9b98ba9806c10e557a6b49c21",
+  "pypeit_version": "3.0.0",
+  "interval_vacuum_angstrom": [
+    7900,
+    9000
+  ],
+  "description": "Resolution-matched sky/template samples and original correlation fit from the reviewed local sky bands; no target spectrum.",
+  "fixture_sha256": "0d56fcef8b060d766bf5d07c50d179985788c38e1325d92800ff0da2c1281167"
+}

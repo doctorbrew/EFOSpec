@@ -133,6 +133,10 @@ def main(argv=None):
     sky_compare.add_argument('--failed-raw',required=True)
     sky_compare.add_argument('--recipe',required=True)
     sky_compare.add_argument('--output',required=True)
+    sky_diagnose = commands.add_parser('sky-diagnose', help='Explain a saved full-sky failure with plots and controlled trials')
+    sky_diagnose.add_argument('packet', help='Saved sky-diagnostics/packet.json')
+    sky_diagnose.add_argument('--output', required=True, help='Fresh dated QC directory')
+    sky_diagnose.add_argument('--trial-correction', action='store_true', help='Remeasure a diagnostic shifted map; never change science products')
     editor=commands.add_parser('background-gui',help='Experimental native desktop aperture/background editor')
     editor.add_argument('packet',help='QC exposure review.json')
     download = commands.add_parser('download', help='Download a night of raw EFOSC2 data into data/YYYY-MM-DD')
@@ -196,6 +200,11 @@ def main(argv=None):
         if args.command == 'background-gui':
             from .background_gui import launch
             return launch(args.packet)
+        if args.command == 'sky-diagnose':
+            from .sky_diagnostics import diagnose
+            result=diagnose(args.packet,args.output,trial_correction=args.trial_correction)
+            print(json.dumps(dict(status=result['status'],errors=result['errors'],output=args.output)))
+            return int(bool(result['errors']))
         if args.command == 'sky-compare':
             from pathlib import Path
             from .sky_comparison import run_comparison
