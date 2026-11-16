@@ -116,12 +116,14 @@ def reduce_daily(input_dir, output, *, night, targets=None, reviewed_sources=Non
         association = associations[frame['path']]
         validate_associations(frame, association['raw_calibrations'])
         key = calibration_key(association)
+        from .nightly_review import validation_policy
+        selection=reviews.get(Path(frame['path']).name)
         prepared = prepare(frame, association['raw_calibrations'], directory, 548.,
                            cached=cache.get(key), arc_supported_only=True,
                            red_counts_only=nightly_route(frame['setup'])[0]=='red',
                            arc_only_review=arc_only_review,
                            adaptive_window=True,
-                           reviewed_source=reviews.get(Path(frame['path']).name))
+                           reviewed_source=selection,validation_policy=validation_policy(selection))
         cache[key] = prepared['bundle']['directory']
         return prepared
 

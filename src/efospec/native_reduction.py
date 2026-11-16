@@ -112,6 +112,11 @@ def _prepare_window(frame, associations, directory, position, cached=None, *, ar
         from .reviewed_sources import native_review_arguments
         arguments,source_evidence=native_review_arguments(reviewed_source,frame,data.shape,
                                                          (ylo,xlo),directory)
+    if reviewed_source is not None and reviewed_source.get('dynamic_background'):
+        from .nightly_review import search_review
+        arguments,search_evidence=search_review(reviewed_source,frame,data,waveair,planes,
+                                               (ylo,xlo),arguments,directory)
+        source_evidence['dynamic_background']=search_evidence
     shift=0.
     # Attempt standards too; weak standard sky must not borrow a science shift.
     sky={'shift_angstrom':0.,'policy':'raw_arc_only; science sky check required',
