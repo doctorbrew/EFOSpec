@@ -23,7 +23,8 @@ def telluric_atmo(imgstd):
     iraf.set(direc=ntt.__path__[0] + '/')
     _cursor = 'direc$standard/ident/cursor_sky_0'
     iraf.noao.onedspec.bplot(imgstd, cursor=_cursor,
-                             spec2=imgstd, new_ima=imgout, overwri='yes')
+                             spec2=imgstd, new_ima=imgout, overwri='yes',
+                             StdoutG=imgout + '.gki')
     xxstd, ffstd = ntt.util.readspectrum(imgout)
     if _grism in ['Gr13', 'Gr16']:
         llo2 = np.compress((np.array(xxstd) >= 7550) & (
@@ -144,7 +145,7 @@ def fluxcalib2d(img2d, sensfun):  # flux calibrate 2d images
     ntt.util.updateheader(
         img2df, 0, {'SENSFUN': [sensfun.split('/')[-1], '']})
     ntt.util.updateheader(img2df, 0, {
-                          'BUNIT': ['10^20 erg/cm2/s/Angstrom', 'Physical unit of array values']})
+                          'BUNIT': ['1e-20 erg / (s cm2 Angstrom)', 'Physical unit of array values']})
     return img2df
 
 
@@ -184,10 +185,10 @@ def checkwavestd(imgex, _interactive):
 
         if 'Gr18' in imgex.split('_'):
 	        shift = ntt.efoscspec2Ddef.checkwavelength_arc(
-                atmoaa, atmoff, skyaa, skyff, 5500, 6800)  # for plotting purposes only.
+                atmoaa, atmoff, skyaa, skyff, 5500, 6800, inter=_interactive in ['yes', 'YES', 'Yes', 'Y', 'y'])  # for plotting purposes only.
         else:
 	        shift = ntt.efoscspec2Ddef.checkwavelength_arc(
-                atmoaa, atmoff, skyaa, skyff, 6800, 7800)
+                atmoaa, atmoff, skyaa, skyff, 6800, 7800, inter=_interactive in ['yes', 'YES', 'Yes', 'Y', 'y'])
     else:
         shift = 0
     zro = pyfits.open(imgex)[0].header.get('CRVAL1')
@@ -220,7 +221,8 @@ def atmofile(imgstd, imgout=''):
         imgout = 'atmo_' + imgstd
     os.system('rm -rf ' + imgout)
     iraf.noao.onedspec.bplot(imgstd, cursor=_cursor,
-                             spec2=imgstd, new_ima=imgout, overwri='yes')
+                             spec2=imgstd, new_ima=imgout, overwri='yes',
+                             StdoutG=imgout + '.gki')
     return imgout
 
 
@@ -297,6 +299,60 @@ def sensfunction(standardfile, _function, _order, _interactive):
         ntt.util.delete(_outputsens)  # added later
         pyfits.writeto(_outputsens, np.float32(data1), hdr)  # added later
     return _outputsens
+
+
+def _correct_telluric(imgf, atmofile, imge):
+    """Scale flux and sigma by transmission, retaining raw/sky diagnostics.
+
+    This propagates extraction noise conditional on the atmospheric model;
+    uncertainty in the atmospheric model itself is not included.
+    """
+    from pyraf import iraf
+
+    iraf.specred.sarith(input1=imgf, op='/', input2=atmofile + '[*,1,1]',
+                        output=imge, w1='INDEF', w2='INDEF', format='multispec')
+    # SARITH deliberately copies a band labelled "sigma" without arithmetic.
+    # Present it as a separate primary spectrum to use the identical wavelength
+    # interpolation as the science division, then restore its role in band 4.
+    import tempfile
+    from pathlib import Path
+    from astropy.io import fits
+
+    with tempfile.TemporaryDirectory(prefix='telluric-', dir='.') as work:
+        sigma_input = str(Path(work) / 'sigma.fits')
+        sigma_output = str(Path(work) / 'scaled.fits')
+        data, header = fits.getdata(imgf, header=True)
+        for key in list(header):
+            if key.startswith('BANDID'):
+                del header[key]
+        header['BANDID1'] = 'spectrum - extraction uncertainty'
+        fits.writeto(sigma_input, data[3:4], header)
+        iraf.specred.sarith(input1=sigma_input, op='/', input2=atmofile + '[*,1,1]',
+                            output=sigma_output, w1='INDEF', w2='INDEF', format='multispec')
+        iraf.imutil.imcopy(input=sigma_output, output=imge + '[*,1,4]', verbose='no')
+    for band in (2, 3):
+        iraf.imutil.imcopy(input=imgf + '[*,1,' + str(band) + ']',
+                          output=imge + '[*,1,' + str(band) + ']', verbose='no')
+
+
+def _select_flux_standard(standards, interactive):
+    """Use the legacy first-standard default without prompting in batch mode."""
+    import os
+
+    if not standards:
+        raise ValueError('No standards available for this setup')
+    interactive = str(interactive).strip().lower() in ('yes', 'y', 'true', '1')
+    if len(standards) == 1 or not interactive:
+        selected = standards[0]
+        if len(standards) > 1:
+            print('### batch mode: using first listed standard ' + selected +
+                  '; review this choice before accepting the calibration')
+        return selected
+    while True:
+        selected = input('\n### choose a listed standard [' + standards[0] + '] ?') or standards[0]
+        if selected in standards and os.path.isfile(selected):
+            return selected
+        print('### choose one of: ' + ', '.join(standards))
 
 
 def efoscspec1Dredu(files, _interactive, _ext_trace, _dispersionline, liststandard, listatmo0, _automaticex,
@@ -383,6 +439,7 @@ def efoscspec1Dredu(files, _interactive, _ext_trace, _dispersionline, liststanda
     for setup in objectlist[tpe]:
         extracted = []
         listatmo = []
+        standard_atmospheres = {}
         if setup not in sens:
             sens[setup] = []
         if tpe == 'obj':
@@ -454,6 +511,7 @@ def efoscspec1Dredu(files, _interactive, _ext_trace, _dispersionline, liststanda
                     ntt.efoscspec1Ddef.checkwavestd(simgex, _interactive)
                 atmofile = ntt.efoscspec1Ddef.telluric_atmo(
                     simgex)  # atmo file2
+                standard_atmospheres[simgex] = atmofile
                 ntt.util.updateheader(
                     atmofile, 0, {'TRACE1': [simgex, 'Originating file']})
                 ntt.util.updateheader(
@@ -486,18 +544,7 @@ def efoscspec1Dredu(files, _interactive, _ext_trace, _dispersionline, liststanda
                             simgex2, 0, {'TRACE1': [simg2, 'Originating file']})
             print('\n### standard available: ', sens[setup])
             if tpe == 'obj':
-                if len(sens[setup]) > 1:
-                    goon = 'no'
-                    while goon != 'yes':
-                        stdused = input(
-                            '\n### more than one standard for this setup, which one do you want to use [' + sens[setup][
-                                0] + '] ?')
-                        if not stdused:
-                            stdused = sens[setup][0]
-                        if os.path.isfile(stdused):
-                            goon = 'yes'
-                else:
-                    stdused = sens[setup][0]
+                stdused = _select_flux_standard(sens[setup], _interactive)
                 stdvec = [stdused]
             else:
                 stdvec = sens[setup]
@@ -505,7 +552,7 @@ def efoscspec1Dredu(files, _interactive, _ext_trace, _dispersionline, liststanda
                 stdusedclean = re.sub('_ex', '_clean', stdused)
                 ntt.util.delete(stdusedclean)
                 iraf.specred.sarith(
-                    input1=stdused, op='/', input2=atmofile, output=stdusedclean, format='multispec')
+                    input1=stdused, op='/', input2=standard_atmospheres[stdused], output=stdusedclean, format='multispec')
                 _outputsens2 = ntt.efoscspec1Ddef.sensfunction(
                     stdusedclean, 'spline3', 16, _interactive)
                 ntt.util.updateheader(_outputsens2, 0, {'FILETYPE': [
@@ -545,8 +592,9 @@ def efoscspec1Dredu(files, _interactive, _ext_trace, _dispersionline, liststanda
                     imgd, 0, {'FILETYPE': [22209, '2D wavelength and flux calibrated spectrum ']})
                 ntt.util.updateheader(
                     imgd, 0, {'TRACE1': [img, 'Originating files']})
-                iraf.hedit(imgd, 'PRODCATG', delete='yes',
-                           update='yes', verify='no')
+                # Remove the inherited category without IRAF's value query.
+                with pyfits.open(imgd, mode='update') as hdus:
+                    hdus[0].header.remove('PRODCATG', ignore_missing=True, remove_all=True)
                 if imgd not in outputfile:
                     outputfile.append(imgd)
             ####################################################
@@ -580,23 +628,7 @@ def efoscspec1Dredu(files, _interactive, _ext_trace, _dispersionline, liststanda
                     if atmofile:
                         _imge = re.sub('_f.fits', '_e.fits', _imgf)
                         ntt.util.delete(_imge)
-                        iraf.specred.sarith(input1=_imgf, op='/', input2=atmofile, output=_imge, w1='INDEF', w2='INDEF',
-                                            format='multispec')
-                        try:
-                            iraf.imutil.imcopy(
-                                input=_imgf + '[*,1,2]', output=_imge + '[*,1,2]', verbose='no')
-                        except:
-                            pass
-                        try:
-                            iraf.imutil.imcopy(
-                                input=_imgf + '[*,1,3]', output=_imge + '[*,1,3]', verbose='no')
-                        except:
-                            pass
-                        try:
-                            iraf.imutil.imcopy(
-                                input=_imgf + '[*,1,4]', output=_imge + '[*,1,4]', verbose='no')
-                        except:
-                            pass
+                        _correct_telluric(_imgf, atmofile, _imge)
                         if _imge not in outputfile:
                             outputfile.append(_imge)
                         ntt.util.updateheader(

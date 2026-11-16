@@ -143,7 +143,7 @@ def efoscfastredu(imglist, _listsens, _listarc, _ext_trace, _dispersionline, _co
             # ######################  check wavelength calibration ############
             _skyfile = ntt.__path__[
                 0] + '/standard/ident/sky_' + setup[0] + '_' + setup[1] + '.fits'
-            shift = ntt.efoscspec2Ddef.skyfrom2d(img, _skyfile)
+            shift = ntt.efoscspec2Ddef.skyfrom2d(img, _skyfile, interac=bool(_interactive))
             print('\n###     check in wavelengh performed ...... spectrum shifted of  ' + str(shift) + ' Angstrom \n')
             zro = pyfits.open(img)[0].header.get('CRVAL2')
             ntt.util.updateheader(img, 0, {'CRVAL2': [zro + int(shift), '']})

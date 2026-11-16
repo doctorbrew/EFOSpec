@@ -32,3 +32,9 @@ trunk/src/ntt.egg-info
 trunk/src/ntt/*.pyc
 .idea/
 trunk/src/ntt/__pycache__/
+
+# Native PyRAF development runtime and isolated reduction trials
+.venv-pyraf/
+runs/
+.pytest_cache/
+tests/__pycache__/

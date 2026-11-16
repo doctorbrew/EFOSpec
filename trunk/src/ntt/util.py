@@ -369,6 +369,18 @@ def updateheader(image, dimension, headerdict):
         imm.flush()
         imm.close()
 
+
+    # IRAF executable processes cache FITS WCS independently of Astropy.
+    # Once Python changes coordinates, invalidate those caches before a later
+    # IRAF task reads the same file. Do not import/start PyRAF for FITS-only use.
+    import sys
+    import re
+    if any(re.match(r'^(CRVAL|CRPIX|CDELT|CTYPE|CD[0-9]|PC[0-9]|WAT|DC-FLAG|DISPAXIS)',
+                    str(key).upper()) for key in headerdict):
+        pyraf_module = sys.modules.get('pyraf')
+        if pyraf_module is not None and hasattr(pyraf_module, 'iraf'):
+            pyraf_module.iraf.flprcache()
+
 ##########################################################################
 
 
@@ -1160,7 +1172,8 @@ def spectraresolution2(img0, ww=25):
     from iraf import onedspec
 
     aaa = iraf.noao.onedspec.bplot(
-        'new3.fits', cursor='_cursor', spec2='', new_ima='', overwri='yes', Stdout=1)
+        'new3.fits', cursor='_cursor', spec2='', new_ima='', overwri='yes',
+        Stdout=1, StdoutG='resolution.gki')
     fw = []
     for i in aaa[1:]:
         fw.append(float(i.split('=')[-1].split('k')[0]))

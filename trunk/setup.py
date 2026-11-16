@@ -1,42 +1,12 @@
-from setuptools import setup, find_packages
-from distutils.command.install import INSTALL_SCHEMES
-from os import sys, path
-import os
-import shutil
+from pathlib import Path
 import re
-from glob import glob
-for scheme in INSTALL_SCHEMES.values():
-    scheme['data'] = scheme['purelib']
+from setuptools import setup
 
-from imp import find_module
-
-try:
-    find_module('numpy')
-except:
-    sys.exit('### Error: python module numpy not found')
-
-try:
-    find_module('pyfits')
-except:
-    try:
-        find_module('astropy')
-    except:
-        sys.exit('### Error: python module pyfits not found')
-
-try:
-    find_module('pyraf')
-except:
-    sys.exit('### Error: python module pyraf not found')
-
-try:
-    find_module('matplotlib')
-except:
-    sys.exit('### Error: python module matplotlib not found')
-
+ROOT = Path(__file__).resolve().parent
 
 verstr = "unknown"
 try:
-    parentdir = os.getcwd() + '/'
+    parentdir = str(ROOT) + '/'
     verstrline = open(parentdir + '/src/ntt/_version.py', "rt").read()
 except EnvironmentError:
     pass  # Okay, there is no version file.
@@ -68,7 +38,9 @@ setup(
     # ext_modules = [('standard',
     #   { 'include_dirs': ['standard'] }
     #  )]
-    requires=['numpy', 'pyfits', 'pyraf', 'matplotlib'],
+    python_requires='>=3.11',
+    install_requires=['numpy>=1.26,<2', 'astropy>=6,<7', 'scipy>=1.11,<1.15',
+                      'matplotlib>=3.8,<3.10', 'pyraf==2.2.4'],
     packages=['ntt'],
     package_dir={'': 'src'},
     # include_package_data=True,

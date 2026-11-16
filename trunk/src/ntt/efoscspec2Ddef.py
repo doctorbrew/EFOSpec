@@ -660,7 +660,8 @@ def efoscspecreduction(files, _interactive, _dobias, _doflat, _listflat, _listbi
                     tmasterbias = ''
 
                 print('### ' + str(obj) + '  -> ', str(nameout0), '\n')
-                ntt.util.display_image(obj, 1, '', '', False)
+                if _interactive:
+                    ntt.util.display_image(obj, 1, '', '', False)
                 if len(flatgood) == 1:
                     _flatcor = 'yes'
                     nmasterflat = flatgood[0]

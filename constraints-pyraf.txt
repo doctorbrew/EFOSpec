@@ -1,0 +1,9 @@
+# Tested ARM macOS / CPython 3.11 runtime, 2026-11-14.
+pyraf==2.2.4
+numpy==1.26.4
+astropy==6.1.7
+scipy==1.14.1
+matplotlib==3.9.4
+# Optional diagnostic plotting dependencies (scripts/validate_science.py).
+SciencePlots==2.2.2
+pypalettes==0.2.2

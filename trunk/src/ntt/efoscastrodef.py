@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-matplotlib.use('TKAgg')
 
 def xpa(arg):
     # print "LOGX:: Entering `xpa` method/function in %(__file__)s" % globals()
