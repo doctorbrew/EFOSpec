@@ -166,6 +166,18 @@ def compare_run(run_dir, input_dir, output):
         raise ValueError('resolve raw inventory conflicts before comparison')
     frames = [f for f in inv['frames'] if f['role']=='science' and 'duplicate_of' not in f]
     candidates, scan_errors = discover(input_dir)
+    if input_dir.parent.name == 'data':
+        iraf_dir = input_dir.parent.parent/'runs'/night/'pessto'
+        if iraf_dir.is_dir():
+            extra, errors = discover(iraf_dir)
+            by_hash = {row['sha256']: row for row in candidates}
+            for row in extra:
+                if row['sha256'] in by_hash:
+                    by_hash[row['sha256']]['aliases'].extend([row['path'], *row['aliases']])
+                else:
+                    candidates.append(row)
+                    by_hash[row['sha256']] = row
+            scan_errors.extend(errors)
     results = {}
     for row in run['results']:
         if row.get('role') == 'science':

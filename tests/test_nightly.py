@@ -54,10 +54,10 @@ def test_partial_reduction_still_presents_one_dated_report_and_qc(epoch,monkeypa
     assert 'source_selection_required' in page and 'QC/science/index.html' in page
     assert 'reduction/index.html' in page and 'observing-log.csv' in page
     assert '2026-10-28,2026-10-28,2026-10-29T02:00:00' in (output/'observing-log.csv').read_text()
-    assert not (root/'runs/2026-10-29').exists()
+    assert not (root/'runs/2026-10-29/efosc').exists()
     assert sha256(raw)==before
     assert not (output.parent/'.running').exists()
-    daily_log=root/'runs/2026-10-28/index.html'
+    daily_log=root/'runs/2026-10-28/efosc/index.html'
     assert state['daily_log']==str(daily_log)
     assert daily_log.is_file() and 'ePESSTO+' in daily_log.read_text()
     assert capsys.readouterr().out.splitlines()[-1].endswith(str(daily_log))
@@ -96,7 +96,7 @@ def test_separate_steps_preserve_products_and_new_log_starts_new_revision(epoch,
 
 def test_new_inventory_with_prior_redshift_evidence_needs_no_reduction_manifest(epoch):
     root, _ = epoch
-    dated = root/'runs/2026-10-28'
+    dated = root/'runs/2026-10-28/efosc'
     qc = dated/'QC'; qc.mkdir(parents=True)
     prior = qc/'prior.json'
     prior.write_text(json.dumps(dict(night='2026-10-28',
@@ -135,7 +135,7 @@ def test_target_scope_is_persisted_passed_to_worker_and_reported(epoch, monkeypa
     state = nightly.run_epoch('2026-10-28',flux_calibration='archive', project_root=root, targets=['SN<test>'])
     assert state['selected_exposures'] == 1
     assert calls[0][-2:] == ['--target','SN<test>']
-    html = (root/'runs/2026-10-28/index.html').read_text()
+    html = (root/'runs/2026-10-28/efosc/index.html').read_text()
     assert 'Selected targets: SN&lt;test&gt;' in html and 'Outside selected targets' in html
     with pytest.raises(ValueError,match='target selection changed'):
         nightly.run_epoch('2026-10-28',flux_calibration='archive',stage='report',project_root=root,targets=['vma2'])
@@ -161,7 +161,7 @@ def test_foreign_science_night_is_rejected_but_logged(epoch):
     write_raw(raw.parent,'other.fits',**{'DATE-OBS':'2026-10-30T03:00:00'})
     with pytest.raises(ValueError,match='another observing night'):
         nightly.run_epoch('2026-10-28',flux_calibration='archive',project_root=root)
-    logs=list((root/'runs/2026-10-28/nightly').glob('*/observing-log.csv'))
+    logs=list((root/'runs/2026-10-28/efosc/nightly').glob('*/observing-log.csv'))
     assert len(logs)==1 and 'other.fits' in logs[0].read_text()
     assert not (logs[0].parent/'reduction').exists()
 
@@ -216,7 +216,7 @@ def test_cli_date_selects_only_its_epoch_log(epoch):
     root,_=epoch
     from efospec.__main__ import main
     assert main(['night','2026-10-28','--stage','log','--project-root',str(root)])==0
-    assert (root/'runs/2026-10-28/nightly/index.html').exists()
+    assert (root/'runs/2026-10-28/efosc/nightly/index.html').exists()
 
 
 def test_selected_native_diagnostics_run_after_archive_without_changing_its_manifest(epoch,monkeypatch):
@@ -238,7 +238,7 @@ def test_selected_native_diagnostics_run_after_archive_without_changing_its_mani
     assert [c[0] for c in calls]==['reduce-rapid','validate-native','report']
     assert state['stages']['native_checks']['status']=='partial'
     assert state['status']=='partial'
-    assert 'Contemporary raw-calibration checks' in (root/'runs/2026-10-28/index.html').read_text()
+    assert 'Contemporary raw-calibration checks' in (root/'runs/2026-10-28/efosc/index.html').read_text()
     with pytest.raises(ValueError,match='selection changed'):
         nightly.run_epoch('2026-10-28',flux_calibration='archive',stage='report',project_root=root,native_calibrations=root/'other')
 
@@ -271,3 +271,18 @@ def test_old_revision_without_policy_replays_archive(epoch,monkeypatch):
     del state['flux_calibration'];path.write_text(json.dumps(state))
     nightly.run_epoch('2026-10-28',project_root=root,stage='reduce')
     assert calls[0][0]=='reduce-rapid'
+
+
+def test_new_layout_preserves_legacy_and_iraf_outputs(epoch):
+    project,raw=epoch
+    dated=project/'runs/2026-10-28'
+    legacy=dated/'nightly/current.json';legacy.parent.mkdir(parents=True)
+    legacy.write_text('{"historical": true}')
+    iraf=dated/'pessto/iraf-full-01/result.fits';iraf.parent.mkdir(parents=True)
+    iraf.write_bytes(b'retained IRAF spectrum')
+    before={p:sha256(p) for p in (raw,legacy,iraf)}
+    state=nightly.run_epoch('2026-10-28',stage='log',project_root=project)
+    assert Path(state['output_dir']).parent==dated/'efosc/nightly'
+    assert Path(state['daily_log'])==dated/'efosc/index.html'
+    assert (dated/'efosc/nightly/current.json').is_file()
+    assert all(sha256(p)==digest for p,digest in before.items())

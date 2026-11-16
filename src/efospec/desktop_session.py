@@ -32,6 +32,8 @@ def resolve_session(path):
         elif (root/'reduction/run.json').is_file():
             run = root/'reduction'
         else:
+            if (root/'efosc/nightly/current.json').is_file():
+                root = root/'efosc'
             nightly = root/'nightly' if (root/'nightly/current.json').is_file() else root
             pointer = json.loads((nightly/'current.json').read_text())
             revision = (nightly/pointer['revision']).resolve()

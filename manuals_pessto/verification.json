@@ -1,0 +1,26 @@
+{
+  "date": "2026-11-13",
+  "scope": "Three EFOSC reduction workflows",
+  "sections": [
+    "IRAF fast",
+    "IRAF full",
+    "EFOSpec"
+  ],
+  "checks": {
+    "desktop_preview_width": 1440,
+    "mobile_preview_width": 390,
+    "console_errors": 0,
+    "anchors_verified": true,
+    "embedded_figures_byte_verified": 3,
+    "commands_checked_against_local_cli": true,
+    "styled_scientific_plots": 1,
+    "unchanged_interface_screenshots": 2,
+    "pdf_jpg_download_bytes_verified": true,
+    "jpg_dpi": 300
+  },
+  "not_run": [
+    "Scientific reduction",
+    "Live desktop/IRAF interaction",
+    "Automated enlargement/Close/Escape interaction test"
+  ]
+}

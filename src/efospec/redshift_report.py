@@ -19,14 +19,14 @@ def load_redshifts(page, parent, rescue=None, *, manuals=()):
     path=page.root/'QC/redshift-current.json'
     if not path.exists():return {}
     pointer=page.read(path);manifest_path=(page.root/pointer['path']).resolve()
-    if not evidence_inside_night(manifest_path,page.root) or pointer['night']!=page.root.name:
+    if not evidence_inside_night(manifest_path,page.root) or pointer['night']!=page.night:
         raise ValueError('invalid redshift pointer')
     if sha256(manifest_path)!=pointer['sha256']:raise ValueError('redshift manifest changed')
     manifest=page.read(manifest_path)
     expected={str(parent/'run.json'):sha256(parent/'run.json')}
     if rescue:expected[str(rescue/'run.json')]=sha256(rescue/'run.json')
     for manual in manuals:expected[str(manual/'run.json')]=sha256(manual/'run.json')
-    if manifest['night']!=page.root.name or manifest['parent_run_sha256']!=expected:
+    if manifest['night']!=page.night or manifest['parent_run_sha256']!=expected:
         page.redshift_status='previous_revision'
         page.previous_redshift_raws={Path(item['raw']).name for item in manifest.get('results',[]) if item.get('raw')}
         return {}

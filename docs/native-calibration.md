@@ -1,5 +1,9 @@
 # Native calibration: inputs and status
 
+New processing outputs belong in `runs/DATE/efosc/`; IRAF attempts belong in
+`runs/DATE/pessto/`. Concrete historical paths below are retained evidence,
+not relocated products. See [current output layout](epoch-workflow.md#output-layout).
+
 - **10 November engine migration:** `efospec` now uses PypeIt 3.0.0. New raw Gr11/Gr13 calibration and flexure benchmarks are documented in [the migration record](pypeit3-migration-2026-11-10.md). Historical 1.14 calibration files require the preserved runtime; rebuild from raw for 3.0. Science wavelength validation remains separate.
 
 - **8 November debugging:** [flux-calibration audit, Gr16 review counts, background trials and held-out standard checks](reduction-debug-2026-11-08.md). These new diagnostics do not replace the selected nightly products.

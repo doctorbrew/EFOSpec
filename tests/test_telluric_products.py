@@ -14,7 +14,7 @@ from efospec.telluric_products import select_for_report,selected_pairs,read_over
 
 @pytest.fixture
 def paired_run(tmp_path):
-    root=tmp_path/'runs/2026-10-28';run=root/'nightly/v1/reduction';revision=root/'QC/telluric-v1'
+    root=tmp_path/'runs/2026-10-28/efosc';run=root/'nightly/v1/reduction';revision=root/'QC/telluric-v1'
     (run/'products').mkdir(parents=True);(revision/'products').mkdir(parents=True);(revision/'uncorrected').mkdir()
     source=run/'products/transient.fits';after=revision/'products'/source.name;before=revision/'uncorrected'/source.name
     data=np.ones((4,1,5))*1e-16;mask=np.ones((1,5),np.uint8)
@@ -29,13 +29,13 @@ def paired_run(tmp_path):
     before.with_suffix('.asci').write_text('before data\n');after.with_suffix('.asci').write_text('after data\n')
     result=dict(product=str(source),role='science',raw='/raw/transient.fits',raw_sha256='abc',object='SNtest',
                 grism='Gr13',exptime_s=300.,median_native_snr_4000_8500=10.)
-    (run/'run.json').write_text(json.dumps(dict(night=root.name,results=[result],errors=[],skipped=[])))
+    (run/'run.json').write_text(json.dumps(dict(night=root.parent.name,results=[result],errors=[],skipped=[])))
     row=dict(raw=result['raw'],raw_sha256='abc',source_product=str(source),source_sha256=sha256(source),
         product=str(after),sha256=sha256(after),uncorrected_product=str(before),uncorrected_sha256=sha256(before),
         ascii=str(after.with_suffix('.asci')),ascii_sha256=sha256(after.with_suffix('.asci')),
         uncorrected_ascii=str(before.with_suffix('.asci')),uncorrected_ascii_sha256=sha256(before.with_suffix('.asci')),
         bands=['O2_A'],status='review_required_transfer',review_reasons=['airmass outside tested range'])
-    manifest=revision/'run.json';manifest.write_text(json.dumps(dict(status='complete',night=root.name,
+    manifest=revision/'run.json';manifest.write_text(json.dumps(dict(status='complete',night=root.parent.name,
         source_run=str(run/'run.json'),source_run_sha256=sha256(run/'run.json'),products=[row])))
     return root,run,manifest
 

@@ -8,7 +8,7 @@ from efospec.epoch_report import build_epoch_page
 def test_desktop_button_keeps_report_and_exposes_fallback(epoch_page,embedded):
     playwright=pytest.importorskip('playwright.sync_api')
     project,root,_=epoch_page
-    build_epoch_page(root.name,project)
+    build_epoch_page(root.parent.name,project)
     with playwright.sync_playwright() as pw:
         browser=pw.chromium.launch()
         page=browser.new_page(viewport={'width':1440,'height':900})
@@ -17,7 +17,7 @@ def test_desktop_button_keeps_report_and_exposes_fallback(epoch_page,embedded):
         original_url=page.url
         page.locator('.review-launch').click()
         assert page.url==original_url
-        assert page.locator('h1').inner_text()==root.name
+        assert page.locator('h1').inner_text()==root.parent.name
         assert page.locator('.review-help').get_attribute('open') is not None
         assert 'efospec gui' in page.locator('.review-help pre').inner_text()
         assert 'Desktop launch requested' in page.locator('.launch-status').inner_text()

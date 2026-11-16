@@ -8,6 +8,7 @@ import json
 import math
 from io import BytesIO
 from pathlib import Path
+from .paths import efosc_root
 
 from .inventory import sha256
 from .naming import source_order
@@ -35,6 +36,7 @@ def _table(headings, rows):
 class EpochPage:
     def __init__(self, root):
         self.root = root.resolve()
+        self.night = self.root.parent.name if self.root.name == "efosc" else self.root.name
         self.warnings = []
         self.images = 0
 
@@ -477,7 +479,7 @@ class EpochPage:
         sections=[];seen=set()
         for path in sorted((self.root/'QC').glob('local-background-*/local-background.json'),reverse=True):
             record=self.read(path)
-            if record.get('night')!=self.root.name or record.get('parent_manifest_sha256')!=digest:continue
+            if record.get('night')!=self.night or record.get('parent_manifest_sha256')!=digest:continue
             for target in record.get('targets',[]):
                 expected_raw=raw_hashes.get(target.get('raw_name'))
                 if not expected_raw or target.get('input_sha256',{}).get('raw')!=expected_raw:continue
@@ -687,7 +689,14 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
     """Rebuild presentation only; saved science products and recipes stay unchanged."""
     if date.fromisoformat(night).isoformat() != night:
         raise ValueError('observing date must be YYYY-MM-DD')
-    root = Path(project_root).resolve()/'runs'/night
+    root = efosc_root(project_root, night)
+    # Only an explicitly selected historical revision may use the old layout.
+    # Default commands always read/write the efosc namespace.
+    if revision_dir is not None:
+        selected = Path(revision_dir).resolve()
+        legacy = root.parent
+        if any(selected.is_relative_to(legacy/sub) for sub in ('nightly', 'QC')):
+            root = legacy
     page = EpochPage(root)
     if revision_dir is None:
         pointer = page.read(root/'nightly/current.json')

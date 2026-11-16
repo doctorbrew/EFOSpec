@@ -38,7 +38,7 @@ def test_compact_entry_retains_exact_images_downloads_and_portable_copy(tmp_path
 
 
 def test_repair_archives_original_and_does_not_touch_scientific_files(tmp_path):
-    root=tmp_path/'runs/2026-10-29';root.mkdir(parents=True)
+    root=tmp_path/'runs/2026-10-29/efosc';root.mkdir(parents=True)
     html='<html><body>saved report<footer>EFOSpec</footer></body></html>'
     (root/'index.html').write_text(html);(root/'product.fits').write_bytes(b'unchanged')
     r=compact_existing_report('2026-10-29',project_root=tmp_path)

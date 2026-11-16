@@ -7,6 +7,7 @@ from html import escape
 import json
 import os
 from pathlib import Path
+from .paths import efosc_root, dated_root
 import re
 import shutil
 import subprocess
@@ -241,7 +242,7 @@ def _index(state, output):
     # A new inventory has no reduction manifest yet. Keep its revision index,
     # and refresh the full dated report once products can be provenance-checked.
     if manifest.is_file():
-        build_epoch_page(state['night'], output.parents[3])
+        build_epoch_page(state['night'], dated_root(output).parent.parent)
 
 
 def run_epoch(night, *, stage='all', project_root='.', plot_python=None, native_calibrations=None,
@@ -252,7 +253,7 @@ def run_epoch(night, *, stage='all', project_root='.', plot_python=None, native_
     if stage not in {'all','log','reduce','report'}:raise ValueError('unknown epoch stage')
     project=Path(project_root).resolve();input_dir=project/'data'/night
     if not input_dir.is_dir():raise ValueError(f'{night}: raw directory missing: {input_dir}')
-    root=project/'runs'/night/'nightly';root.mkdir(parents=True,exist_ok=True)
+    root=efosc_root(project, night)/'nightly';root.mkdir(parents=True,exist_ok=True)
     lock=root/'.running'
     try:handle=lock.open('x')
     except FileExistsError:raise ValueError(f'{night}: a nightly stage is already running; inspect {lock}') from None

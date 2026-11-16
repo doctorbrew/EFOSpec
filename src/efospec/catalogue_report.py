@@ -10,8 +10,8 @@ def catalogue_qc(page, run):
     from .field_catalogues import galaxy_labels, redshift_label
     from .typing_report import acquisition_metadata, emission_cell
     current = page.read(page.root/'QC/catalogue-current.json')
-    if not current: current = {'night':page.root.name,'fields':{}}
-    if current.get('night') != page.root.name: raise ValueError('catalogue report night mismatch')
+    if not current: current = {'night':page.night,'fields':{}}
+    if current.get('night') != page.night: raise ValueError('catalogue report night mismatch')
     science = {Path(r.get('raw',r.get('path',''))).name for key in ('results','errors','skipped') for r in run.get(key,[])}
     fields = []
     for item in current['fields'].values():

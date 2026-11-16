@@ -9,7 +9,7 @@
 
 ```sh
 conda activate efospec
-efospec browser-prototype runs/2024-11-14
+efospec browser-prototype runs/2024-11-14/efosc
 ```
 
 - Opens a local browser tab; no uploads or additional runtime environment.
@@ -50,7 +50,7 @@ efospec browser-prototype runs/2024-11-14
 Replay the same recipe without the browser:
 
 ```sh
-efospec reextract runs/2024-11-14 \
+efospec reextract runs/2024-11-14/efosc \
   --product tSN2023xxj_20241114_Gr13_Free_slit1.0_1_f.fits \
   --recipe extraction-recipe.json --output runs/manual-replay
 ```

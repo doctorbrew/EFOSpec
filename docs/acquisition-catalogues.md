@@ -7,7 +7,7 @@ identify a host, or subtract a galaxy.
 ```sh
 efospec acquisition-catalogues 2026-10-29 \
   --target SN2026aadx \
-  --output runs/2026-10-29/QC/catalogues-NEW_REVISION
+  --output runs/2026-10-29/efosc/QC/catalogues-NEW_REVISION
 python scripts/build_epoch_fieldnotes.py 2026-10-29
 ```
 
@@ -106,23 +106,23 @@ crowded labels vertically. No connecting lines are drawn. It refuses an
 overlapping placement when no clear position is available. All ticks use the mandatory 30% enlargement (18 → 23.4 pt).
 If another catalogue supplies galaxies, the shared legend names those catalogues too.
 The galaxy-only presentation revisions are retained under
-`runs/DATE/QC/host-galaxies-20261107-v9/`; earlier overlays remain on disk.
+`runs/DATE/efosc/QC/host-galaxies-20261107-v9/`; earlier overlays remain on disk.
 
 ## First observed-data run, 6 November 2026
 
 - **28 October:** 17 acquisition images checked; 10 passed astrometric acceptance
   and have overlays. Seven failed to solve or exceeded the residual gates.
-  Results: `runs/2026-10-28/QC/catalogues-20261106-transients/`.
+  Results: `runs/2026-10-28/efosc/QC/catalogues-20261106-transients/`.
 - **29 October:** 14 checked; 11 have overlays and three failed astrometric
-  acceptance. Results: `runs/2026-10-29/QC/catalogues-20261106-SN2026aadx/` and
-  `runs/2026-10-29/QC/catalogues-20261106-other-transients/`.
+  acceptance. Results: `runs/2026-10-29/efosc/QC/catalogues-20261106-SN2026aadx/` and
+  `runs/2026-10-29/efosc/QC/catalogues-20261106-other-transients/`.
 - NED returned sources for all 21 accepted fields. AllWISE returned sources
   for 18; three AllWISE queries failed. SDSS was unavailable for all 21 queries.
   The SDSS adapter has parser/fixture coverage but is **not verified against a
   successful live SDSS response in this run**.
 - NED's NGC 1418 position lands on the visible galaxy in both SN2026aadx
   acquisitions. This is a field association, not an automatic host assignment.
-- `runs/2026-10-28/index.html` and `runs/2026-10-29/index.html` show the current
+- `runs/2026-10-28/efosc/index.html` and `runs/2026-10-29/efosc/index.html` show the current
   records, including failed frames and unavailable services. Existing reductions,
   reviewed C2/C3 choices and original QC figures remain unchanged.
 

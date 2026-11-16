@@ -5,6 +5,7 @@ from copy import copy
 from datetime import date, datetime, timezone
 import json
 from pathlib import Path
+from .paths import efosc_root
 import uuid
 import traceback
 
@@ -115,7 +116,7 @@ def run_trials(night, targets, project_root, *, width_pixels=None, degrees=(1,2)
     """Without width_pixels, inspect geometry only; never choose spatial units."""
     if date.fromisoformat(night).isoformat()!=night:raise ValueError('use one ISO observing date')
     if not targets:raise ValueError('name the targets explicitly')
-    root=Path(project_root).resolve()/'runs'/night
+    root=efosc_root(project_root, night)
     pointer=json.loads((root/'nightly/current.json').read_text())
     run=root/'nightly'/pointer['revision']/'reduction'
     run.resolve().relative_to(root)

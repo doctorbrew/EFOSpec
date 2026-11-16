@@ -1,0 +1,27 @@
+{
+  "source": "runs/2026-10-29/nightly/20261110T171353Z-aa76fb/reduction/exposures/EFOSC.2026-10-30T03:07:16.495/native/tvma2_20261029_Gr13_Free_slit1.0_1_images.npz",
+  "sha256": "d4bc5ddc1e36527bb1dba19b9950ddc6ced12a54c415158bf4180a49a2cdcc81",
+  "arrays": [
+    "found_traces",
+    "trace"
+  ],
+  "candidate_names": [
+    "SPAT0059-SLIT0100-DET01",
+    "SPAT0102-SLIT0100-DET01",
+    "SPAT0143-SLIT0100-DET01"
+  ],
+  "coordinate_system": "saved extraction-window pixels; no raw-origin offset added",
+  "selection": "all three stored candidate traces, original order",
+  "processing": "plot only; no fitting, smoothing or new reduction",
+  "style": {
+    "helper": "plot_style.py",
+    "usetex": true,
+    "tick_size_pt": 23.4,
+    "jpg_dpi": 300,
+    "palette": "Hiroshige reversed"
+  },
+  "outputs": {
+    "FitManual_vma2_saved_traces.jpg": "d2d93a48e8bf6466c1b3527eeb60918d7aff7aae49d23847dc2c8024d4f3530d",
+    "FitManual_vma2_saved_traces.pdf": "ddc262477761a43960f117ba90c7d5fb42f460ada4fbca8ebce5b68a29849eb3"
+  }
+}

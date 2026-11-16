@@ -14,11 +14,11 @@ def saved_candidates(raw):
     from .inventory import sha256
     raw=Path(raw).resolve()
     if raw.parent.parent.name!='data':return []
-    root=raw.parent.parent.parent/'runs'/raw.parent.name
+    root=raw.parent.parent.parent/'runs'/raw.parent.name/'efosc'
     pointer=root/'QC/catalogue-current.json'
     if not pointer.exists():return []
     current=json.loads(pointer.read_text())
-    if current['night']!=root.name:raise ValueError('catalogue night mismatch')
+    if current['night']!=raw.parent.name:raise ValueError('catalogue night mismatch')
     item=current['fields'].get(str(raw))
     if not item:return []
     path=(root/item['path']).resolve();path.relative_to(root)

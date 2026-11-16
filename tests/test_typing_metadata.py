@@ -10,7 +10,7 @@ from test_epoch_report import epoch_page
 
 @pytest.fixture
 def typing_run(tmp_path):
-    run = tmp_path/'runs/2026-10-28/nightly/revision-1/reduction'
+    run = tmp_path/'runs/2026-10-28/efosc/nightly/revision-1/reduction'
     (run/'products').mkdir(parents=True)
     source = run/'products/ATtest.asci'; source.write_text('4000 1\n5000 2\n')
     product = source.with_suffix('.fits'); product.write_bytes(b'original spectrum')
@@ -142,12 +142,12 @@ def test_nightly_html_includes_export_and_rejects_stale_metadata(epoch_page):
     from efospec.epoch_report import build_epoch_page
     project, root, product = epoch_page
     run=product.parent.parent
-    manifest=json.loads((run/'run.json').read_text());manifest['night']=root.name
+    manifest=json.loads((run/'run.json').read_text());manifest['night']=root.parent.name
     manifest['results'][0]['role']='science';(run/'run.json').write_text(json.dumps(manifest))
     product.with_suffix('.asci').write_text('4000 1\n5000 2\n')
     d=tm.skeleton(run);candidate(d)
     tm.save(run,d,'Observer')
-    build_epoch_page(root.name,project)
+    build_epoch_page(root.parent.name,project)
     html=(root/'index.html').read_text()
     assert 'Host verification' not in html and 'Galaxy &lt;one&gt;' in html
     assert 'Potential host galaxies' in html and 'Metadata and review history' not in html
@@ -157,7 +157,7 @@ def test_nightly_html_includes_export_and_rejects_stale_metadata(epoch_page):
     assert 'Galaxy &lt;one&gt;' in html.split('id="qc"')[1].split('</section>')[0]
     manifest['new_revision']='changed';(run/'run.json').write_text(json.dumps(manifest))
     with pytest.raises(ValueError, match='different reduction revision'):
-        build_epoch_page(root.name,project)
+        build_epoch_page(root.parent.name,project)
 
 
 

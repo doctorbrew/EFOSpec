@@ -64,11 +64,11 @@ def saved_astrometry(raw):
     raw = Path(raw).resolve()
     if raw.parent.parent.name != 'data':
         return None
-    root = raw.parent.parent.parent/'runs'/raw.parent.name
+    root = raw.parent.parent.parent/'runs'/raw.parent.name/'efosc'
     pointer = root/'QC/target-astrometry-current.json'
     if pointer.is_file():
         current = json.loads(pointer.read_text())
-        if current['night'] != root.name:
+        if current['night'] != raw.parent.name:
             raise ValueError('target astrometry night mismatch')
         if str(raw) in current['solutions']:
             return current['solutions'][str(raw)]
@@ -76,7 +76,7 @@ def saved_astrometry(raw):
     if not pointer.is_file():
         return None
     current = json.loads(pointer.read_text())
-    if current['night'] != root.name:
+    if current['night'] != raw.parent.name:
         raise ValueError('catalogue astrometry night mismatch')
     item = current['fields'].get(str(raw))
     if not item:

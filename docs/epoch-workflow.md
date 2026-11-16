@@ -41,7 +41,7 @@ python scripts/03_report_epoch.py 2026-10-28
 
 ## Dated outputs
 
-Open **`runs/2026-10-28/index.html`**.
+Open **`runs/2026-10-28/efosc/index.html`**.
 
 Use this main nightly HTML for status and issues. Do not generate separate
 diagnostic HTML pages unless explicitly requested. Show diagnostic plots directly
@@ -119,7 +119,7 @@ Per-date `report-assets/sky-model-arcsinh-verification.json` records unchanged
 inputs; prior plots are retained under each run's `archive/before-sky-model-arcsinh/`.
 
 ```text
-runs/2026-10-28/nightly/<processing-UTC>-<unique-id>/
+runs/2026-10-28/efosc/nightly/<processing-UTC>-<unique-id>/
   observing-log.csv
   observing-log.json
   night.json
@@ -144,7 +144,7 @@ NED cross-match into a fresh QC revision:
 
 ```sh
 python scripts/measure_host_redshifts.py 2026-10-28 \
-  --output runs/2026-10-28/QC/host-redshifts-NEW --update-report
+  --output runs/2026-10-28/efosc/QC/host-redshifts-NEW --update-report
 ```
 
 The current accepted and rescue products are selected and hash-checked. The
@@ -190,7 +190,7 @@ is separate from reduction; rebuilding the report uses only saved results.
 
 ## Retained results
 
-| Folder under `runs/DATE/` | Contents |
+| Folder under `runs/DATE/efosc/` | Contents |
 | --- | --- |
 | `nightly/` | Current workflow and processing revisions |
 | `QC/` | Retained manual source/background experiments |
@@ -273,7 +273,7 @@ hash checks. Raw data and the preserved legacy checkout were outside deletion sc
 
 - `efospec night DATE --iraf-comparison` enables a read-only comparison after
   reduction. Add `--stage report` to compare an existing selected reduction.
-- Search is recursive within `data/DATE/`. Only header-identified PESSTO/IRAF
+- Search is recursive within `runs/DATE/pessto/` and, for historical comparisons, `data/DATE/`. Only header-identified PESSTO/IRAF
   flux-calibrated FITS multispectra (`FILETYPE=22208`) are considered. Counts,
   2D images, ASCII files and ZIP archives are not treated as flux spectra.
 - Match a unique raw exposure using provenance plus OBJECT, setup, exposure time
@@ -355,3 +355,14 @@ hash checks. Raw data and the preserved legacy checkout were outside deletion sc
   new native geometry review, including previously identified C2/C3 sources.
 - The Calibration section shows actual standard exposures, response downloads and
   the number of held-out transfers. Absolute flux accuracy remains unvalidated.
+
+## Output layout
+
+New EFOSpec results and HTML live below `runs/DATE/efosc/`; IRAF attempts live
+below `runs/DATE/pessto/iraf-full-NN/`. Raw archives remain in `data/DATE/`.
+The EFOSpec current pointer is `runs/DATE/efosc/nightly/current.json`, and the
+main report is `runs/DATE/efosc/index.html`. Start a new `log`/`all` invocation
+to use this layout. Existing historical directories and their absolute-path
+manifests remain unchanged; the GUI can still open those saved runs directly.
+Historical validation notes describe the paths used at the time. Do not move
+saved files by hand: their hashes and paths may be referenced by recipes.

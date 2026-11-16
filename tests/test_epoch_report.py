@@ -18,7 +18,7 @@ def save(path, value):
 
 @pytest.fixture
 def epoch_page(tmp_path):
-    root = tmp_path/'runs/2026-10-28'
+    root = tmp_path/'runs/2026-10-28/efosc'
     revision = root/'nightly/revision-1'
     run = revision/'reduction'
     save(root/'nightly/current.json', {'night':'2026-10-28', 'revision':'revision-1'})
@@ -79,7 +79,7 @@ def test_review_report_keeps_selected_page_and_pointer_unchanged(epoch_page):
     assert 'The selected nightly reduction is unchanged' in (revision/'index.html').read_text()
     assert all(sha256(p)==h for p,h in before.items())
     with pytest.raises(ValueError,match='belong to this observing night'):
-        build_epoch_page('2026-10-28',project,revision_dir=project/'runs/2026-10-29/QC/other')
+        build_epoch_page('2026-10-28',project,revision_dir=project/'runs/2026-10-29/efosc/QC/other')
 
 
 class Assets(HTMLParser):
@@ -101,7 +101,7 @@ def test_iraf_supplement_is_separate_from_main_log(epoch_page,monkeypatch):
     from efospec.epoch_report import build_epoch_page
     project,root,_=epoch_page
     monkeypatch.setattr(iraf_report,'comparison_section',lambda page,revision:'<p>Unique overlay evidence</p>')
-    build_epoch_page(root.name,project)
+    build_epoch_page(root.parent.name,project)
     main=(root/'index.html').read_text()
     supplement=(root/'iraf-comparison.html').read_text()
     assert 'href="iraf-comparison.html"' in main
@@ -384,7 +384,7 @@ def test_failed_and_skipped_exposures_keep_target_reason_log_and_handoff(epoch_p
     manifest['skipped']=[dict(object='SN <failed>',path='/raw/red.fits',code='unsupported_setup',reason='Gr16 unsupported')]
     save(run/'run.json',manifest)
     before=sha256(run/'run.json')
-    build_epoch_page(root.name,project)
+    build_epoch_page(root.parent.name,project)
     html=(root/'index-portable.html').read_text();assets=Assets(html)
     assert '<h3>SN &lt;failed&gt; · Gr13</h3><p class="qc-status-bad">background_support_required: Final trace crosses band' in html
     links=[parse_review_url(url) for url in assets.handoffs]
@@ -401,7 +401,7 @@ def test_detailed_failure_is_only_in_source_logs_and_headings_include_seconds(ep
     manifest['errors']=[dict(object='SN <test>',path='/raw/science.fits',
         code='wavelength_validation_failed',error='native sky anchors disagree by more than 3 A')]
     save(path,manifest)
-    build_epoch_page(root.name,project)
+    build_epoch_page(root.parent.name,project)
     html=(root/'index.html').read_text()
     observations=html.split('id="observations"')[1].split('</section>')[0]
     spectra=html.split('id="spectra"')[1].split('</section>')[0]
@@ -411,3 +411,16 @@ def test_detailed_failure_is_only_in_source_logs_and_headings_include_seconds(ep
     assert '<h3>SN &lt;test&gt; · 60 s</h3>' in spectra
     assert '<button type="button" class="review-launch"' in spectra
     assert '<a class="review-launch"' not in spectra
+
+
+def test_explicit_historical_report_does_not_change_new_current(epoch_page):
+    project,root,_=epoch_page
+    legacy=root.parent/'nightly/legacy'
+    save(legacy/'night.json',{'night':'2026-10-28','status':'complete','stages':{}})
+    save(legacy/'observing-log.json',{'frames':[]})
+    save(legacy/'reduction/run.json',{'results':[],'errors':[],'skipped':[]})
+    pointer=root/'nightly/current.json';before=sha256(pointer)
+    build_epoch_page('2026-10-28',project,revision_dir=legacy)
+    assert (legacy/'index.html').is_file()
+    assert sha256(pointer)==before
+    assert not (root.parent/'index.html').exists()

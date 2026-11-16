@@ -10,7 +10,7 @@ conda activate efospec
 python -m pip install -c constraints.txt -e '.[rapid,plots,desktop]'
 efospec gui
 # Or open a completed run directly:
-efospec gui runs/2024-11-14
+efospec gui runs/2024-11-14/efosc
 ```
 
 - Ubuntu/Debian display libraries, when absent:
@@ -79,6 +79,6 @@ review controls, the CLI, revision history and HTML refresh.
 - No automatic host identification or general extended-galaxy reconstruction.
 - GUI plots support inspection; Fieldnotes exports retain the publication plot theme.
 - Environment-backed macOS `.app` and Linux launchers: [installation](desktop-installation.md).
-- Historical browser prototype: `efospec browser-prototype runs/2024-11-14`.
+- Historical browser prototype: `efospec browser-prototype runs/2024-11-14/efosc`.
 
 [Current acceptance results](validation-desktop-2026-11.md) · [Engine validation](native-desktop-validation.md) · [Roadmap](roadmap/pypeit-migration/gui.md)

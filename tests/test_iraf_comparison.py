@@ -93,3 +93,18 @@ def test_report_rejects_changed_parent(tmp_path):
     p=out/'comparison.json';p.write_text(json.dumps(dict(parent_sha256='old')))
     (root/'current.json').write_text(json.dumps(dict(path='a',sha256=sha256(p))))
     assert 'earlier reduction' in comparison_section(EpochPage(tmp_path),revision)
+
+
+def test_comparison_discovers_pessto_folder_and_deduplicates_legacy_copy(tmp_path,monkeypatch):
+    from efospec import inventory as module
+    raw=tmp_path/'data/2024-11-14';raw.mkdir(parents=True)
+    iraf=tmp_path/'runs/2024-11-14/pessto/iraf-full-01';iraf.mkdir(parents=True)
+    product=write_product(iraf/'iraf.fits');(raw/'old-copy.fits').write_bytes(product.read_bytes())
+    f=frame(header(),str(raw/'raw.fits'));f.update(role='science',sha256='rawhash')
+    monkeypatch.setattr(module,'inventory',lambda roots:dict(frames=[f],errors=[],identity_conflicts={}))
+    run=tmp_path/'runs/2024-11-14/efosc/nightly/revision/reduction';run.mkdir(parents=True)
+    (run/'run.json').write_text(json.dumps(dict(night='2024-11-14',pypeit_version='3.0.0',execution_status='partial',results=[])))
+    record=compare_run(run,raw,run.parent/'iraf-comparison')
+    assert len(record['candidates'])==1
+    candidate=record['candidates'][0]
+    assert str(product.resolve()) in [candidate['path'],*candidate['aliases']]

@@ -26,7 +26,7 @@ def main():
     night = date.fromisoformat(args.night)
     if night.isoformat() != args.night:
         raise ValueError('use one ISO observing night')
-    root = Path(__file__).resolve().parents[1]/'runs'/args.night
+    root = Path(__file__).resolve().parents[1]/'runs'/args.night/'efosc'
     output = args.output.resolve(); output.relative_to(root.resolve())
     entries = []; parents = {}
     for parent in args.parent:

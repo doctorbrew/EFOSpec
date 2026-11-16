@@ -9,9 +9,16 @@
 
 EFOSC2 optical spectroscopy with a PySide6 desktop editor and a read-only nightly log.
 
+[Reduction Manual](manuals_pessto/index.html) — step-by-step IRAF fast, IRAF full and EFOSpec reductions.
+
 - **Runtime:** Python 3.11, PypeIt 3.0.0; no IRAF/PyRAF process required.
 - **Scientific status:** experimental. New nightly revisions use raw bias/flat/arc calibrations and same-night standard responses.
 - **Desktop:** spectra and failed-exposure review in one application; recipes save new revisions.
+
+Outputs are separated by pipeline: `runs/DATE/efosc/` contains EFOSpec spectra,
+calibrations, QA, logs and HTML; `runs/DATE/pessto/` contains IRAF working copies,
+products and logs. Original inputs remain in `data/DATE/`. Each pipeline retains
+its own processing revisions. Existing historical runs are not moved or rewritten.
 
 ## Install
 
@@ -36,7 +43,7 @@ efospec night 2026-10-28
 
 - Run from the checkout; downloads go to `data/2026-10-28/`.
 - Archive access uses `ESO_USERNAME` / `ESO_PASSWORD`, or `ESO_TOKEN`.
-- Open **`runs/2026-10-28/index.html`** for the observing table, spectra and diagnostics.
+- Open **`runs/2026-10-28/efosc/index.html`** for the observing table, spectra and diagnostics.
 - The self-contained page includes observations, spectra, issues, source/background QC, calibrations and archive summaries.
 - Partial reductions retain failed/unsupported exposures in the report.
 - Each invocation names one observing date; previous processing revisions remain intact.
@@ -54,7 +61,7 @@ efospec night 2024-11-14 --iraf-comparison
 efospec night 2024-11-14 --stage report --iraf-comparison
 ```
 
-The nightly **IRAF comparison** link opens `runs/DATE/iraf-comparison.html`,
+The nightly **IRAF comparison** link opens `runs/DATE/efosc/iraf-comparison.html`,
 which shows matched flux spectra and unmatched or
 unsupported products. Matching uses FITS provenance and exposure metadata, not
 object names alone. No flux rescaling or wavelength alignment is applied, and
@@ -64,7 +71,7 @@ nightly spectrum panels remain PypeIt-only.
 ## Inspect and extract
 
 ```sh
-efospec gui runs/2026-10-28
+efospec gui runs/2026-10-28/efosc
 # Optional desktop icon, using this same environment:
 efospec install-desktop
 ```
@@ -106,13 +113,15 @@ setup, checks and the boundary between display changes and scientific changes.
 | `scripts/` | Dated workflow entry points and explicit diagnostic tools |
 | `tests/` | Automated regression checks |
 | `docs/` | Workflow, calibration, GUI and validation documentation |
+| `manuals_pessto/` | Reduction Manual: IRAF fast, IRAF full and EFOSpec |
 | `trunk/` | Preserved legacy engine and bundled calibration references |
 | `trunk/legacy-tools/` | Historical IRAF/PyRAF installation helpers and notes |
 | `data/DATE/` | Local raw inputs and historical comparison products; ignored by Git |
-| `runs/DATE/` | Local nightly reports, revisioned reductions and QC; ignored by Git |
+| `runs/DATE/efosc/` | Local nightly reports, revisioned reductions and QC; ignored by Git |
+| `runs/DATE/pessto/` | IRAF attempts: raw copies, products, calibration lists and logs |
 | `outputs/` | Local development experiments and archived housekeeping evidence; ignored by Git |
 
-The last three directories are local working data, not package source. Historical
+The data and output directories are local working data, not package source. Historical
 paths under `runs/` can remain dependencies of saved recipes; use each dated
 `index.html` as the entry point rather than choosing folders by modification time.
 

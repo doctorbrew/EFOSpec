@@ -1,5 +1,9 @@
 # EFOSpec daily standard calibration
 
+New processing outputs belong in `runs/DATE/efosc/`; IRAF attempts belong in
+`runs/DATE/pessto/`. Concrete historical paths below are retained evidence,
+not relocated products. See [current output layout](epoch-workflow.md#output-layout).
+
 > Historical diagnostics: superseded QC outputs cited below were removed in the
 > authorized 11 November cleanup. Retained reductions and their dependencies remain.
 > See the [cleanup inventory and policy](epoch-workflow.md#qc-cleanup-after-the-pypeit-3-reruns)
@@ -136,7 +140,7 @@ python scripts/reduce_epoch.py 2026-10-29 --flux-calibration archive
 
 # Isolated trial, preserving nightly/current.json and the selected report.
 python -m efospec reduce-daily data/2026-10-29 --night 2026-10-29 \
-  --target AT2026aevu --output runs/2026-10-29/QC/NEW-daily-standards
+  --target AT2026aevu --output runs/2026-10-29/efosc/QC/NEW-daily-standards
 ```
 
 Run one date per invocation. Separate `log`, `reduce`, and `report` steps retain

@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 import json
 from pathlib import Path
+from .paths import efosc_root
 
 from astropy.io import fits
 
@@ -14,7 +15,7 @@ from .native_calibration import save_json
 
 def acquisition_fields(night, project_root, targets=()):
     if date.fromisoformat(night).isoformat() != night: raise ValueError('use YYYY-MM-DD')
-    root = Path(project_root).resolve()/'runs'/night
+    root = efosc_root(project_root, night)
     pointer = json.loads((root/'nightly/current.json').read_text())
     revision = (root/'nightly'/pointer['revision']).resolve()
     if pointer['night'] != night or revision.parent != root/'nightly': raise ValueError('invalid night pointer')

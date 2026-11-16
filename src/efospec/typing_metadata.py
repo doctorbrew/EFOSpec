@@ -297,4 +297,7 @@ def refresh_report(path):
     if resolve_session(root).run != run:
         raise ValueError('Cannot publish metadata from an older reduction revision')
     from .epoch_report import build_epoch_page
-    return build_epoch_page(root.name, root.parent.parent)
+    from .paths import dated_root
+    dated = dated_root(run)
+    return build_epoch_page(dated.name, dated.parent.parent,
+                            revision_dir=None if root.name == "efosc" else run.parent)

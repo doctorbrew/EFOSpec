@@ -1,5 +1,9 @@
 # Unsupported setups: development requirements
 
+New processing outputs belong in `runs/DATE/efosc/`; IRAF attempts belong in
+`runs/DATE/pessto/`. Concrete historical paths below are retained evidence,
+not relocated products. See [current output layout](epoch-workflow.md#output-layout).
+
 Status on 5 November 2026: separate native Gr13/GG495 standard extractions are
 implemented and seven observed exposures now have count products. Native Gr16
 science delivery and independent flux validation remain unfinished.
@@ -44,7 +48,7 @@ nightly renderer and QC figures.
 
 ```sh
 efospec reduce-filtered data/2026-10-28 --night 2026-10-28 \
-  --output runs/2026-10-28/filtered/NEW_REVISION
+  --output runs/2026-10-28/efosc/filtered/NEW_REVISION
 ```
 
 The separate 29 October invocation can replay the retained, exposure-bound
@@ -52,7 +56,7 @@ background review:
 
 ```sh
 efospec reduce-filtered data/2026-10-29 --night 2026-10-29 \
-  --output runs/2026-10-29/filtered/NEW_REVISION \
+  --output runs/2026-10-29/efosc/filtered/NEW_REVISION \
   --background-reviews runs/2026-10-29/validation/filtered-background-20261105/reviews.json \
   --calibration-group runs/2026-10-29/filtered/20261105-native-v1/exposures/EFOSC.2026-10-30T03:09:45.142/calibration \
   --calibration-group runs/2026-10-29/filtered/20261105-native-v1/exposures/EFOSC.2026-10-30T03:15:22.641/calibration

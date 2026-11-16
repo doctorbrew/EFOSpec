@@ -1,7 +1,7 @@
 """Render spectra, spectrum/2-D panels, and binned spatial-profile figures.
 
 Run in the existing base Conda environment, which has the style dependencies:
-    /Users/avinash/Softwares/miniconda3/bin/python scripts/preview_spectrum_style.py --target SN2023xxj
+    python scripts/preview_spectrum_style.py --run runs/DATE/efosc/nightly/REVISION/reduction --target SN2023xxj
 
 Without --target, render all exposures in --run. Main report plots are PypeIt-only;
 --legacy explicitly requests overlays. No validation.json or legacy spectrum is required.
@@ -436,8 +436,8 @@ def refresh_profile(result, run, *, plot_directory=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--run", type=Path,
-                        default=REPO / "runs/2024-11-14-pypeit-rapid")
+    parser.add_argument("--run", type=Path, required=True,
+                        help="Saved reduction directory inside runs/DATE/efosc/")
     parser.add_argument("--target", help="Optional target; default: all exposures")
     parser.add_argument('--profiles-only',action='store_true',help='Refresh only saved spatial-profile plots')
     parser.add_argument('--plot-directory',type=Path,help='Existing plot directory to refresh with --profiles-only')

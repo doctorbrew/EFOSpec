@@ -25,7 +25,7 @@ def main():
     if date.fromisoformat(args.night).isoformat() != args.night:
         raise ValueError('use one ISO observing date')
     root = Path(__file__).resolve().parents[1]
-    night = root/'runs'/args.night
+    night = root/'runs'/args.night/'efosc'
     pointer = json.loads((night/'nightly/current.json').read_text())
     parent = night/'nightly'/pointer['revision']/'reduction'
     manifest = json.loads((parent/'run.json').read_text())

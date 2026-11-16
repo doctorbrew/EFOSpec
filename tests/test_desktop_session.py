@@ -48,3 +48,16 @@ def test_missing_or_non_reduction_record_is_rejected(tmp_path):
     save(tmp_path/'run.json', {'calibrations': []})
     with pytest.raises(ValueError, match='reduction run'):
         resolve_session(tmp_path)
+
+
+def test_date_container_prefers_new_efosc_namespace(tmp_path):
+    night=tmp_path/'runs/2026-10-28'
+    for folder in (night,night/'efosc'):
+        revision=folder/'nightly/revision'
+        save(folder/'nightly/current.json',{'night':'2026-10-28','revision':'revision'})
+        save(revision/'night.json',{'night':'2026-10-28'})
+        save(revision/'reduction/run.json',{'input_dir':'/data/2026-10-28','results':[],'errors':[]})
+    assert resolve_session(night).run==night/'efosc/nightly/revision/reduction'
+    assert resolve_session(night/'efosc').run==resolve_session(night).run
+    # Explicitly opening a historical run continues to work without migration.
+    assert resolve_session(night/'nightly/revision/reduction').run==night/'nightly/revision/reduction'

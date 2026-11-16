@@ -6,7 +6,7 @@ selected reduction's `typing-metadata.json` follows Spectypus's
 
 ## Desktop
 
-Open `efospec gui runs/2026-10-28` and choose **Host & redshift**.
+Open `efospec gui runs/2026-10-28/efosc` and choose **Host & redshift**.
 
 - Select the exact science spectrum. Edit the host, separation in arcseconds,
   redshift, uncertainty, method, reference frame and catalogue reference.
@@ -34,16 +34,16 @@ Open `efospec gui runs/2026-10-28` and choose **Host & redshift**.
 
 ```sh
 # Inspect without writing (also supplies a full editable document):
-efospec typing-metadata show runs/2026-10-28
+efospec typing-metadata show runs/2026-10-28/efosc
 # Initialize unreviewed records, preserving the reduction and spectra:
-efospec typing-metadata init runs/2026-10-28 --reviewer 'Reviewer identity'
+efospec typing-metadata init runs/2026-10-28/efosc --reviewer 'Reviewer identity'
 # Example candidate annotation; values below are placeholders, not identifications:
-efospec typing-metadata edit runs/2026-10-28 \
+efospec typing-metadata edit runs/2026-10-28/efosc \
   --spectrum EXACT_SPECTRUM.asci --reviewer 'Reviewer identity' \
   --set 'host_status=candidate' --set 'host_name=Reviewed galaxy name' \
   --set 'host_source=Catalogue record/reference' --candidates candidates.json
 # Refresh the current dated HTML from saved data:
-efospec typing-metadata report runs/2026-10-28
+efospec typing-metadata report runs/2026-10-28/efosc
 ```
 
 - `--set FIELD=VALUE` accepts a JSON value or plain text; `null` clears an
@@ -131,4 +131,4 @@ reduction; the older line-measurement revision remains excluded.
 - These are explicit proposals, not automatic nearest-galaxy acceptances.
   No accepted host or adopted redshift was introduced. No reduction or fit ran.
 - Query responses, selection script, previous reports and validation are retained
-  under `runs/2026-10-28/QC/typing-crossmatch-20261111/`.
+  under `runs/2026-10-28/efosc/QC/typing-crossmatch-20261111/`.

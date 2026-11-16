@@ -8,7 +8,7 @@ def write_comparison_page(page, revision, content):
     """Publish a separate supplement using the same offline nightly renderer."""
     from .epoch_report import CSS, EPOCH_CSS, SCRIPT, _text
     from .report_assets import write_report_bundle
-    night=page.root.name
+    night=page.night
     html=f'''<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>EFOSpec / {night} / IRAF comparison</title><style>{CSS}{EPOCH_CSS}</style></head>

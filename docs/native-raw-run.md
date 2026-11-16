@@ -1,5 +1,9 @@
 # Experimental raw-only reduction
 
+New processing outputs belong in `runs/DATE/efosc/`; IRAF attempts belong in
+`runs/DATE/pessto/`. Concrete historical paths below are retained evidence,
+not relocated products. See [current output layout](epoch-workflow.md#output-layout).
+
 - Gr11/Gr13, Free/GG495, 2×2; centered slit1.0/slit1.5.
 - Real end-to-end experiments: one Gr13/Free exposure on each of two October nights; broader setup validation remains pending.
 - Both have flux support only around **5650–6960 Å** (≈25% of output bins); full-range response validation is unfinished.
@@ -57,7 +61,7 @@ efospec reduce-native data/YYYY-MM-DD \
 python scripts/validate_native_delivery.py data/YYYY-MM-DD \
   --science SCIENCE.fits --standard STANDARD.fits \
   --science-position 548 --standard-position 548 \
-  --output runs/YYYY-MM-DD/validation/native-check
+  --output runs/YYYY-MM-DD/efosc/validation/native-check
 ```
 
 - Replace filenames and positions after inspecting the exposures; positions are not target identifications.

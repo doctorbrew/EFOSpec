@@ -58,4 +58,4 @@ they look stale; manifests and recipes can contain absolute paths into them.
 
 Builds recreate `build/` and `dist/`; CI recreates `badge-data/` and `test-results/`.
 These are ignored, disposable working directories. Retained local audit evidence
-belongs in `outputs/`; dated science products stay under `runs/DATE/`.
+belongs in `outputs/`; dated science products stay under `runs/DATE/efosc/`.

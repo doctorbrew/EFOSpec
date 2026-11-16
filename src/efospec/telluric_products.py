@@ -1,6 +1,7 @@
 """Explicit, hash-bound before/after telluric products for read-only reports."""
 import json
 from pathlib import Path
+from .paths import saved_efosc_root, dated_root
 
 from .inventory import sha256
 
@@ -14,8 +15,8 @@ def _pairs(run, manifest, expected_digest=None):
             record.get('source_run_sha256')!=sha256(run/'run.json') or
             Path(record['source_run']).resolve()!=(run/'run.json').resolve()):
         raise ValueError('telluric products belong to a different reduction revision')
-    dated=next((p for p in run.parents if p.name==source['night'] and p.parent.name=='runs'),None)
-    if dated is None or not manifest.is_relative_to(dated):
+    dated=saved_efosc_root(run)
+    if dated_root(run).name != source['night'] or not manifest.is_relative_to(dated):
         raise ValueError('telluric products must belong to this dated run directory')
     results={Path(r['product']).name:r for r in source['results'] if r.get('role')=='science'}
     pairs={}
@@ -112,7 +113,7 @@ def render_selected(run, *, render_plots=True):
     import sys
     run=Path(run).resolve();pairs=selected_pairs(run)
     source=json.loads((run/'run.json').read_text())
-    dated=next(p for p in run.parents if p.name==source['night'] and p.parent.name=='runs')
+    dated=saved_efosc_root(run)
     if pairs:
         folder=Path(next(iter(pairs.values()))['manifest']).parent
         archive=folder/'previous-report';archive.mkdir(exist_ok=True)
@@ -130,5 +131,5 @@ def render_selected(run, *, render_plots=True):
     from .epoch_report import build_epoch_page
     pointer=json.loads((dated/'nightly/current.json').read_text())
     current=(dated/'nightly'/pointer['revision']).resolve()
-    return build_epoch_page(source['night'],dated.parent.parent,
-        revision_dir=None if current==run.parent else run.parent)
+    return build_epoch_page(source['night'],dated_root(run).parent.parent,
+        revision_dir=None if current==run.parent and dated.name=='efosc' else run.parent)

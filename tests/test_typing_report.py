@@ -60,7 +60,7 @@ def test_acquisition_plot_precedes_tags(tmp_path,monkeypatch):
     path=qc/'field.json';path.write_text(json.dumps(field))
     (qc/'catalogue-current.json').write_text(json.dumps(dict(night=root.name,fields={'acq':dict(path='QC/field.json',sha256=sha256(path))})))
     r=record(host_name='Galaxy')
-    page=SimpleNamespace(root=root,typing_annotations={r['path']:r},read=lambda p:json.loads(p.read_text()),
+    page=SimpleNamespace(root=root,night=root.name,typing_annotations={r['path']:r},read=lambda p:json.loads(p.read_text()),
                          figure=lambda *a,**kw:'<figure>ACQUISITION</figure>',download=lambda *a:'')
     html=catalogue_qc(page,dict(results=[dict(raw=str(science))]))[0][1]
     assert html.index('ACQUISITION')<html.index('Proposed host: Galaxy')

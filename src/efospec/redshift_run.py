@@ -1,5 +1,6 @@
 """One-night redshift evidence with independent NED and spectral measurements."""
 from pathlib import Path
+from .paths import efosc_root
 from .native_sky import wavelength_accepted
 import json
 import warnings
@@ -53,7 +54,7 @@ def heliocentric(z,header,error=None):
 
 def measure_night(night,output,*,project_root='.',rescue=None):
     from .run_record import snapshot_sources
-    root=Path(project_root).resolve()/'runs'/night
+    root=efosc_root(project_root, night)
     pointer=json.loads((root/'nightly/current.json').read_text())
     if pointer['night']!=night:raise ValueError('night mismatch')
     parent=root/'nightly'/pointer['revision']/'reduction';run=json.loads((parent/'run.json').read_text())
@@ -141,7 +142,7 @@ def activate_measurements(directory, *, project_root='.'):
     from .epoch_report import EpochPage,build_epoch_page
     from .redshift_report import load_redshifts
     directory=Path(directory).resolve();path=directory/'redshifts.json'
-    manifest=json.loads(path.read_text());root=Path(project_root).resolve()/'runs'/manifest['night']
+    manifest=json.loads(path.read_text());root=efosc_root(project_root, manifest['night'])
     from .redshift_report import evidence_inside_night
     if not evidence_inside_night(directory,root):raise ValueError('redshift evidence outside dated QC')
     if manifest['status']!='complete':raise ValueError('redshift run must complete before promotion')

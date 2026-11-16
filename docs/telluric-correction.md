@@ -1,5 +1,9 @@
 # EFOSpec standard-star telluric correction
 
+New processing outputs belong in `runs/DATE/efosc/`; IRAF attempts belong in
+`runs/DATE/pessto/`. Concrete historical paths below are retained evidence,
+not relocated products. See [current output layout](epoch-workflow.md#output-layout).
+
 Implemented as `efospec telluric`: PypeIt 3.0.0 atmospheric PCA, fitted on native
 samples with a physical stellar reference, separate-exposure transfer tests,
 and propagated uncertainty. This writes an explicit new revision. Add
@@ -139,11 +143,11 @@ Outputs must be fresh directories. The run's night must match the requested date
 ```sh
 python -m efospec telluric 2026-10-28 \
   --run runs/2026-10-28/QC/nightly-integration-20261112/reduction/run.json \
-  --output runs/2026-10-28/QC/telluric-NEW \
+  --output runs/2026-10-28/efosc/QC/telluric-NEW \
   --config configs/telluric_efosc.par --apply-science
 
 # Add --review-extrapolation only to produce explicitly unvalidated review copies.
-python scripts/plot_telluric_validation.py runs/2026-10-28/QC/telluric-NEW/run.json
+python scripts/plot_telluric_validation.py runs/2026-10-28/efosc/QC/telluric-NEW/run.json
 python -m pytest -q tests/test_telluric.py tests/test_native_acceptance.py \
   tests/test_flux_validation.py tests/test_daily_reduction.py
 ```
@@ -154,7 +158,7 @@ then regenerate its final spectrum plots and dated log in one command:
 ```sh
 python -m efospec telluric 2026-10-28 \
   --run runs/2026-10-28/nightly/20261110T170405Z-b97078/reduction/run.json \
-  --output runs/2026-10-28/QC/telluric-NEW \
+  --output runs/2026-10-28/efosc/QC/telluric-NEW \
   --config configs/telluric_efosc.par --apply-science \
   --review-extrapolation --attach-to-report
 ```
