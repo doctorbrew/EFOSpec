@@ -27,7 +27,7 @@ PESSTOFASTSPEC --version</code></pre><p>If the command or graphics display fails
 export iraf=/usr/local/lib/iraf/</code></pre>
 <p>Skip these if this terminal already has the PESSTO/PyRAF environment active. Repeat them after opening a new terminal or switching environments.</p></li>
 <li id="prepare-iraf"><strong>Prepare files — once per new reduction attempt.</strong>
-<pre><code>python /Users/avinash/Work/Reduction/EFOSpec/manuals_pessto/prepare_iraf.py 2024-11-14</code></pre>
+<pre><code>python /Users/avinash/Work/Reduction/EFOSpec/scripts/prepare_iraf.py 2024-11-14</code></pre>
 <p>This reads <code>EFOSpec/data/2024-11-14/EFOSC*.fits</code>, creates the next unused <code>EFOSpec/runs/2024-11-14/pessto/iraf-full-NN</code> directory, and copies the raw frames and list helper. It does not start reduction. Run the <code>cd</code> command it prints, then continue below. Use your observing date; the source files must be uncompressed.</p>
 <p><strong>Resuming an existing run?</strong> Skip preparation and list generation: <code>cd</code> into that run's directory and continue at the unfinished step. A new terminal alone does not require new copies or a new run. Start a fresh attempt when changing the input selection or repeating reduction while retaining earlier products.</p>
 <details><summary>Files downloaded somewhere else?</summary><p>Add <code>--source /absolute/path/to/raw/files</code> to the preparation command. Use <code>--runs /absolute/path/to/runs</code> to change the output parent. The helper copies files; it never edits or replaces originals.</p></details>

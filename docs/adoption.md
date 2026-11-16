@@ -1,6 +1,6 @@
 # EFOSpec and observer migration
 
-Current runtime: PypeIt 3.0.0; the original 1.14 environment and source snapshot are preserved. See [the 10 November migration and validation record](../../pypeit3-migration-2026-11-10.md). The acceptance results below describe the original installation.
+Current runtime: PypeIt 3.0.0; the original 1.14 environment and source snapshot are preserved. See [the 10 November migration and validation record](pypeit3-migration-2026-11-10.md). The acceptance results below describe the original installation.
 
 ## Scope and name
 
@@ -11,7 +11,7 @@ Current runtime: PypeIt 3.0.0; the original 1.14 environment and source snapshot
 - EFOSpec is the software name; ePESSTO remains the collaboration name.
 - The PySide6 desktop extraction app shares the EFOSpec name.
 - `efospec gui` launches the native Qt app; `efospec browser-prototype` retains the earlier editor.
-- The Fieldnotes webpage remains the read-only nightly log.
+- The nightly report remains the read-only nightly log.
 
 ## Dedicated runtime
 

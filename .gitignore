@@ -39,3 +39,10 @@ test
 Test_data_GR18
 Test_data_GR18_new
 Test_data_GR20
+
+# Private local guidance, source manuals and superseded planning.
+/AGENTS.md
+/docs/DEVELOPMENT_LOG.md
+/docs/brand/prompts.txt
+/docs/roadmap/
+/manuals_pessto/

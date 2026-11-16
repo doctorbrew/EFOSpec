@@ -2,7 +2,7 @@
 
 - **Install:** [compact README](README.md).
 - **Science:** [engine boundaries](docs/pipeline-stages.md).
-- **Design:** [migration plan](docs/roadmap/pypeit-migration/README.md).
+- **Design:** [pipeline design](docs/pipeline-stages.md).
 - **Desktop GUI:** [PySide6 controls and usage](docs/desktop.md).
 - **Browser editor:** [experimental prototype and recipe replay](docs/gui.md); not the desktop app.
 - **Webpage:** read-only nightly log, separate from extraction controls.

@@ -5,7 +5,7 @@
 The user selected **2024-11-14 EFOSC2**, not the similarly dated NOT dataset.
 The completed run is `runs/2024-11-14-pypeit-rapid`; the standard check is
 `runs/2024-11-14-pypeit-standards`. Both are local ignored artifacts. The
-reproduction commands are in [EFOSPEC.md](../../../EFOSPEC.md).
+reproduction commands are in [EFOSPEC.md](../EFOSPEC.md).
 
 All **13 science exposures** (nine Gr13, four Gr11) produced native PypeIt
 spec1d files, four-band flux FITS products and two-column ASCII spectra.
@@ -95,7 +95,7 @@ The logarithmic response convention is also described in the upstream
 
 This document records the initial audit. Subsequent implementation and native
 tests in the user's existing Conda environment are recorded in
-[Existing-environment integration](pypeit-integration.md); those results
+[Existing-environment integration](migration-integration.md); those results
 supersede the initial inventory-only status and proposed environment upgrade.
 
 ## Repository history
@@ -144,7 +144,7 @@ filenames; the installation TAR contains the same two raw files listed above.
 
 Full local paths and file SHA-256 values are in ignored
 `outputs/local-inventory.json`, regenerable using the command in
-[EFOSPEC.md](../../../EFOSPEC.md). The repository contains no copied
+[EFOSPEC.md](../EFOSPEC.md). The repository contains no copied
 raw science inputs.
 
 ## PypeIt evidence

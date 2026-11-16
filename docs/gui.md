@@ -1,7 +1,7 @@
 # Browser extraction prototype
 
 - **This is the existing experimental browser editor, not the requested desktop GUI.**
-- Desktop application requirements and tasks: [roadmap](roadmap/pypeit-migration/gui.md).
+- Desktop application guide: [desktop guide](desktop.md).
 - The separate Fieldnotes webpage remains a read-only log of each reduced night.
 - The prototype is retained for backend testing and recipe experiments; the [Qt desktop app](desktop.md) is the user-facing extraction interface.
 
@@ -69,4 +69,4 @@ efospec reextract runs/2024-11-14/efosc \
 - Shared sky fits can correlate errors; cross-source covariance is not stored.
 - Prototype spectra retain the existing archived calibration; native raw calibration is still unfinished.
 
-[Scientific validation](ci.md) · [Desktop GUI roadmap](roadmap/pypeit-migration/gui.md)
+[Scientific validation](ci.md) · [Desktop guide](desktop.md)

@@ -90,7 +90,7 @@ python -m efospec native-readiness /path/to/night /path/to/raw-calibrations
 - Test raw-to-delivery execution with the entire legacy calibration directory unavailable.
 - Compare the resulting products with IRAF only after native processing succeeds.
 
-Full implementation remains tracked in [T1–T5](roadmap/pypeit-migration/tasks.md).
+Current implementation and limitations are documented in [raw calibration](native-raw-run.md).
 
 ## Native calibration execution — 1 November 2026
 

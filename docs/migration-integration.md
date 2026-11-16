@@ -5,7 +5,7 @@ experimental rapid reduction of all 13 science exposures from 2024-11-14.
 `rapid.py` calls native PypeIt finding, sky subtraction and extraction, while
 `archive_calibration.py` explicitly converts the historical references. The
 new products, calibration checks, 47 passing tests and remaining limitations
-are recorded in [the run evidence](evidence.md#2024-11-14-rapid-reduction-demonstration).
+are recorded in [the run evidence](migration-evidence.md#2024-11-14-rapid-reduction-demonstration).
 The historical sections below describe the earlier metadata milestone, not
 the current absence of a runner.
 

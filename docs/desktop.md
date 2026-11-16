@@ -81,4 +81,4 @@ review controls, the CLI, revision history and HTML refresh.
 - Environment-backed macOS `.app` and Linux launchers: [installation](desktop-installation.md).
 - Historical browser prototype: `efospec browser-prototype runs/2024-11-14/efosc`.
 
-[Current acceptance results](validation-desktop-2026-11.md) · [Engine validation](native-desktop-validation.md) · [Roadmap](roadmap/pypeit-migration/gui.md)
+[Current acceptance results](validation-desktop-2026-11.md) · [Engine validation](native-desktop-validation.md) · [Desktop guide](desktop.md)

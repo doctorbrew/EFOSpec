@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT))
 import plot_style as style
 
 SOURCE = ROOT / 'runs/2026-10-29/nightly/20261110T171353Z-aa76fb/reduction/exposures/EFOSC.2026-10-30T03:07:16.495/native/tvma2_20261029_Gr13_Free_slit1.0_1_images.npz'
-OUT = ROOT / 'manuals_pessto/figures/FitManual_vma2_saved_traces'
+OUT = ROOT / 'docs/manual/figures/FitManual_vma2_saved_traces'
 source_hash = hashlib.sha256(SOURCE.read_bytes()).hexdigest()
 with np.load(SOURCE) as saved:
     traces = saved['found_traces'].copy()

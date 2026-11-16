@@ -8,5 +8,5 @@
 - Symbol: an optical slit beside three spectral ribbons, forming an **E**.
 - Original palette: forest green, muted coral, muted blue, and warm ivory.
 - Repository wordmark and desktop emblem use PNG alpha transparency; the original square icon concept remains opaque.
-- Generated with the imagegen tool; [saved prompts](prompts.txt).
+- Generated with the imagegen tool; original prompts are retained privately.
 - The native Qt app uses the transparent emblem; standalone installers remain planned.

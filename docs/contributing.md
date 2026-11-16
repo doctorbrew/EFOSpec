@@ -38,7 +38,7 @@ Module names in this table are under `src/efospec/` unless a path is shown.
 
 ## Change and verify
 
-- Read `AGENTS.md` and the relevant workflow/validation document before editing.
+- Read the relevant workflow and scientific-validation documents before editing.
 - Keep display-only work separate from extraction, calibration, masks and thresholds.
 - Preserve raw FITS, accepted products, saved recipes and previous processing revisions.
   Run one explicitly named observing date at a time.
@@ -46,7 +46,7 @@ Module names in this table are under `src/efospec/` unless a path is shown.
   300-dpi JPG exports, LaTeX, units and recorded input hashes.
 - Run focused behavior checks for substantive changes, inspect regenerated plots,
   and rebuild reports only for the requested dates.
-- Record significant maintenance changes in [the development log](DEVELOPMENT_LOG.md).
+- Describe significant changes and validation in commit messages and pull requests.
   Keep current instructions in their topic documents, not in duplicate histories.
 
 ## Keep the checkout clean

@@ -6,8 +6,8 @@ import sys
 
 
 def test_prepare_defaults_preserve_raw_and_efosc_outputs(tmp_path):
-    project=tmp_path/'EFOSpec';manual=project/'manuals_pessto';manual.mkdir(parents=True)
-    source=Path(__file__).resolve().parents[1]/'manuals_pessto'
+    project=tmp_path/'EFOSpec';manual=project/'scripts';manual.mkdir(parents=True)
+    source=Path(__file__).resolve().parents[1]/'scripts'
     for name in ('prepare_iraf.py','list_raw_frames.py'):
         shutil.copy2(source/name,manual/name)
     raw=project/'data/2024-11-14';raw.mkdir(parents=True)

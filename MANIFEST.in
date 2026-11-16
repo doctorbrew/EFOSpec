@@ -1,0 +1,12 @@
+include README.md EFOSPEC.md LICENCE.txt manual_pessto.html
+include environment.yml constraints.txt constraints-ci.txt plot_style.py
+recursive-include docs *.md *.html *.css *.json *.png *.jpg *.pdf *.svg *.csv
+recursive-include scripts *.py
+recursive-include configs *.par
+prune docs/roadmap
+prune data
+prune runs
+prune outputs
+prune manuals_pessto
+exclude AGENTS.md docs/DEVELOPMENT_LOG.md docs/brand/prompts.txt
+global-exclude __pycache__ *.py[cod] .DS_Store .env .env.*

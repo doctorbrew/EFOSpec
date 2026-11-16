@@ -16,9 +16,7 @@ This index routes readers to the existing owners of each topic.
 | Assess what is scientifically validated | [Validation](validation-2026-10.md), [PypeIt 3 migration](pypeit3-migration-2026-11-10.md) |
 | Work on the package and run checks | [Contributor guide](contributing.md), [CI](ci.md) |
 | Maintain legacy IRAF installation | [Legacy guide](legacy-installation.md) |
-| Read cleanup and maintenance history | [Development log](DEVELOPMENT_LOG.md) |
 
 The active package lives in `src/efospec/`. `trunk/` is an independent preserved
 legacy engine and a reference-data dependency, not a second active implementation.
-`AGENTS.md` contains repository rules for coding agents. Scientific limitations
-belong in their existing validation documents; this index does not redefine them.
+Scientific limitations belong in their existing validation documents; this index does not redefine them.

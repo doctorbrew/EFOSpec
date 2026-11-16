@@ -9,7 +9,7 @@
 
 EFOSC2 optical spectroscopy with a PySide6 desktop editor and a read-only nightly log.
 
-[Reduction Manual](manuals_pessto/index.html) — step-by-step IRAF fast, IRAF full and EFOSpec reductions.
+[Reduction Manual](manual_pessto.html) — step-by-step IRAF fast, IRAF full and EFOSpec reductions.
 
 - **Runtime:** Python 3.11, PypeIt 3.0.0; no IRAF/PyRAF process required.
 - **Scientific status:** experimental. New nightly revisions use raw bias/flat/arc calibrations and same-night standard responses.
@@ -32,7 +32,7 @@ conda activate efospec
 - Keep the checkout and environment: plotting code and calibration references live there.
 - Install LaTeX, `dvipng`, and `type1cm`/`cm-super` for scientific figures.
 - Keep the original `pessto/` checkout beside `EFOSpec/`.
-- [Existing-user migration](docs/roadmap/pypeit-migration/adoption.md) · [Installation details](EFOSPEC.md).
+- [Existing-user migration](docs/adoption.md) · [Installation details](EFOSPEC.md).
 
 ## Download and reduce one night
 
@@ -99,7 +99,7 @@ efospec install-desktop
 - Raw-only calibration is a separate validation effort; recent-night reductions remain partial.
 - Joint SN/companion recovery passes matched-profile tests; real host separation is **not validated**.
 - No telluric/slit-loss correction or ESO Phase 3 certification.
-- [Pipeline machinery, including IRAF](docs/figures/reduction-machinery.svg) · [Engine boundaries](docs/pipeline-stages.md) · [Roadmap](docs/roadmap/pypeit-migration/gui.md).
+- [Pipeline machinery, including IRAF](docs/figures/reduction-machinery.svg) · [Engine boundaries](docs/pipeline-stages.md) · [Desktop guide](docs/desktop.md).
 
 ## Repository guide
 
@@ -113,7 +113,7 @@ setup, checks and the boundary between display changes and scientific changes.
 | `scripts/` | Dated workflow entry points and explicit diagnostic tools |
 | `tests/` | Automated regression checks |
 | `docs/` | Workflow, calibration, GUI and validation documentation |
-| `manuals_pessto/` | Reduction Manual: IRAF fast, IRAF full and EFOSpec |
+| `manual_pessto.html` | Reduction Manual: IRAF fast, IRAF full and EFOSpec |
 | `trunk/` | Preserved legacy engine and bundled calibration references |
 | `trunk/legacy-tools/` | Historical IRAF/PyRAF installation helpers and notes |
 | `data/DATE/` | Local raw inputs and historical comparison products; ignored by Git |
