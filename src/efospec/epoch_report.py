@@ -612,15 +612,21 @@ class EpochPage:
         return current+historical
 
     def archive(self, revision):
-        paths = list((self.root/'archive').glob('*/run.json'))
-        paths += list((self.root/'archive/reductions').glob('*/run.json'))
-        paths += [p for p in (self.root/'nightly').glob('*/reduction/run.json') if p.parent.parent != revision]
+        roots=[self.root]
+        if self.root.name=='efosc':roots.append(self.root.parent)
+        paths=[]
+        for root in roots:
+            paths += list((root/'archive').glob('*/run.json'))
+            paths += list((root/'archive/reductions').glob('*/run.json'))
+            paths += [p for p in (root/'nightly').glob('*/reduction/run.json') if p.parent.parent != revision]
         rows = []
         for path in sorted(paths):
             run = self.read(path)
             if not any(k in run for k in ['results', 'errors', 'skipped']):
                 continue
-            rows.append([_text(path.parent.relative_to(self.root)), len(run.get('results', [])),
+            label=(str(path.parent.relative_to(self.root)) if path.is_relative_to(self.root)
+                   else 'Retained legacy layout: '+str(path.parent.relative_to(self.root.parent)))
+            rows.append([_text(label), len(run.get('results', [])),
                          len(run.get('errors', [])), len(run.get('skipped', []))])
         return _table(['Retained reduction', 'Spectra', 'Failed', 'Unsupported'], rows) if rows else '<p>No earlier reductions.</p>'
 
@@ -790,8 +796,9 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
     issues=page.problems(run,revision/'reduction')
     if manuals:
         issues='<p>Failures from the original nightly attempts are retained here. Later checked manual recoveries are listed separately in Spectra and the observing log.</p>'+issues
+    from .nightly_comparison import comparison_section as replay_comparison
     content = [page.observations(revision, run, rescue, redshifts, manuals), spectra, issues, qc,
-               background, calibration_content, page.archive(revision)+page.archive_folders_and_logs(revision)]
+               background, calibration_content, replay_comparison(page,revision)+page.archive(revision)+page.archive_folders_and_logs(revision)]
     if redshift_content:
         content.insert(4, redshift_content)
     from .iraf_report import comparison_section, write_comparison_page
