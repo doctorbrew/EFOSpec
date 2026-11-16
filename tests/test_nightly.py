@@ -260,6 +260,8 @@ def test_new_nights_default_to_daily_responses_and_policy_is_immutable(epoch,mon
     assert calls[0][0]=='reduce-daily'
     assert calls[0][calls[0].index('--night')+1]=='2026-10-28'
     assert '--reference-root' not in calls[0]
+    assert not any('telluric' in argument for call in calls for argument in call)
+    assert not (Path(state['output_dir'])/'reduction/telluric-selection.json').exists()
     with pytest.raises(ValueError,match='policy changed'):
         nightly.run_epoch('2026-10-28',project_root=root,stage='report',flux_calibration='archive')
 

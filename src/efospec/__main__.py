@@ -8,12 +8,14 @@ from .inventory import inventory
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="efospec", description="EFOSpec: EFOSC2 spectroscopy with PypeIt")
     commands = parser.add_subparsers(dest="command", required=True)
-    telluric = commands.add_parser('telluric', help='Fit one night of standards and independently check atmospheric transfer')
+    telluric_off = commands.add_parser('telluric-off', help='Restore original spectra in reports; retain telluric trials')
+    telluric_off.add_argument('run', help='Reduction directory containing run.json')
+    telluric = commands.add_parser('telluric', help='Opt-in experimental atmospheric fits; disabled in the nightly pipeline')
     telluric.add_argument('night')
     telluric.add_argument('--run', required=True)
     telluric.add_argument('--output', required=True)
     telluric.add_argument('--config', required=True)
-    telluric.add_argument('--apply-science', action='store_true')
+    telluric.add_argument('--apply-science', action='store_true', help='Explicitly generate corrected science copies (default: off)')
     telluric.add_argument('--review-extrapolation', action='store_true',
         help='Retain time/airmass transfer review products')
     telluric.add_argument('--attach-to-report', action='store_true', help='Render both reductions in the plots and nightly report')
@@ -188,6 +190,11 @@ def main(argv=None):
         command.add_argument("--arc", action="append", default=[], help="Explicit raw arc; repeatable")
     args = parser.parse_args(argv)
     try:
+        if args.command == 'telluric-off':
+            from .telluric_products import disable_for_report,render_selected
+            disable_for_report(args.run)
+            print(json.dumps(render_selected(args.run)))
+            return 0
         if args.command == 'telluric':
             from .telluric_night import execute
             return execute(args)

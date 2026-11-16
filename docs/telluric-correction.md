@@ -1,5 +1,28 @@
 # EFOSpec standard-star telluric correction
 
+**Default: off.** The nightly workflow does not fit or apply a telluric model.
+Keep this experimental step opt-in while its validation is developed. The code
+and `efospec telluric` command remain available; science copies require
+`--apply-science`, and report attachment separately requires `--attach-to-report`.
+
+To return an already attached report to its original spectra:
+
+```sh
+efospec telluric-off runs/2026-10-28/efosc/nightly/REV/reduction
+```
+
+This archives the previous presentation selection, preserves both versions and
+rebuilds the existing reports without refitting. Missing uncorrected plots are
+generated from the saved spectra using the existing scientific renderer.
+Explicit `select_for_report` can reattach the retained, hash-verified trial later.
+
+“Partial telluric correction: standard transfer checked; absolute flux remains
+unvalidated” is a qualification, not an extraction error. Only qualified atmospheric
+bands were corrected; separate-standard transfer tests passed for those bands.
+Those checks do not establish the absolute flux scale or correct slit losses.
+Switching telluric correction off leaves atmospheric absorption in the original
+spectrum and does not change the separate flux-calibration limitations.
+
 New processing outputs belong in `runs/DATE/efosc/`; IRAF attempts belong in
 `runs/DATE/pessto/`. Concrete historical paths below are retained evidence,
 not relocated products. See [current output layout](epoch-workflow.md#output-layout).

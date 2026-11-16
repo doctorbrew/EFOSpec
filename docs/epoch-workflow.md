@@ -25,6 +25,10 @@ python scripts/03_report_epoch.py 2026-10-28
 - `--project-root PATH` selects another project containing `data/` and `runs/`.
 - The engine and reference files always come from the code checkout.
 - Downloads remain explicit: `efospec download DATE --with-calibrations`.
+- Telluric correction is **off by default** and is not a nightly stage. Experimental
+  fits and corrected copies require the separate [telluric command](telluric-correction.md).
+  `efospec telluric-off RUN` returns an attached report to its original spectra,
+  preserving the correction trials for later development.
 
 ## Stages
 

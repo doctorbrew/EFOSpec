@@ -298,7 +298,7 @@ def apply_products(run,report,entries,atmosphere,output,protected,*,review_extra
 def add_arguments(p):
     p.add_argument('night');p.add_argument('--run',type=Path,required=True)
     p.add_argument('--output',type=Path,required=True);p.add_argument('--config',type=Path,required=True)
-    p.add_argument('--apply-science',action='store_true')
+    p.add_argument('--apply-science',action='store_true',help='Explicitly generate corrected science copies (default: off)')
     p.add_argument('--review-extrapolation',action='store_true',
         help='Also retain time/airmass transfer review products; never replace accepted data')
     p.add_argument('--attach-to-report',action='store_true',help='Render both reductions in the source run plots and nightly report')

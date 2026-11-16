@@ -70,6 +70,50 @@ def test_reselection_preserves_the_previous_pointer_and_both_spectra(paired_run)
     assert all(sha256(path)==value for path,value in protected.items())
 
 
+def test_disabled_report_restores_originals_and_can_reattach_retained_trials(paired_run):
+    from efospec.telluric_products import disable_for_report
+    from efospec.epoch_report import EpochPage
+    root,run,manifest=paired_run
+    assert selected_pairs(run)=={}  # Existing correction files do not opt in.
+    pointer=select_for_report(run,manifest);original=pointer.read_bytes();digest=sha256(pointer)
+    protected={p:sha256(p) for folder in (run/'products',manifest.parent)
+               for p in folder.rglob('*') if p.is_file()}
+    (root/'index.html').write_text('previous paired report')
+    page_digest=sha256(root/'index.html')
+    disable_for_report(run)
+    assert selected_pairs(run)=={}
+    assert (run/'telluric-selections'/f'{digest}.json').read_bytes()==original
+    assert (run/'telluric-selections'/f'{page_digest}.html').read_text()=='previous paired report'
+    html=EpochPage(root).spectra(run,json.loads((run/'run.json').read_text()))
+    assert 'After telluric' not in html and 'airmass outside tested range' not in html
+    assert 'transient.fits' in html
+    select_for_report(run,manifest)
+    assert 'transient.fits' in selected_pairs(run)
+    assert all(sha256(p)==value for p,value in protected.items())
+
+
+def test_telluric_cli_requires_explicit_science_opt_in(monkeypatch):
+    from efospec.__main__ import main
+    import efospec.telluric_night as night
+    seen=[]
+    monkeypatch.setattr(night,'execute',lambda args:seen.append(args) or 0)
+    arguments=['telluric','2026-10-28','--run','run.json','--output','fresh','--config','config.par']
+    assert main(arguments)==0
+    assert not seen[-1].apply_science and not seen[-1].attach_to_report and not seen[-1].review_extrapolation
+    assert main(arguments+['--apply-science'])==0
+    assert seen[-1].apply_science and not seen[-1].attach_to_report
+
+
+def test_telluric_off_cli_disables_selection_before_rendering(monkeypatch):
+    from efospec.__main__ import main
+    import efospec.telluric_products as products
+    calls=[]
+    monkeypatch.setattr(products,'disable_for_report',lambda run:calls.append(('disable',run)))
+    monkeypatch.setattr(products,'render_selected',lambda run,**kw:calls.append(('render',run,kw)) or {})
+    assert main(['telluric-off','saved/reduction'])==0
+    assert calls==[('disable','saved/reduction'),('render','saved/reduction',{})]
+
+
 @pytest.mark.parametrize('fault,message',[
     ('units','flux units differ'),('original','preserve the original'),
     ('mask','validity masks'),('status','validation status')])

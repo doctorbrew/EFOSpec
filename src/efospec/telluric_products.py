@@ -57,7 +57,30 @@ def selected_pairs(run):
     if not selection.exists():return {}
     pointer=json.loads(selection.read_text())
     if pointer.get('schema_version')!=1:raise ValueError('unsupported telluric presentation selection')
+    if pointer.get('enabled') is False:return {}
     return _pairs(run,pointer['manifest'],pointer['manifest_sha256'])
+
+
+def disable_for_report(run):
+    """Restore original spectra without deleting corrections or their selection."""
+    from .native_calibration import save_json
+    run=Path(run).resolve()
+    if not (run/'run.json').is_file():raise ValueError('expected a reduction directory containing run.json')
+    selection=run/'telluric-selection.json'
+    previous=None
+    if selection.exists():
+        previous=sha256(selection)
+        archive=run/'telluric-selections';archive.mkdir(exist_ok=True)
+        saved=archive/(previous+'.json')
+        if not saved.exists():saved.write_bytes(selection.read_bytes())
+        dated=saved_efosc_root(run)
+        for page in (run/'index.html',dated/'index.html',dated/'index-portable.html'):
+            if page.is_file():
+                saved=archive/(sha256(page)+'.html')
+                if not saved.exists():saved.write_bytes(page.read_bytes())
+    save_json(selection,dict(schema_version=1,enabled=False,previous_selection_sha256=previous,
+        reason='Telluric correction is opt-in; show original spectra. Retained trials are unchanged.'))
+    return selection
 
 
 def overlay_record(pair):
@@ -114,6 +137,22 @@ def render_selected(run, *, render_plots=True):
     run=Path(run).resolve();pairs=selected_pairs(run)
     source=json.loads((run/'run.json').read_text())
     dated=saved_efosc_root(run)
+    if not pairs and render_plots:
+        # Earlier paired-only rendering may never have written original figures.
+        # Generate only missing target figures; accepted scientific inputs stay fixed.
+        records=[json.loads(p.read_text()) for p in (run/'style-preview').glob('FitSpectrum_*.json')]
+        products=set()
+        for result in source['results']:
+            product=run/'products'/Path(result['product']).name
+            if not any(not r.get('telluric_pair') and r.get('input_sha256',{}).get(str(product))==sha256(product)
+                       for r in records):products.add(product.name)
+        script=Path(__file__).resolve().parents[2]/'scripts/preview_spectrum_style.py'
+        archive=run/'telluric-selections';archive.mkdir(exist_ok=True)
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w',prefix='original-plots-',suffix='.log',dir=archive,delete=False) as log:
+            for product in sorted(products):
+                subprocess.run([sys.executable,str(script),'--run',str(run),'--product',product,'--no-legacy'],
+                    stdout=log,stderr=subprocess.STDOUT,check=True)
     if pairs:
         folder=Path(next(iter(pairs.values()))['manifest']).parent
         archive=folder/'previous-report';archive.mkdir(exist_ok=True)

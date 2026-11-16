@@ -439,6 +439,7 @@ def main():
     parser.add_argument("--run", type=Path, required=True,
                         help="Saved reduction directory inside runs/DATE/efosc/")
     parser.add_argument("--target", help="Optional target; default: all exposures")
+    parser.add_argument('--product',help='Optional exact product filename within the run')
     parser.add_argument('--profiles-only',action='store_true',help='Refresh only saved spatial-profile plots')
     parser.add_argument('--plot-directory',type=Path,help='Existing plot directory to refresh with --profiles-only')
     parser.add_argument('--telluric-only',action='store_true',help='Render selected before/after pairs into their new telluric revision')
@@ -452,6 +453,7 @@ def main():
     manifest = json.loads((run / "run.json").read_text())
     pairs=selected_pairs(run)
     matches = [r for r in manifest["results"] if (not args.target or r["object"] == args.target)
+               and (not args.product or Path(r['product']).name == args.product)
                and (not args.telluric_only or Path(r['product']).name in pairs)]
     if not matches:
         parser.error("no matching reduced exposures")
