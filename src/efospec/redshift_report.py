@@ -64,7 +64,8 @@ def redshift_cells(record, *, standard=False, previous_revision=False):
         value=f'{z:.4f}'+(f' ± {z_error:.4f}' if z_error is not None and math.isfinite(z_error) else '')
         text=f'{value} ({detail})'
     else:
-        text={'no_reliable_line_system':'Insufficient matching lines','insufficient_data':'Insufficient data',
+        text={'no_host_lines':'No Host Lines Found',
+              'no_reliable_line_system':'Insufficient matching lines','insufficient_data':'Insufficient data',
               'spatially_inconsistent':'Spatial check failed','ambiguous':'Ambiguous line system'}.get(spectral['status'],'No estimate')
     anchor='redshift-'+Path(record['raw']).stem
     return [escape(ned_text),f'<a href="#{escape(anchor)}">{escape(text)} ↓</a>']

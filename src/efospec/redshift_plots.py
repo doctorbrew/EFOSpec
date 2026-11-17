@@ -45,14 +45,15 @@ def plot_redshift(record, extracted, directory):
     ax.set_xlim(wave.min(),wave.max());ax.set_ylabel('Counts (electrons)')
     ax.set_xlabel(r'Observed vacuum wavelength ($\mathrm{\AA}$)')
     z=spectral.get('z_heliocentric');z_error=spectral.get('z_heliocentric_error')
-    detail=spectral['status'].replace('_',' ')
+    detail={'no_host_lines':'No Host Lines Found',
+            'no_reliable_line_system':'Insufficient matching lines',
+            'insufficient_data':'Insufficient data',
+            'spatially_inconsistent':'Spatial check failed',
+            'ambiguous':'Ambiguous line system'}.get(spectral['status'],spectral['status'].replace('_',' '))
     if z is not None:
         detail=(f'Candidate heliocentric z = {z:.5f}'
                 +(rf' $\pm$ {z_error:.5f}' if z_error is not None else ''))
-    quality='sky wavelength check passed' if spectral['wavelength_validated'] else 'PROVISIONAL: wavelength unvalidated'
-    if spectral['wavelength_validated'] and spectral.get('wavelength_warnings'):
-        quality='wavelength accepted with localized warning; see saved QC'
-    ax.set_title(record['object']+' / '+detail+'\n'+quality)
+    ax.set_title(record['object']+' / '+detail)
     x=extracted['spatial_pixel'];trace=extracted['trace']+x[0]
     for i,group in enumerate(groups):
         ax=fig.add_subplot(grid[1,i]);w=np.array(group['wave']);f=np.array(group['counts']);e=np.array(group['sigma'])

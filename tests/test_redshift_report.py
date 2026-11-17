@@ -42,6 +42,14 @@ def test_provisional_spectral_and_photometric_catalogue_statuses_are_separate():
     assert redshift_cells(None,standard=True)==['—','—']
 
 
+def test_host_nondetection_label_does_not_hide_unidentified_lines():
+    row=dict(raw='science.fits',ned=dict(candidate=None,status='ok'))
+    cell=redshift_cells(dict(row,spectral=dict(status='no_host_lines')))[1]
+    assert 'No Host Lines Found' in cell
+    cell=redshift_cells(dict(row,spectral=dict(status='no_reliable_line_system')))[1]
+    assert 'Insufficient matching lines' in cell and 'No Host Lines Found' not in cell
+
+
 def test_redshifts_from_previous_reduction_are_not_labelled_never_measured(tmp_path):
     from efospec.epoch_report import EpochPage
     from efospec.redshift_report import load_redshifts

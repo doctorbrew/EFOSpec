@@ -46,6 +46,22 @@ def test_a_masked_line_core_cannot_validate_a_redshift():
     assert not hbeta['detected'] and hbeta['core_coverage']<.75
 
 
+@pytest.mark.parametrize('amplitude,expected',[(0.,'no_host_lines'),(.7,'no_host_lines'),
+                                             (1.6,'no_reliable_line_system'),(20.,'no_reliable_line_system')])
+def test_three_sigma_nondetection_is_distinct_from_single_unidentified_line(amplitude,expected):
+    wave=np.arange(3650.,9500.,4.)
+    flux=30.+amplitude*np.exp(-.5*((wave-5100.)/(35./2.355))**2)
+    result=measure_redshift(wave,flux,np.ones_like(wave),fwhm=35.)
+    assert result['status']==expected and result['z'] is None
+    assert (result['line_detection']['maximum_template_snr']<3.)==(expected=='no_host_lines')
+
+
+def test_missing_spectral_support_is_not_a_host_nondetection():
+    wave=np.arange(4000.,4200.,4.)
+    result=measure_redshift(wave,np.zeros_like(wave),np.ones_like(wave),fwhm=35.)
+    assert result['status']=='insufficient_data'
+
+
 def spatial_example(localized):
     w=np.arange(4000.,7500.,4.);x=np.arange(200)
     line=emission(w,.024,18,('Hbeta','OIII','Halpha_NII'))

@@ -148,7 +148,7 @@ NED cross-match into a fresh QC revision:
 
 ```sh
 python scripts/measure_host_redshifts.py 2026-10-28 \
-  --output runs/2026-10-28/efosc/QC/host-redshifts-NEW --update-report
+  --output runs/2026-10-28/efosc/nightly/REVISION/QC/redshifts-NEW --update-report
 ```
 
 The current accepted and rescue products are selected and hash-checked. The
@@ -159,6 +159,11 @@ this emission-line workflow does not cover absorption-only hosts. Measurements,
 plots and input hashes remain in the revision; `QC/redshift-current.json` selects
 the current results. An incompatible parent revision prevents activation.
 See [the delivered method and validation record](rescue-2026-11-09.md).
+
+- Measures every selected science exposure once, including adopted manual recoveries; saves line fits, spatial checks and PDF/JPG evidence in the main nightly report.
+- “No Host Lines Found” means the maximum unmasked, continuum-subtracted template S/N is below 3. Insufficient coverage, unidentified lines and ambiguous systems retain separate statuses.
+- Candidate redshifts still require at least three consistent line groups at S/N ≥5 and spatial validation. Formal errors exclude calibration, background and resampling systematics; a line system does not confirm a host association.
+- Plot titles omit wavelength-status subtitles; the saved measurement records retain wavelength checks and warnings. Original spectra are unchanged.
 
 ## Portable nightly log
 

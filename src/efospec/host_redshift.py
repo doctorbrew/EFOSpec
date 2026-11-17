@@ -129,6 +129,11 @@ def measure_redshift(wave,flux,error,*,fwhm,zmin=-.003,zmax=1.):
     # Fixed terrestrial features cannot serve as galaxy evidence.
     for lo,hi in [(5560,5600),(6280,6330),(6345,6385),(6850,6960),(7580,7720)]:
         significance[(wave>lo)&(wave<hi)]=0
+    # A nondetection is distinct from lines that cannot establish a redshift.
+    # Reuse the search statistic; do not lower the multi-line acceptance gates.
+    detection=dict(threshold_sigma=3.,maximum_template_snr=float(max(0.,np.max(significance))),
+        statistic='continuum-subtracted Gaussian-filtered counts/error with diagonal-noise normalization; not a global false-alarm probability',
+        scope='unmasked wavelength coverage near the selected trace; host association not established')
     peaks,_=find_peaks(significance,height=5,prominence=3,distance=max(2,int(fwhm/step)))
     peaks=sorted(peaks,key=lambda p:significance[p],reverse=True)[:40]
     hypotheses=[]
@@ -172,10 +177,12 @@ def measure_redshift(wave,flux,error,*,fwhm,zmin=-.003,zmax=1.):
     unique=[]
     for s in solutions:
         if all(abs(s['z']-v['z'])>.0015 for v in unique):unique.append(s)
-    if not unique:return dict(status='no_reliable_line_system',z=None,solutions=[])
+    if not unique:
+        status='no_host_lines' if detection['maximum_template_snr']<3. else 'no_reliable_line_system'
+        return dict(status=status,z=None,solutions=[],line_detection=detection)
     ambiguous=len(unique)>1 and unique[1]['score']>=.7*unique[0]['score']
     return dict(status='ambiguous' if ambiguous else 'candidate',z=None if ambiguous else unique[0]['z'],
-        solutions=unique[:3],search_range=[zmin,zmax],line_reference=LINE_SOURCE,
+        solutions=unique[:3],line_detection=detection,search_range=[zmin,zmax],line_reference=LINE_SOURCE,
         error_scope='fit covariance with unresolved-blend centroid floors; wavelength calibration, background, resampling covariance and line identification systematics are not included')
 
 
