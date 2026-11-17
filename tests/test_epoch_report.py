@@ -446,3 +446,13 @@ def test_manual_recovery_does_not_collapse_unresolved_issues(epoch_page,monkeypa
     issues=html.split('id="issues"')[1].split('</section>')[0]
     assert ('<summary>Original nightly failures and diagnostic evidence</summary>' in issues) is (not remaining)
     if remaining:assert 'Still unresolved' in issues
+
+
+def test_summary_counts_manual_recovery_once_and_separates_standards():
+    from efospec.epoch_report import reduction_summary
+    science=dict(raw='science',role='science')
+    standard=dict(raw='standard',role='standard_candidate')
+    run=dict(results=[standard],errors=[dict(path='science')],review_counts=[science,dict(standard,raw='review-standard')])
+    text=reduction_summary(run,[('manual',dict(results=[science]))],dict(results=[science]))
+    assert text=='1 science spectra (1 manually recovered) · 1 standard spectra · 1 standards need review'
+    assert 'failed' not in text and 'provisional' not in text

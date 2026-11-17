@@ -71,13 +71,14 @@ def redshift_cells(record, *, standard=False, previous_revision=False):
     return [escape(ned_text),f'<a href="#{escape(anchor)}">{escape(text)} ↓</a>']
 
 
-def redshift_section(page, records):
+def redshift_section(page, records, *, include_intro=True):
     if not records:return ''
     # The enclosing section already carries the heading.
     content='<p>NED and spectral estimates are independent. '
     content+='NED identifies the nearest catalogue galaxy within 30 arcsec of the telescope pointing; the host association is unconfirmed. '
     content+='The spectral search uses near-trace 2D emission, requires at least three matching line groups and checks spatial consistency. '
     content+='Both redshifts use the heliocentric frame. Provisional wavelengths have an unknown systematic error; no line system means no reliable estimate, not a redshift of zero.</p>'
+    if not include_intro:content=''
     from .naming import source_order
     for record in sorted(records.values(),key=source_order):
         spectral=record['spectral'];cells=redshift_cells(record)

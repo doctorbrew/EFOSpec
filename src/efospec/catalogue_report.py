@@ -5,6 +5,37 @@ from .inventory import sha256
 from .naming import source_order
 
 
+def nearest_catalogue_redshift(query, field):
+    """Nearest catalogue galaxy within 30 arcsec; never borrow a farther z."""
+    from astropy.coordinates import SkyCoord
+    from astropy import units as u
+    from .field_catalogues import redshift_label
+    position=field.get('target_position',{}).get('icrs_deg')
+    if not position or query['status']=='unavailable':return '—'
+    target=SkyCoord(*position,unit='deg');matches=[]
+    for row in query['rows']:
+        if not row.get('galaxy_candidate'):continue
+        distance=float(target.separation(SkyCoord(row['ra']*u.deg,row['dec']*u.deg)).arcsec)
+        if distance<=30:matches.append((distance,row))
+    if not matches:return 'No galaxy within 30 arcsec'
+    distance,row=min(matches,key=lambda item:item[0])
+    return f"{redshift_label(row)}; {row['name']} ({distance:.1f} arcsec)"
+
+
+def field_redshifts(page, field):
+    raws={Path(r['path']).name for r in field['science_raws']}
+    return {k:v for k,v in getattr(page,'redshift_records',{}).items()
+            if Path(v['raw']).name in raws and v['object']==field['object']}
+
+
+def host_line_evidence(page, records):
+    from .redshift_report import redshift_section
+    used=getattr(page,'embedded_redshift_raws',set())
+    selected={k:v for k,v in records.items() if k not in used}
+    page.embedded_redshift_raws=used|set(selected)
+    return redshift_section(page,selected,include_intro=False)
+
+
 def catalogue_qc(page, run):
     from .epoch_report import _text, _table
     from .field_catalogues import galaxy_labels, redshift_label
@@ -25,9 +56,22 @@ def catalogue_qc(page, run):
         fields.append(field)
     sections = []
     for field in sorted(fields, key=lambda f:(source_order(f),f['raw'])):
+        measurements=field_redshifts(page,field)
         content = '<h3>'+_text(field['object']+' / Potential host galaxies')+'</h3><p class="caption">'+_text(Path(field['raw']).name)+'</p>'
+        status=[]
+        for query in field.get('queries',[]):
+            label=_text(query['status'].replace('_',' '))
+            if query['status'] in ('unavailable','truncated'):label='<span class="qc-status-bad">'+label+'</span>'
+            status.append([_text(query['catalogue']),label,'—' if query['status']=='unavailable' else len(query['rows']),_text(nearest_catalogue_redshift(query,field))])
+        from .redshift_report import redshift_cells
+        for record in measurements.values():
+            spectral=record['spectral'];groups=spectral['solutions'][0]['number_of_groups'] if spectral.get('solutions') else 0
+            status.append(['2D spectrum · Host lines',_text(spectral['status'].replace('_',' ')),
+                           f'{groups} matching groups',redshift_cells(record)[1]])
+        content += _table(['Source','Query status','Sources in search cone','Best-match redshift'],status)
+        content += '<p class="caption">Catalogue match: nearest galaxy within 30 arcsec of the registered target. 2D emission is measured independently; host association is unconfirmed.</p>'
         if field['status'] == 'failed':
-            log = page.root/current['fields'][field['raw']]['path']
+            log = Path(field.get('display_parent_record',{}).get('path',page.root/current['fields'][field['raw']]['path']))
             download = page.download(log.parent/'astrometry/solve.log', 'Astrometry log')
             from .acquisition_target import target_position
             target = target_position(field['raw'], field['object'])
@@ -38,7 +82,7 @@ def catalogue_qc(page, run):
                           'This retained catalogue attempt has no galaxy overlay.</p>')
             else:
                 status = '<p class="qc-status-bad">'+_text(field['error'])+'</p>'
-            sections.append((source_order(field), '<article class="exposure">'+content+status+'<p>'+download+'</p>'+acquisition_metadata(page,field['object'],show_candidates=True)+'</article>'))
+            sections.append((source_order(field), '<article class="exposure">'+content+status+'<p>'+download+'</p>'+acquisition_metadata(page,field['object'],show_candidates=True)+host_line_evidence(page,measurements)+'</article>'))
             continue
         for name, digest in field['figures_sha256'].items():
             p=Path(name);p.resolve().relative_to(page.root)
@@ -49,12 +93,6 @@ def catalogue_qc(page, run):
         if sha256(Path(a['wcs']))!=a['wcs_sha256']:raise ValueError('catalogue WCS changed')
         content += '<p>Local astrometry: '+str(a['matched_stars'])+f' matched stars; RMS {a["rms_pixel"]:.2f} pixels. '
         content += 'Catalogue positions and nearby counterparts are provisional; no host or spectral-trace identity is assigned.</p>'
-        status=[]
-        for query in field['queries']:
-            label=_text(query['status'].replace('_',' '))
-            if query['status'] in ('unavailable','truncated'):label='<span class="qc-status-bad">'+label+'</span>'
-            status.append([_text(query['catalogue']),label,'—' if query['status']=='unavailable' else len(query['rows'])])
-        content += _table(['Catalogue','Query status','Sources in search cone'],status)
         content += '<div class="qc-plots">'+page.figure(image,field['object']+' / Potential host galaxies',full_width=True)+'</div>'
         content += acquisition_metadata(page,field['object'])
         rows=[]
@@ -71,6 +109,7 @@ def catalogue_qc(page, run):
         content += _table(['Marker','Catalogue','Galaxy candidate','ICRS RA, Dec (deg)','z (NED)','z (Host Emission)','Positional neighbours'],rows) if rows else '<p>No catalogue-classified galaxies returned inside this image by the available queries.</p>'
         links=[page.download(Path(p),Path(p).suffix[1:].upper()+' overlay') for p in field['figures_sha256']]
         content += '<p>'+' · '.join(links)+'</p>'
+        content += host_line_evidence(page,measurements)
         sections.append((source_order(field), '<article class="exposure">'+content+'</article>'))
     # Keep associations without a catalogue image in this same report section.
     for obj in dict.fromkeys(r['object_id'] for r in getattr(page,'typing_annotations',{}).values()):

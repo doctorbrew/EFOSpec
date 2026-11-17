@@ -98,3 +98,16 @@ def test_redshift_selection_rejects_ambiguous_inputs(tmp_path,failure):
     manuals=folders if failure=='priority' else folders[1:]
     with pytest.raises(ValueError,match={'hash':'conflicting raw hashes','priority':'ambiguous science','filename':'output collision'}[failure]):
         selected_science([(folders[0],dict(results=[row])),(folders[1],dict(results=[other]))],manuals)
+
+
+def test_catalogue_summary_uses_nearest_galaxy_without_borrowing_redshift():
+    from efospec.catalogue_report import nearest_catalogue_redshift,field_redshifts
+    from types import SimpleNamespace
+    query=dict(status='ok',rows=[dict(name='near',ra=10.,dec=20.,galaxy_candidate=True,metadata=dict(z=None,zflag='')),
+        dict(name='far',ra=10.001,dec=20.,galaxy_candidate=True,metadata=dict(z=.2,zflag='S'))])
+    field=dict(object='SN',target_position=dict(icrs_deg=[10.,20.]),science_raws=[dict(path='/data/science.fits')])
+    label=nearest_catalogue_redshift(query,field)
+    assert 'near' in label and 'no catalogued redshift' in label and '0.2' not in label
+    page=SimpleNamespace(redshift_records={'yes':dict(object='SN',raw='/data/science.fits'),
+        'wrong':dict(object='SN',raw='/data/other.fits')})
+    assert list(field_redshifts(page,field))==['yes']

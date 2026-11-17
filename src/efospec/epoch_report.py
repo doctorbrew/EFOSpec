@@ -344,6 +344,12 @@ class EpochPage:
                                   ('profiles', 'Spatial Profile and Trace Identification'),
                                   ('acquisition-1', 'Acquisition 1'), ('acquisition-2', 'Acquisition 2')]:
                 matches = sorted(folder.glob(f'FitQC_*_{suffix}.jpg'))
+                display=self.read(self.root/'QC/acquisition-display-current.json') if suffix.startswith('acquisition-') else {}
+                replacement=display.get('figures',{}).get(raw,{}).get(suffix)
+                if replacement and display.get('parent_manifest_sha256')==sha256(revision/'reduction/run.json'):
+                    image=Path(replacement['path']);image.resolve().relative_to(self.root.resolve())
+                    if sha256(image)!=replacement['sha256']:raise ValueError('Acquisition display changed')
+                    matches=[image]
                 if matches:
                     ratio = 5/3 if suffix in ('science','traces') else None
                     cards.append(self.figure(matches[0], title+' / '+label,
@@ -677,6 +683,40 @@ EPOCH_CSS = """
     """
 
 
+def reduction_summary(run, manuals=(), rescue=None):
+    """Count current exposure products, without recounting superseded attempts."""
+    products={r.get('raw',str(i)):r for i,r in enumerate(run.get('results',[]))}
+    recovered=set()
+    for _,manual in manuals:
+        for row in manual.get('results',[]):
+            products[row['raw']]=row;recovered.add(row['raw'])
+    provisional=set()
+    for row in (rescue or {}).get('results',[]):
+        if row['raw'] not in products:
+            products[row['raw']]=row;provisional.add(row['raw'])
+    science=sum(r.get('role')=='science' for r in products.values())
+    standards=sum(r.get('role')=='standard_candidate' for r in products.values())
+    parts=[]
+    if science:
+        label=f'{science} science spectra'
+        count=sum(products[k].get('role')=='science' for k in recovered)
+        if count:label+=f' ({count} manually recovered)'
+        parts.append(label)
+    if standards:parts.append(f'{standards} standard spectra')
+    if not parts:parts.append(f'{len(products)} spectra')
+    counts={r['raw']:r for source in [run]+[m for _,m in manuals]
+            for r in source.get('review_counts',[]) if r['raw'] not in products}
+    standard_review=sum(r.get('role')=='standard_candidate' for r in counts.values())
+    if standard_review:parts.append(f'{standard_review} standards need review')
+    other_review=len(counts)-standard_review
+    if other_review:parts.append(f'{other_review} count spectra need review')
+    failed={e.get('path') for e in run.get('errors',[]) if e.get('path') not in products and e.get('path') not in counts}
+    if failed:parts.append(f'{len(failed)} failed exposures')
+    if provisional:parts.append(f'{len(provisional)} provisional spectra')
+    if run.get('skipped'):parts.append(f"{len(run['skipped'])} unsupported exposures")
+    return ' · '.join(parts)
+
+
 def build_epoch_page(night, project_root='.', *, revision_dir=None):
     """Rebuild presentation only; saved science products and recipes stay unchanged."""
     if date.fromisoformat(night).isoformat() != night:
@@ -752,14 +792,12 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
             background+=_table(['Target','Left gap (pixels)','Right gap (pixels)','Minimum retained pixels per side'],geometry)
             background+='<p>'+page.download(rescue_path/'verification.json','Provisional product and background audit')+'</p>'
             background+='<h3>Other retained background diagnostics</h3>'+retained_background
-    # Redshift evidence is its own tab: it has its own inputs, figures and
-    # provenance, and reads as a separate measurement from source QC.
-    redshift_content=redshift_section(page,redshifts)
+    # Catalogue cards contain their exposure-bound line evidence.
+    remaining={k:v for k,v in redshifts.items() if k not in getattr(page,'embedded_redshift_raws',set())}
+    qc+=redshift_section(page,remaining,include_intro=False)
     titles = [('observations', 'Observing log'), ('spectra', 'Spectra'), ('issues', 'Issues'),
-              ('qc', 'Source QC'), ('background', 'Background'), ('calibrations', 'Calibrations'),
+              ('qc', 'Potential Host and Redshift'), ('background', 'Background'), ('calibrations', 'Calibrations'),
               ('archive', 'Reduction Archive')]
-    if redshift_content:
-        titles.insert(4, ('redshifts', 'Redshift evidence'))
     calibration_content=page.calibrations(revision)
     native=revision/'native-validation'
     if (native/'validation.json').exists():
@@ -798,8 +836,6 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
         issues='<p>Checked manual recoveries and any remaining wavelength warnings are listed in Spectra and the observing log.</p>'+issues
     content = [page.observations(revision, run, rescue, redshifts, manuals), spectra, issues, qc,
                background, calibration_content, page.archive(revision)+page.archive_folders_and_logs(revision)]
-    if redshift_content:
-        content.insert(4, redshift_content)
     from .iraf_report import comparison_section, write_comparison_page
     iraf_page=EpochPage(root if revision_dir is None else revision)
     iraf_content=comparison_section(iraf_page,revision)
@@ -811,12 +847,7 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
         content.insert(2,iraf_content)
     sections = ''.join(f'<section class="target" id="{anchor}"><h2>{title}</h2>{body}</section>'
                        for (anchor, title), body in zip(titles, content))
-    stats = ' · '.join(f'{len(run.get(k, []))} {label}' for k, label in [('results','spectra'), ('errors','failed'), ('skipped','unsupported')])
-    if run.get('review_counts'):stats+=' · '+str(len(run['review_counts']))+' review counts'
-    manual_count_total=sum(len(r.get('review_counts',[])) for _,r in manuals)
-    if manual_count_total:stats+=' · '+str(manual_count_total)+' new manual review counts'
-    if manuals:stats+=' · '+str(sum(len(r['results']) for _,r in manuals))+' checked manual recovery spectra'
-    if rescue:stats+=' · '+str(len(rescue['results']))+' provisional flux spectra'
+    stats = reduction_summary(run, manuals, rescue)
     warning = '<p class="note">'+_text('; '.join(page.warnings))+'</p>' if page.warnings else ''
     scope = ('<p class="caption">Selected targets: '+_text(', '.join(state['targets']))
              +'. Other exposures are listed for context; earlier results remain in Reduction Archive.</p>') if state.get('targets') else ''

@@ -168,10 +168,8 @@ See [the delivered method and validation record](rescue-2026-11-09.md).
 ## Portable nightly log
 
 - The date's `index.html` contains observations, spectra, issues, source QC,
-  redshift evidence, background QC, calibrations and archive summaries.
-- **Redshift evidence** is its own tab when measurements are current: it has its
-  own inputs, figures and provenance and reads as a separate measurement from
-  source QC. Spectral redshifts are quoted as `z ± error`, where the error is
+  host/redshift evidence, background QC, calibrations and archive summaries.
+- **Potential Host and Redshift** combines source QC, acquisition catalogue evidence and the exposure-matched 2D host-line plots. Catalogue summaries include a best-match redshift column and an independent 2D host-line row. Galaxy labels and markers use `xkcd:red`; SN labels and markers use `xkcd:dodger blue`. Spectral redshifts are quoted as `z ± error`, where the error is
   the larger of the inverse-variance fit error and the standard error of the
   group-to-group scatter over every consistent narrow emission-line group. It
   excludes wavelength, background and resampling systematics.
