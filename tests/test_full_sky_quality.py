@@ -48,3 +48,38 @@ def test_wavelength_acceptance_rechecks_evidence_and_corrected_residuals():
     assert wavelength_accepted(r)
     after['ranges'][-1]['approximate_shift_angstrom']=2
     assert not wavelength_accepted(r)
+
+
+def localized_records():
+    before=record();after=record()
+    for stage,shifts,lag in ((before,[-4.2,-4.8,-5.8,-.35],-.75),(after,[-.2,-.7,-1.1,4.],-.2)):
+        for i,(row,shift) in enumerate(zip(stage['ranges'],shifts)):
+            row.update(approximate_shift_angstrom=shift,dispersion_angstrom_per_pixel=5.7,
+                       range_vacuum_angstrom=[5200,9000] if i==0 else [5200+900*(i-1),6100+900*(i-1)])
+            row['quality']['peak_lag_pixels']=lag
+    return before,after
+
+
+def test_localized_disagreement_warns_only_with_corroborating_corrected_sky():
+    from efospec.sky_comparison import validation_warnings
+    before,after=localized_records()
+    warnings=validation_warnings(before,after)
+    assert len(warnings)==1 and warnings[0]['region_index']==3
+    saved=dict(validation_passed=True,validation_policy='full-spectrum',quality_policy='full-sky-v2',
+               shift_angstrom=-4.2,full_sky=before,corrected_full_sky=after)
+    assert wavelength_accepted(saved)
+    saved['quality_policy']='full-sky-v1'
+    assert not wavelength_accepted(saved)  # Historical policy is not reinterpreted.
+
+
+@pytest.mark.parametrize('defect',['two_regions','normalized_residual','weak_red','normalized_distortion','no_dispersion','different_region'])
+def test_localized_warning_does_not_hide_bad_wavelength_evidence(defect):
+    from efospec.sky_comparison import validation_warnings
+    before,after=localized_records()
+    if defect=='two_regions':after['ranges'][2]['approximate_shift_angstrom']=4.
+    if defect=='normalized_residual':after['ranges'][3]['quality']['peak_lag_pixels']=.5
+    if defect=='weak_red':before['ranges'][3]['quality']['peak_correlation']=.2
+    if defect=='normalized_distortion':before['ranges'][3]['quality']['peak_lag_pixels']=.5
+    if defect=='no_dispersion':del before['ranges'][3]['dispersion_angstrom_per_pixel']
+    if defect=='different_region':after['ranges'][2]['approximate_shift_angstrom']=4.;after['ranges'][3]['approximate_shift_angstrom']=0.
+    assert validation_warnings(before,after) is None

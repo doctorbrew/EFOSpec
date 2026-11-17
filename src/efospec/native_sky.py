@@ -33,8 +33,12 @@ def exposure_flexure(data, waveair, *, required, **options):
 def wavelength_accepted(record):
     """Recheck the evidence for the explicitly recorded wavelength policy."""
     if record.get('validation_policy')=='full-spectrum':
-        from .sky_comparison import quality_passed
+        from .sky_comparison import quality_passed,validation_warnings
         before=record.get('full_sky',{});after=record.get('corrected_full_sky',{})
+        if record.get('quality_policy')=='full-sky-v2':
+            return bool(record.get('validation_passed') is True
+                and validation_warnings(before,after) is not None
+                and np.isclose(record.get('shift_angstrom',np.nan),before['ranges'][0]['approximate_shift_angstrom'],atol=1e-8,rtol=0))
         return bool(record.get('validation_passed') is True and record.get('quality_policy')=='full-sky-v1' and quality_passed(before) and quality_passed(after)
             and np.isclose(record.get('shift_angstrom',np.nan),before['ranges'][0]['approximate_shift_angstrom'],atol=1e-8,rtol=0)
             and max(abs(r['approximate_shift_angstrom']) for r in after['ranges'])<=1.5)

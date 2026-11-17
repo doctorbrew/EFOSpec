@@ -51,11 +51,25 @@ The summary names weak/ambiguous peaks, coverage, fit-shape, estimator mismatch,
 regional spread and corrected-residual failures. A single discrepant region
 with a sound full-range measurement and two consistent remaining regions is
 labelled a **localized warning candidate**. This is a review aid, not automatic
-wavelength acceptance. Existing `full-sky-v1`, background and telluric gates remain
-unchanged; diagnostic alternatives do not certify a better wavelength solution.
+wavelength acceptance. Historical `full-sky-v1` records retain their strict gates;
+new `full-sky-v2` acceptance is described below. Background and telluric gates
+remain unchanged; diagnostic alternatives alone do not certify a better solution.
 
 SN2026abgb motivated this workflow. Its saved shifts reproduce exactly. The red
 estimate changes from -0.061 to -0.613 pixel when the initial observed-sky clip
 alone is disabled; changing peak width or trimming edges does not resolve it.
 The same change affects other regions, so it is not a global clipping fix.
 The delivered provisional flux spectrum remains unchanged.
+
+## Localized warning acceptance (full-sky-v2)
+
+New full-spectrum replays retain every v1 per-region coverage/peak-quality gate.
+One regional PypeIt estimate may disagree only if the full-range and the other
+two regions are consistent within 3 Å, all four normalized correlations agree
+within 3 Å, and after the full-range correction all normalized residuals plus
+full-range/two retained PypeIt residuals are within 1.5 Å. The same excluded
+region is used before and after correction. Multiple discrepancies, weak peaks,
+missing dispersion or failed corrected residuals remain failures. No clipping
+algorithm is changed. These are cross-estimator checks on the same data, not
+independent observations or an absolute wavelength accuracy certification.
+The saved result carries a localized warning; v1 records retain v1 semantics.

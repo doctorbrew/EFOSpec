@@ -37,6 +37,7 @@ def compare(data, waveair, good, *, ranges=((5200.,9000.),(5200.,6800.),(6800.,7
             if result is None:raise ValueError('No measurable sky correlation')
             shift=float(result['shift'])
             record.update(status='measured',shift_pixels=shift,quality=correlation_quality(result),
+                dispersion_angstrom_per_pixel=float(np.median(np.diff(vacuum[use]))),
                 approximate_shift_angstrom=shift*float(np.median(np.diff(vacuum[use]))))
             arrays[f'correlation_{index}']=np.asarray(result['corr'])
             arrays[f'lags_{index}']=np.asarray(result['subpix'])
@@ -117,10 +118,57 @@ def quality_passed(record):
     return bool(np.ptp(shifts[1:])<=3 and max(abs(np.array(shifts[1:])-shifts[0]))<=3)
 
 
+def localized_acceptance(before,after):
+    """V2: one estimator outlier, corroborated across all normalized sky regions.
+
+    This is cross-estimator consistency on the same sky, not independent data.
+    Keep v1 unchanged for replay of historical acceptance records.
+    """
+    excluded=set()
+    for record,corrected in ((before,False),(after,True)):
+        rows=record.get('ranges',[])
+        if len(rows)!=4:return None
+        # Reuse every v1 per-region quality gate, without the inter-region veto.
+        if any(not quality_passed({'ranges':[r]*4}) for r in rows):return None
+        shifts=np.array([r['approximate_shift_angstrom'] for r in rows])
+        normalized=[]
+        for r in rows:
+            q=r['quality'];disp=r.get('dispersion_angstrom_per_pixel',np.nan)
+            lag=q.get('peak_lag_pixels',np.nan)
+            if not np.isfinite([disp,lag]).all() or disp<=0:return None
+            normalized.append(disp*lag)
+        normalized=np.array(normalized)
+        if np.ptp(normalized)>3 or np.max(abs(normalized-shifts[0]))>3:return None
+        if corrected:
+            if abs(shifts[0])>1.5 or np.max(abs(normalized))>1.5:return None
+            bad={i for i in range(1,4) if abs(shifts[i])>1.5 or abs(shifts[i]-shifts[0])>3}
+        else:bad={i for i in range(1,4) if abs(shifts[i]-shifts[0])>3}
+        excluded.update(bad)
+        if len(excluded)>1:return None
+        retained=[shifts[i] for i in range(1,4) if i not in excluded]
+        if np.ptp(retained)>3:return None
+    # Recheck both stages against the same exclusion, never pick different subsets.
+    if not excluded:return None
+    i=next(iter(excluded))
+    for record in (before,after):
+        shifts=[r['approximate_shift_angstrom'] for j,r in enumerate(record['ranges']) if j!=i]
+        if np.ptp(shifts)>3:return None
+    return [dict(code='localized_sky_estimator_disagreement',region_index=i,
+        range_vacuum_angstrom=before['ranges'][i]['range_vacuum_angstrom'],
+        message='One regional PypeIt estimate disagrees; full-range and two regions pass, with normalized correlations consistent in all regions before and after correction.')]
+
+
+def validation_warnings(before,after):
+    if quality_passed(before) and quality_passed(after) and max(abs(r['approximate_shift_angstrom']) for r in after['ranges'])<=1.5:
+        return []
+    return localized_acceptance(before,after)
+
+
 def measure_validated(data,waveair,good):
     from .native_sky import SkyValidationError
     before,before_arrays=compare(data,waveair,good)
-    if not quality_passed(before):
+    rows=before.get('ranges',[])
+    if len(rows)!=4 or not quality_passed({'ranges':[rows[0]]*4}):
         error=SkyValidationError('Full-sky correlation quality or regional consistency failed',[])
         error.diagnostics['full_sky']=before
         error.sky_diagnostic_arrays={'before':before_arrays}
@@ -129,12 +177,13 @@ def measure_validated(data,waveair,good):
     # Existing native products use a scalar air-Angstrom flexure correction.
     # Remeasure on exactly that map; never substitute a pixel-shift approximation silently.
     after,after_arrays=compare(data,waveair+shift,good)
-    if not quality_passed(after) or max(abs(r['approximate_shift_angstrom']) for r in after['ranges'])>1.5:
+    warnings=validation_warnings(before,after)
+    if warnings is None:
         error=SkyValidationError('Corrected full-sky residual check failed',[])
         error.diagnostics.update(full_sky=before,corrected_full_sky=after)
         error.sky_diagnostic_arrays={'before':before_arrays,'after':after_arrays}
         raise error
-    return float(shift),dict(validation_policy='full-spectrum',quality_policy='full-sky-v1',
+    return float(shift),dict(validation_policy='full-spectrum',quality_policy='full-sky-v2',warnings=warnings,
         validation_passed=True,shift_angstrom=float(shift),held_out_6363_pass=False,lines=[],
         full_sky=before,corrected_full_sky=after,
-        policy='Full-spectrum correlation quality and three regional checks; scalar air-Angstrom correction remeasured; 6363 not independently certified')
+        policy='Full-spectrum correction remeasured; at most one regional estimator warning with all normalized residuals checked; 6363 not independently certified')
