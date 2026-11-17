@@ -67,6 +67,11 @@ def test_full_raw_reduction_without_legacy_access(synthetic_raw_night,tmp_path,m
     result=reduce_pair(root,science,standard,out,render_report=False)
     assert len(result['results'])==1 and not result['errors']
     row=result['results'][0]
+    from efospec.inventory import sha256
+    assert Path(row['images']).is_file()
+    assert sha256(Path(row['images']))==row['images_sha256']
+    with np.load(row['images']) as arrays:
+        assert {'data','waveair','ivar','mask','trace'} <= set(arrays.files)
     standard_sky=json.loads((out/'standard/sky-check.json').read_text())
     assert standard_sky['raw']==str(standard)
     assert standard_sky['policy']!='raw_arc_only; science sky check required'

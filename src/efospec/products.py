@@ -97,7 +97,8 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None, 
             diagnostics['science'],diagnostics['slits'],airtovac(w*u.AA).value,
             diagnostics['tilts'],result[0],arrays=result,raw_origin=(ymin,99+xlo),
             stage='extracted')
-    np.savez_compressed(output/'native'/(basename+'_images.npz'),data=data,
+    images_path=output/'native'/(basename+'_images.npz')
+    np.savez_compressed(images_path,data=data,
         sky=result[0],object_model=result[1],ivar=result[2],mask=result[3].mask, waveair=w,
         trace=s.TRACE_SPAT,spatial_origin=xlo,raw_y_origin=ymin, **sky_selection,
         **({('processed_'+k):v for k,v in context.processed.items()} if context.processed else {}))
@@ -163,7 +164,7 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None, 
     np.savetxt(final.with_suffix('.asci'),np.column_stack([grid,bands[primary]]),fmt='%.8e',
         **({'header':'PROVISIONAL: unshifted arc wavelengths; science sky validation failed.\nair_wavelength_A flux_erg_s-1_cm-2_A-1; statistical errors exclude wavelength and response systematics.'} if provisional else
            {'header':'Wavelength acceptance: 5577/6300 anchors; 6363 diagnostic only. Absolute flux unvalidated.\nair_wavelength_A flux_erg_s-1_cm-2_A-1'} if sky_qa.get('validation_policy')=='two-anchor' else
-           {'header':'Wavelength acceptance: full-sky-v1 correlation quality and regional residual checks. Absolute flux unvalidated.\nair_wavelength_A flux_erg_s-1_cm-2_A-1'} if sky_qa.get('validation_policy')=='full-spectrum' else {}))
+           {'header':f"Wavelength acceptance: {sky_qa.get('quality_policy','full-sky-v1')} correlation quality and regional residual checks; {len(sky_qa.get('warnings',[]))} localized warnings. Absolute flux unvalidated.\nair_wavelength_A flux_erg_s-1_cm-2_A-1"} if sky_qa.get('validation_policy')=='full-spectrum' else {}))
     prefix='OPT' if primary==0 else 'BOX'
     snmask = s[prefix+'_MASK'] & (s[prefix+'_COUNTS_IVAR']>0) & (wave>4000)&(wave<8500)
     qa = {'raw':str(path),'raw_sha256':frame['sha256'],'object':h['OBJECT'],
@@ -177,6 +178,7 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None, 
           'target':{**hint_info,'hint_trimmed_pixel':hint,'candidates':candidates,
                     'selected':target_name,'median_trace_trimmed_pixel':float(np.median(s.TRACE_SPAT)+xlo)},
           'native_spec1d':str(native),'product':str(final),
+          'images':str(images_path),'images_sha256':sha256(images_path),
           'processing':{'trim_numpy_yx':[ymin,ymin+data.shape[0],99,950],
                         'spatial_crop_in_trim':[xlo,xhi], 'gain_e_per_adu':h['ESO DET OUT1 GAIN'],
                         'read_noise_e':h['ESO DET OUT1 RON'], 'airmass':h['ESO TEL AIRM START'],
@@ -201,7 +203,6 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None, 
         qa['calibration'] = context.calibration
         qa['sensitivity'] = context.calibration['sensitivity']
         qa['extinction'] = context.calibration['extinction']
-        qa['images_sha256'] = sha256(output/'native'/(basename+'_images.npz'))
         qa['processing'].update(bias=True,flat=True,cosmic_ray_premask=True,
             trim_numpy_yx=[ymin,ymin+data.shape[0],99+xlo,99+xhi],
             variance='PypeIt raw processing propagated variance',
