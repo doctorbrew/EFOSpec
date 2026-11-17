@@ -32,7 +32,7 @@ def test_calibration_construction_and_validation_are_separate():
         held_out_errors=[dict(training_raw='/raw/a.fits',test_raw='/raw/b.fits',error='No valid samples')])
     html=calibration_overview(run)
     assert '1 response functions' in html and '1 science flux products' in html
-    assert 'Independent absolute accuracy unvalidated' in html and 'arc-only wavelengths' in html
+    assert 'absolute-scale uncertainty not independently measured' in html and 'arc-only wavelengths' in html
     assert 'Failed response-transfer checks' in html and 'No valid samples' in html
-    assert 'Response built' in response_status(fit) and 'accuracy unvalidated' in response_status(fit)
-    assert 'No correction-scope record' in calibration_overview({})
+    assert response_status(fit)=='Response built'
+    assert 'Correction scope not recorded' in calibration_overview({})

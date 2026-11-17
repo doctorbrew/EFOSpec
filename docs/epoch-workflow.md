@@ -194,6 +194,15 @@ is separate from reduction; rebuilding the report uses only saved results.
 
 ## Retained results
 
+Latest-only cleanup, 16 November 2026:
+
+- Keep the selected reduction for each observed date and its required replay,
+  calibration and selected QC dependencies. Older paths cited below are historical.
+- Dependency-only revision remnants carry `retained-dependency.json` and are
+  omitted from Reduction Archive. Future completed revisions can appear there.
+- Cleanup inventory and before/after verification:
+  `outputs/housekeeping-20261116/{cleanup,verification}.json`.
+
 | Folder under `runs/DATE/efosc/` | Contents |
 | --- | --- |
 | `nightly/` | Current workflow and processing revisions |

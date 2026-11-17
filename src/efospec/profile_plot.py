@@ -100,9 +100,9 @@ def draw_spatial_profiles(result, wave, data, *, display=None):
         if show_trace:
             model_ax.axvline(profile['median_trace_pixel'], color=trace_colour, linestyle='--', linewidth=1.2)
             if data.get('selected_label'):
-                model_ax.text(profile['median_trace_pixel']+1, .035, data['selected_label'],
+                model_ax.text(profile['median_trace_pixel']+1, .965, data['selected_label'],
                     transform=model_ax.get_xaxis_transform(), color=trace_colour, fontsize=18,
-                    ha='left', va='bottom', zorder=6)
+                    ha='left', va='top', zorder=6)
         centroids = []
         for candidate in data.get('candidate_traces', []):
             position = _candidate_centroid(candidate, data, profile['wavelength_air_angstrom'],
@@ -113,8 +113,8 @@ def draw_spatial_profiles(result, wave, data, *, display=None):
             colour = candidate.get('colour', '0.3')
             model_ax.axvline(position, color=colour, linestyle=':', linewidth=1.2)
             label = candidate['label']+('?' if candidate.get('note') else '')
-            model_ax.text(position+1,.035,label,transform=model_ax.get_xaxis_transform(),
-                          color=colour,fontsize=16,va='bottom')
+            model_ax.text(position+1,.965,label,transform=model_ax.get_xaxis_transform(),
+                          color=colour,fontsize=16,va='top')
         profile['candidate_centroids'] = centroids
         protected = profile['aperture_fraction'] > 0
         for candidate in data.get('candidate_traces', []):
@@ -131,8 +131,8 @@ def draw_spatial_profiles(result, wave, data, *, display=None):
             peak = usable[np.argmax(y[usable])]
             position = float(x[peak])
             ax.axvline(position,color='xkcd:dodger blue',linestyle=':',linewidth=1.2)
-            ax.text(position+1,.035,candidate['label'],transform=ax.get_xaxis_transform(),
-                    color='xkcd:dodger blue',fontsize=16,va='bottom')
+            ax.text(position+1,.965,candidate['label'],transform=ax.get_xaxis_transform(),
+                    color='xkcd:dodger blue',fontsize=16,va='top')
             annotations.append(dict(label=candidate['label'],spatial_pixel=position,
                 method='maximum within user-identified profile interval; not a fitted trace',
                 search_interval=list(candidate['search_interval']),identity_confirmed=False))

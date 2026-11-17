@@ -150,6 +150,8 @@ class EpochPage:
             if result.get('status')=='PROVISIONAL':
                 identity += ' · <strong class="qc-status-bad">Provisional: wavelength unvalidated</strong>'
                 identity += ' · '+_text(result.get('interpretation',''))
+            for warning in result.get('sky_flexure',{}).get('warnings',[]):
+                identity += ' · Wavelength warning: '+_text(warning['message'])
             section_order.append(source_order(result))
             sections.append(f'<article class="exposure" id="{_text(id_prefix)}-{i}"><h3>{_text(title)}</h3>'
                 f'<p class="caption">{_text(result.get("date_obs", ""))} UTC{identity} · {downloads}</p>'
@@ -612,13 +614,9 @@ class EpochPage:
         return current+historical
 
     def archive(self, revision):
-        roots=[self.root]
-        if self.root.name=='efosc':roots.append(self.root.parent)
-        paths=[]
-        for root in roots:
-            paths += list((root/'archive').glob('*/run.json'))
-            paths += list((root/'archive/reductions').glob('*/run.json'))
-            paths += [p for p in (root/'nightly').glob('*/reduction/run.json') if p.parent.parent != revision]
+        paths=[p for p in (self.root/'nightly').glob('*/reduction/run.json')
+               if p.parent.parent != revision and (p.parent/'products').is_dir()
+               and not (p.parent.parent/'retained-dependency.json').exists()]
         rows = []
         for path in sorted(paths):
             run = self.read(path)
@@ -632,20 +630,8 @@ class EpochPage:
 
     def archive_folders_and_logs(self, revision):
         current = revision.relative_to(self.root)
-        folders = [
-            (current/'reduction/products', 'Current reduced spectra (FITS and ASCII)'),
-            (current/'QC', 'Current source and background inspection'),
-            (current/'logs', 'Current workflow, reduction and report logs'),
-            (Path('nightly'), 'Current and previous processing revisions'),
-            (Path('QC'), 'Retained source and background experiments'),
-            (Path('calibrations'), 'Native masters and group selections'),
-            (Path('archive'), 'Earlier reductions, diagnostics and logs'),
-        ]
-        if (self.root/'filtered').is_dir():
-            folders.insert(-1, (Path('filtered'), 'Separate filtered-standard reductions and reports'))
-        content = '<h3>Folders</h3><p>Night folder: <code>'+_text(str(self.root)+'/')+'</code></p>'
-        content += _table(['Folder', 'Contents'], [
-            ['<code>'+_text(str(path)+'/')+'</code>', label] for path, label in folders])
+        content = '<ul><li>Latest reduction: <code>'+_text(str(current))+'</code></li>'
+        content += '<li>Products, calibration dependencies and selected QC retained.</li></ul>'
         downloads = [self.download(p, p.name) for p in sorted((revision/'logs').glob('*.log'))]
         content += '<details><summary>Download logs</summary>'
         content += ('<ul>'+''.join('<li>'+d+'</li>' for d in downloads if d)+'</ul>'
@@ -762,7 +748,7 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
             retained_background=background
             background='<h3>Current provisional backgrounds</h3><p>Nearby finite bands follow the source trace, with guards for source wings and trace movement. '
             background+='Distances below run from the final fitted aperture edge to the nearest sampled pixel centre, in detector pixels. '
-            background+='The local background can include extended galaxy light; this is not validated host deblending. All four fits retain two-sided support without aperture overlap.</p>'
+            background+='The local background can include extended galaxy light; this is not validated host deblending. These fits retain two-sided support without aperture overlap.</p>'
             background+=_table(['Target','Left gap (pixels)','Right gap (pixels)','Minimum retained pixels per side'],geometry)
             background+='<p>'+page.download(rescue_path/'verification.json','Provisional product and background audit')+'</p>'
             background+='<h3>Other retained background diagnostics</h3>'+retained_background
@@ -780,7 +766,14 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
         calibration_content+='<h3>Contemporary raw-calibration checks</h3><p>These checks use the selected native masters. They do not change the archive-calibrated spectra above.</p>'
         calibration_content+=page.download(native/'validation.json','Native validation record')
         calibration_content+=page.wavelength_checks(native)
-    spectra=page.spectra(revision/'reduction',run)
+    recovered={x['raw'] for _,m in manuals for x in m.get('results',[])}
+    display_run=dict(run,errors=[x for x in run.get('errors',[]) if x.get('path') not in recovered],
+                     review_counts=[x for x in run.get('review_counts',[]) if x['raw'] not in recovered])
+    spectra=page.spectra(revision/'reduction',display_run)
+    if recovered:
+        historical=dict(run,results=[],skipped=[],errors=[x for x in run.get('errors',[]) if x.get('path') in recovered],
+                        review_counts=[x for x in run.get('review_counts',[]) if x['raw'] in recovered])
+        spectra+='<details><summary>Superseded attempts and review counts</summary>'+page.spectra(revision/'reduction',historical)+'</details>'
     for j,(manual_path,manual_run) in enumerate(manuals):
         if manual_run.get('review_counts'):
             spectra+='<h3>New manual count extraction — retained for review</h3><p>Background refitted on native pixels. Wavelength acceptance remains unresolved; no calibrated flux or telluric correction is claimed.</p>'
@@ -791,14 +784,20 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
             spectra+='<p>Wavelength acceptance: full-sky template correlation with peak-quality, coverage and three regional residual checks. The 6363 Å line is not independently certified. The correction and quality evidence are retained in the sky-check download.</p>'
         spectra+=page.spectra(manual_path,manual_run,id_prefix=f'manual-{j}-spectrum')
     if rescue:
+        superseded=all(x['raw'] in recovered for x in rescue['results'])
+        if superseded:spectra+='<details><summary>Earlier provisional flux products</summary>'
         spectra+='<h3>Provisional rescue spectra</h3><p class="qc-status-bad">Same-night flux calibration; science wavelengths remain unvalidated. No flexure correction applied. These do not replace accepted products.</p>'
         spectra+=page.spectra(rescue_path,rescue,id_prefix='rescue-spectrum')
+        if superseded:spectra+='</details>'
     issues=page.problems(run,revision/'reduction')
     if manuals:
-        issues='<p>Failures from the original nightly attempts are retained here. Later checked manual recoveries are listed separately in Spectra and the observing log.</p>'+issues
-    from .nightly_comparison import comparison_section as replay_comparison
+        unresolved=(any(x.get('path') not in recovered for x in run.get('errors',[]))
+                    or run.get('skipped') or run.get('review_counts_errors'))
+        if not unresolved:
+            issues='<details><summary>Original nightly failures and diagnostic evidence</summary>'+issues+'</details>'
+        issues='<p>Checked manual recoveries and any remaining wavelength warnings are listed in Spectra and the observing log.</p>'+issues
     content = [page.observations(revision, run, rescue, redshifts, manuals), spectra, issues, qc,
-               background, calibration_content, replay_comparison(page,revision)+page.archive(revision)+page.archive_folders_and_logs(revision)]
+               background, calibration_content, page.archive(revision)+page.archive_folders_and_logs(revision)]
     if redshift_content:
         content.insert(4, redshift_content)
     from .iraf_report import comparison_section, write_comparison_page

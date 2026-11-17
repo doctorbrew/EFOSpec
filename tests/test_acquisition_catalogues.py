@@ -232,7 +232,9 @@ def test_acquisition_qc_to_offline_report_preserves_raw_data_and_rejects_tamperi
         assert p.with_suffix('.pdf').read_bytes().startswith(b'%PDF')
     build_epoch_page(night,tmp_path)
     html=(root/'index.html').read_text()
-    assert 'Test galaxy' in html and 'Galaxy markers show catalogue-classified candidates' in html
+    assert 'Test galaxy' in html
+    assert 'Galaxy markers show catalogue-classified candidates' not in html
+    assert 'The named open circle marks' not in html
     assert 'unavailable</span>' in html and 'Reduction Archive' in html
     assert '#records' not in html and 'data:image/webp;base64,' in html
     # The viewer-safe page embeds only a compact preview; the full-resolution

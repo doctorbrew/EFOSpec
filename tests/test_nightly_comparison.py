@@ -20,11 +20,17 @@ def test_no_comparison_leaves_existing_report_alone(tmp_path):
     assert comparison_section(None,tmp_path)==''
 
 
-def test_archive_keeps_historical_layout_visible_without_relocating_it(tmp_path):
+def test_archive_lists_prior_runs_but_omits_legacy_and_dependency_only_layouts(tmp_path):
     from efospec.epoch_report import EpochPage
     old=tmp_path/'2026-10-28/nightly/previous/reduction';old.mkdir(parents=True)
     (old/'run.json').write_text(json.dumps({'results':[{}], 'errors':[], 'skipped':[]}))
     current=tmp_path/'2026-10-28/efosc/nightly/current';current.mkdir(parents=True)
     content=EpochPage(tmp_path/'2026-10-28/efosc').archive(current)
-    assert 'Retained legacy layout: nightly/previous/reduction' in content
+    assert 'Retained legacy layout:' not in content
     assert (old/'run.json').is_file()
+    prior=current.parent/'previous/reduction';(prior/'products').mkdir(parents=True)
+    (prior/'run.json').write_bytes((old/'run.json').read_bytes())
+    assert 'nightly/previous/reduction' in EpochPage(current.parent.parent).archive(current)
+    (prior.parent/'retained-dependency.json').write_text('{}')
+    assert 'nightly/previous/reduction' not in EpochPage(current.parent.parent).archive(current)
+    assert (prior/'run.json').read_bytes()==(old/'run.json').read_bytes()

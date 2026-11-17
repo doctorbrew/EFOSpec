@@ -2,8 +2,10 @@
 
 ## Current display and automatic detection policy
 
-The selected review is now `QC/adopted-apertures-20261112/`, retaining the validation
-from `QC/SN2026ayt-candidate-validation-20261112/`.
+The display policy was established in `QC/aperture-labels-top-20261113/`, using
+validation from `QC/SN2026ayt-candidate-validation-20261112/`. These are historical
+evidence paths; the latest-only cleanup retains the current selected products
+and their required dependencies, not every earlier diagnostic layout.
 SN2026ayt retains only the former C2, now displayed as **C1** because it is the
 only supported aperture. Its historical C1 and C3 lack a supported spatial peak.
 Validated profiles number visible apertures consecutively from left to right;

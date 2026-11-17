@@ -134,7 +134,8 @@ def test_single_file_contains_evidence_downloads_and_only_internal_navigation(ep
     html = (root/'index-portable.html').read_text();assets = Assets(html)
     assert result['embedded_figures']==3 and result['warnings']==[]
     assert 'SN &lt;test&gt;' in html and 'Target identity unverified' in html
-    assert 'source_selection_required' in html and 'archive/initial-reduction' in html
+    assert 'source_selection_required' in html and 'archive/initial-reduction' not in html
+    assert 'No earlier reductions.' in html
     assert all(url.startswith(('data:', '#', 'efospec://review?')) for url in assets.links+assets.images)
     assert all(url[1:] in assets.ids for url in assets.links if url.startswith('#'))
     assert base64.b64decode(assets.downloads[product.name].split(',',1)[1])==product.read_bytes()
@@ -346,7 +347,7 @@ def test_daily_response_provenance_download_and_tamper_check(epoch_page):
     build_epoch_page('2026-10-28',project)
     html=(root/'index.html').read_text(); assets=Assets(html)
     assert 'Same-night standard responses' in html and 'today.fits' in html
-    assert 'absolute accuracy unvalidated' in html
+    assert 'absolute-scale uncertainty not independently measured' in html
     assert '0 held-out exposure transfers' in html
     assert (root/assets.downloads['response.fits']).read_bytes()==response.read_bytes()
     response.write_bytes(b'changed')
@@ -424,3 +425,24 @@ def test_explicit_historical_report_does_not_change_new_current(epoch_page):
     assert (legacy/'index.html').is_file()
     assert sha256(pointer)==before
     assert not (root.parent/'index.html').exists()
+
+
+@pytest.mark.parametrize('remaining', [False, True])
+def test_manual_recovery_does_not_collapse_unresolved_issues(epoch_page,monkeypatch,remaining):
+    import efospec.manual_recovery_report as selections
+    project,root,product=epoch_page
+    parent=root/'nightly/revision-1/reduction/run.json'
+    original=json.loads(parent.read_text())
+    if remaining:
+        original['errors'].append(dict(path='/raw/unresolved.fits',object='Still unresolved',
+            code='background_support_required',error='Insufficient background'))
+    save(parent,original)
+    folder=root/'nightly/revision-1/QC/recovery'
+    recovered=dict(results=[dict(original['results'][0],raw='/raw/ambiguous.fits',object='Recovered')],errors=[],skipped=[])
+    save(folder/'run.json',recovered)
+    monkeypatch.setattr(selections,'selected_manual_recoveries',lambda run:[(folder,recovered)])
+    build_epoch_page('2026-10-28',project)
+    html=(root/'index.html').read_text()
+    issues=html.split('id="issues"')[1].split('</section>')[0]
+    assert ('<summary>Original nightly failures and diagnostic evidence</summary>' in issues) is (not remaining)
+    if remaining:assert 'Still unresolved' in issues

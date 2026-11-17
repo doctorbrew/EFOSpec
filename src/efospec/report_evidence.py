@@ -52,7 +52,7 @@ def background_evidence(run):
 def response_status(fit):
     """Separate successful construction from unfinished scientific validation."""
     if fit.get('status')=='response_built_unvalidated' and fit.get('response'):
-        return 'Response built · <span class="qc-status-bad">absolute accuracy unvalidated</span>'
+        return 'Response built'
     status=str(fit.get('status','unknown')).replace('_',' ')
     return '<span class="qc-status-bad">'+escape(status)+'</span>'
 
@@ -72,17 +72,19 @@ def calibration_overview(run):
             done=sum(r.get('processing',{}).get(key) is True for r in science)
             steps.append([label,f'{done}/{len(science)} science products recorded as applied'])
         content+=_table(['Processing step','Saved evidence'],steps)
-    content+='<details><summary>Flux-calibration scope and remaining validation</summary>'
+    content+='<details><summary>Flux-calibration highlights</summary><ul>'
     if run.get('independent_flux_validation') is True:
-        content+='<p>Independent flux validation is recorded in this run.</p>'
+        content+='<li>Independent flux validation recorded.</li>'
     else:
-        content+='<p class="qc-status-bad">Independent absolute accuracy unvalidated.</p>'
+        content+='<li>Flux calibrated; absolute-scale uncertainty not independently measured.</li>'
     limits=run.get('limitations',[])
     if limits:
-        content+='<ul>'+''.join('<li>'+escape(str(note))+'</li>' for note in limits)+'</ul>'
+        content+='<li>Slit losses and clean SN/host separation are not independently validated.</li>'
+        if any('arc-only' in str(note) for note in limits):
+            content+='<li>Some review products retain arc-only wavelengths.</li>'
     else:
-        content+='<p>No correction-scope record is available in this manifest.</p>'
-    content+='</details>'
+        content+='<li>Correction scope not recorded.</li>'
+    content+='</ul></details>'
     errors=run.get('held_out_errors',[])
     if errors:
         content+='<h3>Failed response-transfer checks</h3>'+_table(['Response exposure','Test exposure','Failure'],[
