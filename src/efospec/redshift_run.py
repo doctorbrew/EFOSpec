@@ -52,6 +52,32 @@ def heliocentric(z,header,error=None):
     return converted
 
 
+def selected_science(runs, manual_paths):
+    """Use one product per raw exposure: selected manual, main run, rescue."""
+    manual_paths={Path(p).resolve() for p in manual_paths}
+    chosen={};superseded=[];stems={}
+    for index,(folder,source) in enumerate(runs):
+        priority=2 if Path(folder).resolve() in manual_paths else (1 if index==0 else 0)
+        for result in source['results']:
+            if result.get('role')!='science':continue
+            raw=Path(result['raw']).resolve();stem=raw.stem
+            if stem in stems and stems[stem]!=raw:
+                raise ValueError('redshift output collision between different raw paths')
+            stems[stem]=raw
+            previous=chosen.get(raw)
+            if previous is not None:
+                rank,old_folder,old=previous
+                if old['raw_sha256']!=result['raw_sha256']:
+                    raise ValueError('conflicting raw hashes across reduction revisions')
+                if rank==priority:
+                    raise ValueError('ambiguous science products at the same selection priority')
+                rejected=old if priority>rank else result
+                superseded.append(dict(raw=str(raw),product=rejected['product']))
+                if priority<rank:continue
+            chosen[raw]=(priority,folder,result)
+    return [(folder,result) for _,folder,result in chosen.values()],superseded
+
+
 def measure_night(night,output,*,project_root='.',rescue=None):
     from .run_record import snapshot_sources
     root=efosc_root(project_root, night)
@@ -76,61 +102,62 @@ def measure_night(night,output,*,project_root='.',rescue=None):
     from .redshift_report import evidence_inside_night
     output=Path(output).resolve()
     if not evidence_inside_night(output,root):raise ValueError('redshift evidence must stay inside dated QC')
+    selected,superseded=selected_science(runs,[p for p,_ in manuals])
     output.mkdir(parents=True,exist_ok=False)
     manifest=dict(night=night,excluded_rescue=excluded_rescue,method='independent_2d_emission_line_redshifts',status='running',results=[],errors=[],
         parent_run_sha256={str(p/'run.json'):sha256(p/'run.json') for p,_ in runs},source_sha256=snapshot_sources(output),
+        superseded_science=superseded,
         limitations=['Automatic line-system candidates, not confirmed hosts.','No NED prior enters spectral fitting.','Formal errors exclude wavelength, background and resampling systematics.','Search covers -0.003 <= z <= 1 and optical emission lines; absorption-only galaxies may have no estimate.'])
     save_json(output/'redshifts.json',manifest)
-    for folder,source in runs:
-        for result in source['results']:
-            if result.get('role')!='science':continue
-            directory=output/Path(result['raw']).stem;directory.mkdir()
-            try:
-                if sha256(Path(result['raw']))!=result['raw_sha256']:raise ValueError('raw exposure changed')
-                image=Path(result['native_spec1d']).parent/(Path(result['product']).name[:-7]+'_images.npz')
-                if sha256(image)!=result['images_sha256']:raise ValueError('native images changed')
-                with np.load(image) as a:arrays={k:a[k] for k in a.files}
-                extracted=extract_2d_line_spectrum(arrays)
-                fwhm={'Gr11':18.,'Gr13':35.}[result['grism']]
-                spectral=measure_redshift(extracted['wave_vacuum'],extracted['counts'],extracted['sigma'],fwhm=fwhm)
-                if spectral['solutions']:
-                    spatial=spatial_line_check(extracted,spectral['solutions'][0],fwhm)
-                    spectral['spatial_validation']=spatial
-                    if spectral['z'] is not None and not spatial['passed']:
-                        spectral.update(status='spatially_inconsistent',z=None)
-                header=fits.getheader(result['raw'])
-                wavelength_validated=wavelength_accepted(result['sky_flexure'])
-                spectral['wavelength_validated']=wavelength_validated
-                spectral['wavelength_acceptance_policy']=result['sky_flexure'].get('validation_policy','three-line')
-                spectral['diagnostic_6363_error']=result['sky_flexure'].get('diagnostic_6363_error')
-                spectral['method_parameters']=dict(nominal_fwhm_angstrom=fwhm,aperture_radius_pixels=20.,
-                    minimum_independent_groups=3,minimum_line_snr=5.,minimum_delta_chi2=30.,
-                    search_range=[-.003,1.],redshift_error='fit covariance with unresolved-blend centroid floors; excludes wavelength and background systematics')
-                spectral['wavelength_systematic_error']=None
-                spectral['wavelength_warning']='unknown wavelength systematic error' if not wavelength_validated else 'sky check passed; full calibration covariance unavailable'
-                if spectral['z'] is not None:
-                    spectral.update(heliocentric(spectral['z'],header,
-                                                 spectral['solutions'][0].get('z_error')))
-                    spectral['status']='candidate' if wavelength_validated else 'provisional_wavelength'
-                record=dict(object=result['object'],raw=result['raw'],raw_sha256=result['raw_sha256'],
-                    product=result['product'],product_sha256=sha256(Path(result['product'])),
-                    images=str(image),images_sha256=sha256(image),spectral=spectral,
-                    ned=ned_candidate(header,directory/'catalogue'),reference_frame='heliocentric',
-                    input_wavelength_medium='air',fit_wavelength_medium='vacuum',host_identified=False)
-                np.savez_compressed(directory/'line-spectrum.npz',**extracted)
-                record['diagnostic_arrays']=str(directory/'line-spectrum.npz')
-                record['diagnostic_arrays_sha256']=sha256(directory/'line-spectrum.npz')
-                from .redshift_plots import plot_redshift
-                record['figures']=plot_redshift(record,extracted,directory)
-                path=directory/'redshift.json';save_json(path,record)
-                manifest['results'].append(dict(object=result['object'],raw=result['raw'],path=str(path),sha256=sha256(path)))
-                print(result['object'],spectral['status'],spectral.get('z_heliocentric'),flush=True)
-            except Exception as exc:
-                import traceback
-                (directory/'error.log').write_text(traceback.format_exc())
-                manifest['errors'].append(dict(object=result['object'],raw=result['raw'],error=str(exc)))
-                print('ERROR',result['object'],str(exc),flush=True)
-            save_json(output/'redshifts.json',manifest)
+    for folder,result in selected:
+        directory=output/Path(result['raw']).stem;directory.mkdir()
+        try:
+            if sha256(Path(result['raw']))!=result['raw_sha256']:raise ValueError('raw exposure changed')
+            image=Path(result['images']) if result.get('images') else Path(result['native_spec1d']).parent/(Path(result['product']).name[:-7]+'_images.npz')
+            if sha256(image)!=result['images_sha256']:raise ValueError('native images changed')
+            with np.load(image) as a:arrays={k:a[k] for k in a.files}
+            extracted=extract_2d_line_spectrum(arrays)
+            fwhm={'Gr11':18.,'Gr13':35.}[result['grism']]
+            spectral=measure_redshift(extracted['wave_vacuum'],extracted['counts'],extracted['sigma'],fwhm=fwhm)
+            if spectral['solutions']:
+                spatial=spatial_line_check(extracted,spectral['solutions'][0],fwhm)
+                spectral['spatial_validation']=spatial
+                if spectral['z'] is not None and not spatial['passed']:
+                    spectral.update(status='spatially_inconsistent',z=None)
+            header=fits.getheader(result['raw'])
+            wavelength_validated=wavelength_accepted(result['sky_flexure'])
+            spectral['wavelength_validated']=wavelength_validated
+            spectral['wavelength_warnings']=result['sky_flexure'].get('warnings',[])
+            spectral['wavelength_acceptance_policy']=result['sky_flexure'].get('validation_policy','three-line')
+            spectral['diagnostic_6363_error']=result['sky_flexure'].get('diagnostic_6363_error')
+            spectral['method_parameters']=dict(nominal_fwhm_angstrom=fwhm,aperture_radius_pixels=20.,
+                minimum_independent_groups=3,minimum_line_snr=5.,minimum_delta_chi2=30.,
+                search_range=[-.003,1.],redshift_error='fit covariance with unresolved-blend centroid floors; excludes wavelength and background systematics')
+            spectral['wavelength_systematic_error']=None
+            spectral['wavelength_warning']='unknown wavelength systematic error' if not wavelength_validated else 'sky check passed; full calibration covariance unavailable'
+            if spectral['z'] is not None:
+                spectral.update(heliocentric(spectral['z'],header,
+                                             spectral['solutions'][0].get('z_error')))
+                spectral['status']='candidate' if wavelength_validated else 'provisional_wavelength'
+            record=dict(object=result['object'],raw=result['raw'],raw_sha256=result['raw_sha256'],
+                product=result['product'],product_sha256=sha256(Path(result['product'])),
+                images=str(image),images_sha256=sha256(image),spectral=spectral,
+                ned=ned_candidate(header,directory/'catalogue'),reference_frame='heliocentric',
+                input_wavelength_medium='air',fit_wavelength_medium='vacuum',host_identified=False)
+            np.savez_compressed(directory/'line-spectrum.npz',**extracted)
+            record['diagnostic_arrays']=str(directory/'line-spectrum.npz')
+            record['diagnostic_arrays_sha256']=sha256(directory/'line-spectrum.npz')
+            from .redshift_plots import plot_redshift
+            record['figures']=plot_redshift(record,extracted,directory)
+            path=directory/'redshift.json';save_json(path,record)
+            manifest['results'].append(dict(object=result['object'],raw=result['raw'],path=str(path),sha256=sha256(path)))
+            print(result['object'],spectral['status'],spectral.get('z_heliocentric'),flush=True)
+        except Exception as exc:
+            import traceback
+            (directory/'error.log').write_text(traceback.format_exc())
+            manifest['errors'].append(dict(object=result['object'],raw=result['raw'],error=str(exc)))
+            print('ERROR',result['object'],str(exc),flush=True)
+        save_json(output/'redshifts.json',manifest)
     manifest['status']='partial' if manifest['errors'] else 'complete';save_json(output/'redshifts.json',manifest)
     return manifest
 

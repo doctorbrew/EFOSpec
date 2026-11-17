@@ -50,6 +50,8 @@ def plot_redshift(record, extracted, directory):
         detail=(f'Candidate heliocentric z = {z:.5f}'
                 +(rf' $\pm$ {z_error:.5f}' if z_error is not None else ''))
     quality='sky wavelength check passed' if spectral['wavelength_validated'] else 'PROVISIONAL: wavelength unvalidated'
+    if spectral['wavelength_validated'] and spectral.get('wavelength_warnings'):
+        quality='wavelength accepted with localized warning; see saved QC'
     ax.set_title(record['object']+' / '+detail+'\n'+quality)
     x=extracted['spatial_pixel'];trace=extracted['trace']+x[0]
     for i,group in enumerate(groups):

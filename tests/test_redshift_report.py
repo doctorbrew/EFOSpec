@@ -67,3 +67,26 @@ def test_dated_revision_redshift_paths_are_confined(tmp_path):
     assert evidence_inside_night(root/'nightly/revision/QC/new/redshifts.json',root)
     assert not evidence_inside_night(root/'nightly/revision/reduction/run.json',root)
     assert not evidence_inside_night(root/'QC/../../outside.json',root)
+
+
+def test_redshift_uses_selected_manual_once_instead_of_main_and_rescue(tmp_path):
+    from efospec.redshift_run import selected_science
+    row=dict(raw=str(tmp_path/'science.fits'),raw_sha256='unchanged',role='science')
+    folders=[tmp_path/name for name in ['main','manual','rescue']]
+    runs=[(p,dict(results=[dict(row,product=str(p/'flux.fits'))])) for p in folders]
+    selected,superseded=selected_science(runs,[folders[1]])
+    assert len(selected)==1 and selected[0][0]==folders[1]
+    assert {r['product'] for r in superseded}=={str(folders[i]/'flux.fits') for i in [0,2]}
+
+
+@pytest.mark.parametrize('failure',['hash','priority','filename'])
+def test_redshift_selection_rejects_ambiguous_inputs(tmp_path,failure):
+    from efospec.redshift_run import selected_science
+    row=dict(raw=str(tmp_path/'science.fits'),raw_sha256='unchanged',role='science',product='flux.fits')
+    other=dict(row)
+    if failure=='hash':other['raw_sha256']='changed'
+    if failure=='filename':other['raw']=str(tmp_path/'elsewhere/science.fits')
+    folders=[tmp_path/'main',tmp_path/'manual']
+    manuals=folders if failure=='priority' else folders[1:]
+    with pytest.raises(ValueError,match={'hash':'conflicting raw hashes','priority':'ambiguous science','filename':'output collision'}[failure]):
+        selected_science([(folders[0],dict(results=[row])),(folders[1],dict(results=[other]))],manuals)
