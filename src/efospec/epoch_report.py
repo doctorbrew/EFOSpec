@@ -845,6 +845,9 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
         iraf_content='<p><a href="iraf-comparison.html">Open separate IRAF comparison report</a>. The nightly spectra above show PypeIt only.</p>'
         titles.insert(2,('iraf-comparison','IRAF comparison'))
         content.insert(2,iraf_content)
+    from .delivery_report import render_delivery
+    titles.insert(1, ('delivery', 'Science delivery'))
+    content.insert(1, render_delivery(page, revision, run, manuals))
     sections = ''.join(f'<section class="target" id="{anchor}"><h2>{title}</h2>{body}</section>'
                        for (anchor, title), body in zip(titles, content))
     stats = reduction_summary(run, manuals, rescue)

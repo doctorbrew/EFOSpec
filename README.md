@@ -79,7 +79,24 @@ legacy engine and reference calibrations.
 
 ## Create the public and private upload tarballs
 
-Run in the `efospec` environment. Select the accepted PypeIt-derived `_f.fits`
+Open the [2026-11-10 observing log](https://doctorbrew.github.io/EFOSpec/2026-11-10/#delivery),
+or a newly generated local `runs/YYYY-MM-DD/efosc/index.html`. **Science delivery**
+is directly below the observing log:
+
+1. Choose **Public**, **Private**, or **Do not export** for each target, and check
+   **Object / Host**. The choice covers all eligible setups listed for that target.
+2. Open **Observer / reducer names and delivery details**. Enter names, the UTC
+   reduction date and source group; private spectra also need groups and an embargo end.
+3. Confirm your review, click **Prepare public / private tarballs**, then download
+   each populated archive. Observer/reducer names go into both the FITS headers
+   and the upload table. Choices start unset and are cleared on reload.
+
+This works offline, uses saved flux products and performs no upload. Standards,
+count-only and failed products are excluded. Private delivery settings do not
+make a publicly hosted observing log private. Use a local report for unpublished data.
+
+For a saved review manifest and audit files, use the command line in the `efospec`
+environment. Select the accepted PypeIt-derived `_f.fits`
 products from one revision; replace the paths below with your selected files:
 
 ```sh

@@ -1,9 +1,50 @@
 # WISeREP delivery packages
 
-**Implemented:** `scripts/package_wiserep.py` creates separate public/private
+**Implemented:** the nightly log's **Science delivery** section and
+`scripts/package_wiserep.py` create separate public/private
 PESSTOWISE `.tgz` tarballs from explicitly reviewed EFOSpec flux products. It runs
 offline and never uploads, sends mail, changes source data or assigns access from
 target names.
+
+## Export from the observing log
+
+Open `runs/YYYY-MM-DD/efosc/index.html` or its portable HTML copy. Newly generated
+reports include **Science delivery** immediately below the observing log. The
+[2026-11-10 published log](https://doctorbrew.github.io/EFOSpec/2026-11-10/#delivery)
+also includes these controls.
+
+1. Select **Public** or **Private** for each reviewed target. **Do not export** is
+   the default; targets without an eligible flux product are disabled. Every
+   eligible setup listed for a target goes into its chosen archive. Check the
+   **Object / Host** spectrum type, especially for host-galaxy extractions.
+2. In **Observer / reducer names and delivery details**, enter observer and
+   reducer names, the actual UTC reduction date (`YYYY-MM-DD`) and source group.
+   For private selections, also enter associated groups and a future UTC embargo
+   end. FITS header text uses ASCII; spell accented names in ASCII for this format.
+3. Confirm the review, then click **Prepare public / private tarballs**. Download
+   the separate public/private links. Only populated classes produce a file.
+
+Names and reduction date are written into `OBSERVER`, `REDUCER`, `DATE-RED` and
+the matching upload-table columns. Spectrum type, source group, access and private
+embargo/group information are recorded in FITS. Source quality and scientific
+arrays are preserved; checksums are recalculated. No names or access choices are
+saved in the HTML or sent to a server; reloading clears them. Changing a choice or
+field removes old download links until the archives are prepared again.
+
+The report builder uses the same Python science validation and primary-FITS
+conversion as the CLI. The browser assembles the archives offline from those saved
+payloads. It includes eligible science spectra only, excludes standard stars,
+count-only and failed calibration products, and adds no plots or calibrated 2D
+attachments automatically. Use the CLI below for reviewed attachments, per-spectrum
+attribution, optional classification/redshift metadata and a persistent audit record.
+The browser uses the same table preamble, flat tar layout and valid-pixel ASCII
+convention as the CLI; it uses gzip stored blocks for compatibility without an
+external compression library. Keep the original full masked FITS for science.
+
+**Private describes the requested archive access.** It does not restrict access
+to the HTML log or encrypt downloaded files. A public GitHub Pages report already
+exposes its included science products; keep reports containing unpublished spectra
+local or on access-controlled hosting. The ingest team applies server permissions.
 
 ## Prepare one observing night
 
@@ -138,9 +179,10 @@ inputs and ambiguous access. Weak but valid reviewed spectra can retain `Low` or
 Send each tarball to its intended collaborators for their existing PESSTOWISE
 server-ingestion workflow. If inspecting both archives, extract them into separate
 directories: the public/private tarballs can contain the same metadata filename.
-Private archives have restrictive local permissions but are not encrypted. Access
+CLI private archives have restrictive local permissions but are not encrypted. Access
 cards in FITS are instructions; the ingest team still applies archive permissions.
-No delivery data or reference tarballs are published by GitHub Pages.
+Generated delivery archives and the supplied reference tarballs are not published
+by GitHub Pages. Published observing logs include their selected science products.
 
 **Verified locally:** all four supplied TGZs (15 spectra) and conversion of the
 current 2026-11-10 PypeIt-derived flux products. This establishes file-format and
