@@ -60,6 +60,8 @@ to the nightly report requires the [reviewed-geometry workflow](docs/epoch-workf
 
 ## Files and outputs
 
+[Open published nightly logs, IRAF comparisons and Spectypus fitting logs](OUTPUTS_PIPELINE.md).
+
 | Location | Contents |
 | --- | --- |
 | `data/DATE/` | Original inputs |
