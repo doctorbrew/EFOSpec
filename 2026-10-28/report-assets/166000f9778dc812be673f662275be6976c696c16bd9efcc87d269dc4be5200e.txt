@@ -1,0 +1,174 @@
+Reading input file 1 of 1: "/Users/avinash/Work/Reduction/EFOSpec/data/2026-10-28/EFOSC.2026-10-29T07:49:25.279.fits"...
+Running command: /opt/homebrew/bin/image2pnm --infile /Users/avinash/Work/Reduction/EFOSpec/data/2026-10-28/EFOSC.2026-10-29T07:49:25.279.fits --uncompressed-outfile /tmp/tmp.uncompressed.uRR2JR --outfile /tmp/tmp.ppm.yXmNEF --ppm --mydir /opt/homebrew/bin/solve-field
+Extracting sources...
+simplexy: found 42 sources.
+Solving...
+Reading file "/Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/QC/catalogues-20261106-transients/EFOSC.2026-10-29T07:49:25.279/astrometry/acquisition.axy"...
+Only searching for solutions within 0.3 degrees of RA,Dec (35.6777,-47.547)
+Field 1 did not solve (index index-5203-33.fits, field objects 1-10).
+Field 1 did not solve (index index-5202-33.fits, field objects 1-10).
+Field 1 did not solve (index index-5201-33.fits, field objects 1-10).
+Field 1 did not solve (index index-5200-33.fits, field objects 1-10).
+Field 1 did not solve (index index-4203-33.fits, field objects 1-10).
+Field 1 did not solve (index index-4202-33.fits, field objects 1-10).
+Field 1 did not solve (index index-4201-33.fits, field objects 1-10).
+Field 1 did not solve (index index-4200-33.fits, field objects 1-10).
+Field 1 did not solve (index index-5203-33.fits, field objects 11-20).
+Field 1 did not solve (index index-5202-33.fits, field objects 11-20).
+  log-odds ratio 17.2004 (2.95145e+07), 8 match, 0 conflict, 15 distractors, 12 index.
+  RA,Dec = (35.6844,-47.5522), pixel scale 0.240708 arcsec/pix.
+  log-odds ratio 15.146 (3.78293e+06), 8 match, 0 conflict, 15 distractors, 12 index.
+  RA,Dec = (35.6844,-47.5522), pixel scale 0.240708 arcsec/pix.
+Field 1 did not solve (index index-5201-33.fits, field objects 11-20).
+Field 1 did not solve (index index-5200-33.fits, field objects 11-20).
+Field 1 did not solve (index index-4203-33.fits, field objects 11-20).
+Field 1 did not solve (index index-4202-33.fits, field objects 11-20).
+Field 1 did not solve (index index-4201-33.fits, field objects 11-20).
+Field 1 did not solve (index index-4200-33.fits, field objects 11-20).
+Field 1 did not solve (index index-5203-33.fits, field objects 21-30).
+Field 1 did not solve (index index-5202-33.fits, field objects 21-30).
+Field 1 did not solve (index index-5201-33.fits, field objects 21-30).
+Field 1 did not solve (index index-5200-33.fits, field objects 21-30).
+Field 1 did not solve (index index-4203-33.fits, field objects 21-30).
+Field 1 did not solve (index index-4202-33.fits, field objects 21-30).
+Field 1 did not solve (index index-4201-33.fits, field objects 21-30).
+Field 1 did not solve (index index-4200-33.fits, field objects 21-30).
+Field 1 did not solve (index index-5203-33.fits, field objects 31-40).
+Field 1 did not solve (index index-5202-33.fits, field objects 31-40).
+Field 1 did not solve (index index-5201-33.fits, field objects 31-40).
+Field 1 did not solve (index index-5200-33.fits, field objects 31-40).
+Field 1 did not solve (index index-4203-33.fits, field objects 31-40).
+Field 1 did not solve (index index-4202-33.fits, field objects 31-40).
+Field 1 did not solve (index index-4201-33.fits, field objects 31-40).
+Field 1 did not solve (index index-4200-33.fits, field objects 31-40).
+Field 1 did not solve (index index-5203-33.fits, field objects 41-50).
+Field 1 did not solve (index index-5202-33.fits, field objects 41-50).
+Field 1 did not solve (index index-5201-33.fits, field objects 41-50).
+Field 1 did not solve (index index-5200-33.fits, field objects 41-50).
+Field 1 did not solve (index index-4203-33.fits, field objects 41-50).
+Field 1 did not solve (index index-4202-33.fits, field objects 41-50).
+Field 1 did not solve (index index-4201-33.fits, field objects 41-50).
+Field 1 did not solve (index index-4200-33.fits, field objects 41-50).
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field 1 did not solve.
+Field: /Users/avinash/Work/Reduction/EFOSpec/data/2026-10-28/EFOSC.2026-10-29T07:49:25.279.fits
+Did not solve (or no WCS file was written).
+

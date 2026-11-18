@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/daily_reduction.py", line 166, in reduce_daily
+    chosen = select_response(frame, fitted) if frame['role']=='science' else None
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/daily_reduction.py", line 32, in select_response
+    raise ValueError('no successful same-night response with identical grism/filter/slit/binning/readout')
+ValueError: no successful same-night response with identical grism/filter/slit/binning/readout

@@ -1,0 +1,274 @@
+[1;38;2;253;174;97m [WARNING][0m - [38;2;116;173;209mcache.py:fetch_remote_file:245[0m - UserWarning: Note: If this file takes a while to download, you may wish to used one of the install scripts (e.g., pypeit_install_telluric) to install the file independent of this processing script.
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:554[0m - Your spectrum is bluer than 9100A, only optical telluric regions are masked.
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;253;174;97m [WARNING][0m - [38;2;116;173;209matmextinction.py:correction_factor:169[0m - Spectral regions outside of the bounds of the atmospheric extinction curve are set to the nearest value.
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mwavemodel.py:conv2res:581[0m - The binning of the wavelength array at 9437.8 is: 0.1999999999989086
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mwavemodel.py:conv2res:585[0m - Covolving with a Gaussian kernel with sigma = 31.394447322520772 pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;253;174;97m [WARNING][0m - [38;2;116;173;209matmextinction.py:correction_factor:169[0m - Spectral regions outside of the bounds of the atmospheric extinction curve are set to the nearest value.
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mwavemodel.py:conv2res:581[0m - The binning of the wavelength array at 9100.6 is: 0.2000000000007276
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mwavemodel.py:conv2res:585[0m - Covolving with a Gaussian kernel with sigma = 50.63036646417096 pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;253;174;97m [WARNING][0m - [38;2;116;173;209matmextinction.py:correction_factor:169[0m - Spectral regions outside of the bounds of the atmospheric extinction curve are set to the nearest value.
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mwavemodel.py:conv2res:581[0m - The binning of the wavelength array at 9106.1 is: 0.2000000000007276
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mwavemodel.py:conv2res:585[0m - Covolving with a Gaussian kernel with sigma = 47.263976763857656 pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;253;174;97m [WARNING][0m - [38;2;116;173;209matmextinction.py:correction_factor:169[0m - Spectral regions outside of the bounds of the atmospheric extinction curve are set to the nearest value.
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mwavemodel.py:conv2res:581[0m - The binning of the wavelength array at 9105.4 is: 0.1999999999989086
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mwavemodel.py:conv2res:585[0m - Covolving with a Gaussian kernel with sigma = 50.60869585248504 pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;253;174;97m [WARNING][0m - [38;2;116;173;209matmextinction.py:correction_factor:169[0m - Spectral regions outside of the bounds of the atmospheric extinction curve are set to the nearest value.
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mwavemodel.py:conv2res:581[0m - The binning of the wavelength array at 9106.1 is: 0.2000000000007276
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mwavemodel.py:conv2res:585[0m - Covolving with a Gaussian kernel with sigma = 47.282382287327216 pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;253;174;97m [WARNING][0m - [38;2;116;173;209matmextinction.py:correction_factor:169[0m - Spectral regions outside of the bounds of the atmospheric extinction curve are set to the nearest value.
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mwavemodel.py:conv2res:581[0m - The binning of the wavelength array at 9101.8 is: 0.1999999999989086
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mwavemodel.py:conv2res:585[0m - Covolving with a Gaussian kernel with sigma = 50.605695540773084 pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;253;174;97m [WARNING][0m - [38;2;116;173;209matmextinction.py:correction_factor:169[0m - Spectral regions outside of the bounds of the atmospheric extinction curve are set to the nearest value.
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mwavemodel.py:conv2res:581[0m - The binning of the wavelength array at 9106.1 is: 0.2000000000007276
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mwavemodel.py:conv2res:585[0m - Covolving with a Gaussian kernel with sigma = 47.1752041108922 pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:554[0m - Your spectrum is bluer than 9100A, only optical telluric regions are masked.
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;253;174;97m [WARNING][0m - [38;2;116;173;209matmextinction.py:correction_factor:169[0m - Spectral regions outside of the bounds of the atmospheric extinction curve are set to the nearest value.
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mwavemodel.py:conv2res:581[0m - The binning of the wavelength array at 9437.4 is: 0.1999999999989086
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mwavemodel.py:conv2res:585[0m - Covolving with a Gaussian kernel with sigma = 31.389750465246728 pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;253;174;97m [WARNING][0m - [38;2;116;173;209matmextinction.py:correction_factor:169[0m - Spectral regions outside of the bounds of the atmospheric extinction curve are set to the nearest value.
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mwavemodel.py:conv2res:581[0m - The binning of the wavelength array at 9097.800000000001 is: 0.2000000000007276
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mwavemodel.py:conv2res:585[0m - Covolving with a Gaussian kernel with sigma = 50.64448611837261 pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;253;174;97m [WARNING][0m - [38;2;116;173;209matmextinction.py:correction_factor:169[0m - Spectral regions outside of the bounds of the atmospheric extinction curve are set to the nearest value.
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mwavemodel.py:conv2res:581[0m - The binning of the wavelength array at 9101.5 is: 0.1999999999989086
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mwavemodel.py:conv2res:585[0m - Covolving with a Gaussian kernel with sigma = 47.194887807198704 pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:495[0m -  Masking bad pixels
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:500[0m -  Masking edges
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:get_mask:503[0m -  Masking Below the atmospheric cutoff
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:585[0m - Masking hydrogen recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:588[0m -  Masking Balmer
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:599[0m -  Masking Paschen
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:610[0m -  Masking Brackett
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_hydrogen:619[0m -  Masking Pfund
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:656[0m - Masking ionized helium recombination lines
+[1;38;2;49;54;149m    [INFO][0m - [38;2;116;173;209mflux_calib.py:mask_stellar_helium:659[0m -  Masking HeII lines
+{"status": "complete", "fits": 12, "fit_errors": [], "products": 7, "skipped": []}

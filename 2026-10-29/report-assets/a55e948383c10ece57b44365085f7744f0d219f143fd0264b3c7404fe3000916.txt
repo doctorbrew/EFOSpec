@@ -1,0 +1,4 @@
+2026-11-10T17:13:53.570142+00:00 [2026-10-29] log: /Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-29/nightly/20261110T171353Z-aa76fb
+2026-11-10T17:13:54.627685+00:00 [2026-10-29] reduce: /Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-29/nightly/20261110T171353Z-aa76fb
+2026-11-10T17:17:43.730471+00:00 [2026-10-29] report: /Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-29/nightly/20261110T171353Z-aa76fb
+2026-11-10T17:19:30.548831+00:00 [2026-10-29] partial: /Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-29/index.html

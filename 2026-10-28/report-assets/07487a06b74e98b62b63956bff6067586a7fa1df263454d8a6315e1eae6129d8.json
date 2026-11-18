@@ -1,0 +1,104 @@
+{
+  "raw": "/Users/avinash/Work/Reduction/EFOSpec/data/2026-10-28/EFOSC.2026-10-29T02:54:17.994.fits",
+  "raw_sha256": "7abf410bf7e8e7d94f3f6cd70a8b03e550d75ed9b98ba9806c10e557a6b49c21",
+  "error": "Full-sky correlation quality or regional consistency failed",
+  "measurement_raw_bounds_yx": [
+    48,
+    990,
+    448,
+    649
+  ],
+  "lines": [],
+  "held_out_6363_pass": false,
+  "full_sky": {
+    "method": "pypeit.core.flexure.spec_flex_shift",
+    "template": "/Users/avinash/Softwares/miniconda3/envs/efospec/lib/python3.11/site-packages/pypeit/data/sky_spec/paranal_sky.fits",
+    "template_sha256": "521a81fb0158104e4e52b23aedbda4d5521dd6e69290acac4bd357d3b1e1fe1a",
+    "wavelength_medium": "vacuum",
+    "ranges": [
+      {
+        "range_vacuum_angstrom": [
+          5200.0,
+          9000.0
+        ],
+        "samples": 670,
+        "coverage_fraction": 1.0,
+        "status": "measured",
+        "shift_pixels": -0.746309839112655,
+        "quality": {
+          "peak_correlation": 0.809189277062586,
+          "peak_lag_pixels": -0.75,
+          "separated_peak_margin": 0.6207868504151777,
+          "pypeit_peak_disagreement_pixels": 0.003690160887344973,
+          "concave_peak": true,
+          "edge_peak": false
+        },
+        "approximate_shift_angstrom": -4.258168909717929
+      },
+      {
+        "range_vacuum_angstrom": [
+          5200.0,
+          6800.0
+        ],
+        "samples": 286,
+        "coverage_fraction": 1.0,
+        "status": "measured",
+        "shift_pixels": -0.8611387490947493,
+        "quality": {
+          "peak_correlation": 0.7365735102451021,
+          "peak_lag_pixels": -0.75,
+          "separated_peak_margin": 0.5740424553593275,
+          "pypeit_peak_disagreement_pixels": 0.1111387490947493,
+          "concave_peak": true,
+          "edge_peak": false
+        },
+        "approximate_shift_angstrom": -4.831359315147934
+      },
+      {
+        "range_vacuum_angstrom": [
+          6800.0,
+          7900.0
+        ],
+        "samples": 192,
+        "coverage_fraction": 1.0,
+        "status": "measured",
+        "shift_pixels": -1.0273045782713979,
+        "quality": {
+          "peak_correlation": 0.91020241028358,
+          "peak_lag_pixels": -0.75,
+          "separated_peak_margin": 0.4724484865027858,
+          "pypeit_peak_disagreement_pixels": 0.2773045782713979,
+          "concave_peak": true,
+          "edge_peak": false
+        },
+        "approximate_shift_angstrom": -5.8722390428637965
+      },
+      {
+        "range_vacuum_angstrom": [
+          7900.0,
+          9000.0
+        ],
+        "samples": 192,
+        "coverage_fraction": 1.0,
+        "status": "measured",
+        "shift_pixels": -0.061163012875269374,
+        "quality": {
+          "peak_correlation": 0.9533463501250377,
+          "peak_lag_pixels": -0.75,
+          "separated_peak_margin": 0.864199205631923,
+          "pypeit_peak_disagreement_pixels": 0.6888369871247306,
+          "concave_peak": true,
+          "edge_peak": false
+        },
+        "approximate_shift_angstrom": -0.35079318925315195
+      }
+    ],
+    "status": "diagnostic_only",
+    "applied": false,
+    "limitations": [
+      "Full-spectrum correlation is not a line-by-line acceptance test.",
+      "Regional shifts test consistency; discrepancies can indicate blends, sky variability, contamination or wavelength distortion.",
+      "No new wavelength correction or flux acceptance is applied by this diagnostic."
+    ]
+  }
+}

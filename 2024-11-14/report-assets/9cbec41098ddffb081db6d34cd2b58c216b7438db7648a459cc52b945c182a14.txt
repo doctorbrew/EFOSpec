@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/daily_reduction.py", line 168, in reduce_daily
+    prepared = extract(frame, directory)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/daily_reduction.py", line 118, in extract
+    validate_associations(frame, association['raw_calibrations'])
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/native_calibrations.py", line 46, in validate_associations
+    raise ValueError(f'native {role} association is incomplete')
+ValueError: native flat association is incomplete

@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/daily_reduction.py", line 168, in reduce_daily
+    prepared = extract(frame, directory)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/daily_reduction.py", line 120, in extract
+    prepared = prepare(frame, association['raw_calibrations'], directory, 548.,
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/native_reduction.py", line 100, in prepare
+    shift,sky=sky_flexure(image.image[sky_cut],sky_wave,slit_width_pixels=slit_pixels,
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/native_sky.py", line 86, in measure_flexure
+    raise SkyValidationError(failure,lines)
+efospec.native_sky.SkyValidationError: sky line 6300.3: peak/residual SNR 7.4 below 8 (peak/residual SNR 7.4; minimum 8)

@@ -1,0 +1,11 @@
+{
+  "path": "/Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/efosc/index.html",
+  "bytes": 14634921,
+  "portable_path": "/Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/efosc/index-portable.html",
+  "portable_bytes": 133243025,
+  "viewer_path": "/Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/efosc/index-view-32f38862f663.html",
+  "assets": 214,
+  "revision": "20261115T224937Z-c9a1ea",
+  "embedded_figures": 85,
+  "warnings": []
+}

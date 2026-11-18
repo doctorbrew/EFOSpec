@@ -1,0 +1,18 @@
+[1;38;2;215;48;39m   [ERROR][0m - [38;2;116;173;209mwave.py:vactoair:181[0m - AttributeError: 'numpy.ndarray' object has no attribute 'to'
+Traceback (most recent call last):
+  File "/tmp/efospec-nightly-comparison.py", line 41, in <module>
+    row=current[item['raw']];new=Path(row['product']);previous=Path(item.get('previous_selected_product',item.get('baseline_product')));directory=out/item['object'];directory.mkdir(exist_ok=True);figure,ratio,n=draw(item,new,previous,directory)
+                                                                                                                                                                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/figure_style.py", line 24, in wrapped
+    return function(*args,**kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/efospec-nightly-comparison.py", line 27, in draw
+    nw,nb,nv=read_product(new);ow,ob,ov=read_product(previous)
+             ^^^^^^^^^^^^^^^^^
+  File "/tmp/efospec-nightly-comparison.py", line 23, in read_product
+    wave=np.asarray(vactoair(table['OPT_WAVE']));sigma=np.full(len(wave),np.nan);valid=table['OPT_VALID'].astype(bool)&(table['OPT_COUNTS_IVAR']>0)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Softwares/miniconda3/envs/efospec/lib/python3.11/site-packages/pypeit/core/wave.py", line 181, in vactoair
+    wave = wave.to(units.AA)
+           ^^^^^^^
+AttributeError: 'numpy.ndarray' object has no attribute 'to'

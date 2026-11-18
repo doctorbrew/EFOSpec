@@ -1,0 +1,2 @@
+[2026-10-28] reduce: /Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/efosc/nightly/20261115T224937Z-c9a1ea
+[2026-10-28] partial: /Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/efosc/index.html

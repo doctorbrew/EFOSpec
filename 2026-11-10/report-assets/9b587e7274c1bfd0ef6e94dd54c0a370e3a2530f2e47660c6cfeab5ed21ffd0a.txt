@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/daily_reduction.py", line 180, in reduce_daily
+    prepared = extract(frame, directory)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/daily_reduction.py", line 122, in extract
+    prepared = prepare(frame, association['raw_calibrations'], directory, 548.,
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/native_reduction.py", line 43, in prepare
+    result = _prepare_window(frame, associations, destination, position, cached,
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/native_reduction.py", line 82, in _prepare_window
+    bundle=build_calibrations(frame,associations,directory/'calibration')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/native_calibrations.py", line 124, in build_calibrations
+    fit,qa=identify_spectrum(spectra[:,0],frame['setup']['grism'],fwhm=fwhm,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/native_wave.py", line 169, in identify_spectrum
+    raise ValueError('raw arc lines do not establish a physically validated wavelength solution')
+ValueError: raw arc lines do not establish a physically validated wavelength solution

@@ -1,0 +1,26 @@
+Reading input file 1 of 1: "/Users/avinash/Work/Reduction/EFOSpec/data/2026-10-29/EFOSC.2026-10-30T07:46:18.280.fits"...
+Running command: /opt/homebrew/bin/image2pnm --infile /Users/avinash/Work/Reduction/EFOSpec/data/2026-10-29/EFOSC.2026-10-30T07:46:18.280.fits --uncompressed-outfile /tmp/tmp.uncompressed.Mzl5um --outfile /tmp/tmp.ppm.Izn8fR --ppm --mydir /opt/homebrew/bin/solve-field
+Extracting sources...
+simplexy: found 169 sources.
+Solving...
+Reading file "/Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-29/QC/catalogues-20261106-other-transients/EFOSC.2026-10-30T07:46:18.280/astrometry/acquisition.axy"...
+Only searching for solutions within 0.3 degrees of RA,Dec (127.904,-59.7774)
+Field 1 did not solve (index index-5203-36.fits, field objects 1-10).
+Field 1 did not solve (index index-5202-36.fits, field objects 1-10).
+Field 1 did not solve (index index-5201-36.fits, field objects 1-10).
+Field 1 did not solve (index index-5200-36.fits, field objects 1-10).
+Field 1 did not solve (index index-4203-36.fits, field objects 1-10).
+Field 1 did not solve (index index-4202-36.fits, field objects 1-10).
+Field 1 did not solve (index index-4201-36.fits, field objects 1-10).
+  log-odds ratio 113.376 (1.73245e+49), 30 match, 3 conflict, 73 distractors, 35 index.
+  RA,Dec = (127.905,-59.769), pixel scale 0.240822 arcsec/pix.
+  Hit/miss:   Hit/miss: +++--+-+++---+++++-++++----++-+--++------+--------+-----+----+-+-+--------+------c---c-----c--------
+Field 1: solved with index index-4200-36.fits.
+Field 1 solved: writing to file /Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-29/QC/catalogues-20261106-other-transients/EFOSC.2026-10-30T07:46:18.280/astrometry/acquisition.solved to indicate this.
+Field: /Users/avinash/Work/Reduction/EFOSpec/data/2026-10-29/EFOSC.2026-10-30T07:46:18.280.fits
+Field center: (RA,Dec) = (127.904941, -59.768942) deg.
+Field center: (RA H:M:S, Dec D:M:S) = (08:31:37.186, -59:46:08.193).
+Field size: 4.13519 x 4.13392 arcminutes
+Field rotation angle: up is 26.2481 degrees E of N
+Field parity: neg
+

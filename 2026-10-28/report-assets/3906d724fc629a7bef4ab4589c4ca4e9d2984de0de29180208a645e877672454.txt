@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "/tmp/efospec-nightly-comparison.py", line 36, in <module>
+    row=current[item['raw']];new=Path(row['product']);previous=Path(item.get('previous_selected_product',item.get('baseline_product')));directory=out/item['object'];directory.mkdir();figure,ratio,n=draw(item,new,previous,directory)
+                                                                                                                                                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/figure_style.py", line 24, in wrapped
+    return function(*args,**kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/efospec-nightly-comparison.py", line 20, in draw
+    nw,nb,nh=read_flux(new);ow,ob,oh=read_flux(previous)
+             ^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/qa.py", line 17, in read_flux
+    wave=h['CRVAL1']+(np.arange(data.shape[-1])+1-h.get('CRPIX1',1))*h['CD1_1']
+         ~^^^^^^^^^^
+  File "/Users/avinash/Softwares/miniconda3/envs/efospec/lib/python3.11/site-packages/astropy/io/fits/header.py", line 170, in __getitem__
+    card = self._cards[self._cardindex(key)]
+                       ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Softwares/miniconda3/envs/efospec/lib/python3.11/site-packages/astropy/io/fits/header.py", line 1719, in _cardindex
+    raise KeyError(f"Keyword {keyword!r} not found.")
+KeyError: "Keyword 'CRVAL1' not found."

@@ -1,0 +1,47 @@
+{
+  "status": "passed",
+  "scientific_status": "PROVISIONAL",
+  "wavelength_validation": false,
+  "independent_absolute_flux_validation": false,
+  "night": "2026-10-28",
+  "run_sha256": "581860da1084cfd472d3e45c77bc1f8491f48c2b008843040e1b058346e5db8c",
+  "audit_script_sha256": "a18b1d57190d87053866d749d56816be2fb319f5bb6ed29c9e9491a9a73d410f",
+  "parent_unchanged": true,
+  "checked_raw_files": 18,
+  "calibration_manifest_sha256": {
+    "/Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/efosc/nightly/20261115T224937Z-c9a1ea/reduction/wavelength-review/exposures/EFOSC.2026-10-29T02:36:57.216/calibration": "fa5ae3a2070ebc82cf1962b489fb63f14122d04a4b2f3d75f8be9e14baabcec1"
+  },
+  "spectra": [
+    {
+      "object": "SN2026abgb",
+      "primary_extraction": "optimal",
+      "standard": "VMa2",
+      "valid_fraction": 0.9747368421052631,
+      "supported_air_bounds": [
+        4020.5,
+        9108.0
+      ],
+      "unchanged_native_counts_and_wavelengths": true,
+      "background_minimum_side_samples": 7,
+      "background_gap_from_aperture_edge_pixels": [
+        {
+          "minimum_gap": 6.233881122640881,
+          "median_gap": 9.688269691254675,
+          "maximum_gap": 15.162594597809402,
+          "minimum_input_width": 7,
+          "maximum_input_width": 15
+        },
+        {
+          "minimum_gap": 6.110153099170603,
+          "median_gap": 7.419504074563669,
+          "maximum_gap": 13.76611887735912,
+          "minimum_input_width": 8,
+          "maximum_input_width": 15
+        }
+      ],
+      "no_background_aperture_overlap": true,
+      "product": "/Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/efosc/rescue/SN2026abgb-flux-20261116T110514Z/products/tSN2026abgb_20261028_Gr13_Free_slit1.5_1_provisional_f.fits",
+      "product_sha256": "6be0727f1b858a9fa7730b92de7b6d5f1aeda548e2c4fabe1070423a867a0ace"
+    }
+  ]
+}

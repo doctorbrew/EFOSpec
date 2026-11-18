@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/daily_reduction.py", line 168, in reduce_daily
+    prepared = extract(frame, directory)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/daily_reduction.py", line 120, in extract
+    prepared = prepare(frame, association['raw_calibrations'], directory, 548.,
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/native_reduction.py", line 131, in prepare
+    engine=extract_spectra(data,waveair,image.detector,exposure_time=h['EXPTIME'],
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Softwares/miniconda3/envs/efospec/lib/python3.11/contextlib.py", line 81, in inner
+    return func(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/extraction.py", line 283, in extract_spectra
+    try:
+         
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/local_sky.py", line 512, in select_bounded_background
+    raise BackgroundSupportError(
+efospec.local_sky.BackgroundSupportError: No bounded two-sided background converged for any offered width at the default spatial degree.

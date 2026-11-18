@@ -1,0 +1,22 @@
+Traceback (most recent call last):
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/daily_reduction.py", line 179, in reduce_daily
+    prepared = extract(frame, directory)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/daily_reduction.py", line 121, in extract
+    prepared = prepare(frame, association['raw_calibrations'], directory, 548.,
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/native_reduction.py", line 43, in prepare
+    result = _prepare_window(frame, associations, destination, position, cached,
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/native_reduction.py", line 158, in _prepare_window
+    shift,sky=exposure_flexure(image.image[sky_cut],sky_wave,
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/native_sky.py", line 23, in exposure_flexure
+    shift, record = measure_flexure(data, waveair, **options)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/native_sky.py", line 63, in measure_flexure
+    return measure_validated(data,waveair,np.ones_like(data,dtype=bool) if good is None else good)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/sky_comparison.py", line 120, in measure_validated
+    raise error
+efospec.native_sky.SkyValidationError: Full-sky correlation quality or regional consistency failed

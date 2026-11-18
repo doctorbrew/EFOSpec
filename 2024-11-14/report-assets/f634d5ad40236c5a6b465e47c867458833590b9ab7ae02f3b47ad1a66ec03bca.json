@@ -1,0 +1,259 @@
+{
+  "schema_version": 1,
+  "night": "2024-11-14",
+  "tag": "iraf-comparison",
+  "parent_run": "/Users/avinash/Work/Reduction/EFOSpec/runs/2024-11-14/nightly/20261111T115520Z-6a5b85/reduction",
+  "parent_sha256": "5f94a55f83bf1eb0fed8b457df97862dac1b80a70e916138ee4bc4763d8a0651",
+  "input_dir": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14",
+  "pypeit_version": "3.0.0",
+  "comparison_source_sha256": "8c505d179f9d04ca96e7664c11e10fc431101d94cd3e4358cd639e8752ddce11",
+  "created_utc": "2026-11-11T14:06:40.131271+00:00",
+  "candidates": [
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/Anna_20241114/tAT2024aamn_20241114_Gr11_Free_slit1.0_1_f.fits",
+      "sha256": "31d600b226d8485924018c552b9385a04c50f25e39e6f0019796f0c8b1dd11b9",
+      "aliases": [],
+      "object": "AT2024aamn",
+      "status": "no_unique_native_product",
+      "raw": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T03:04:53.075.fits",
+      "raw_sha256": "2113731368442a16a3cd6b8e0c67c32c0d052d98a8e2515df80b53c268a63a4f",
+      "match_method": "raw_provenance_and_metadata",
+      "reason": "no successful same-night response with identical grism/filter/slit/binning/readout"
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/Anna_20241114/tAT2024tvb_20241114_Gr13_Free_slit1.0_1_f.fits",
+      "sha256": "0deb3d2cdb20b65133c2bfddbdb0a9d311a821150a08b689203668bb349939f3",
+      "aliases": [],
+      "object": "AT2024tvb",
+      "status": "no_unique_native_product",
+      "raw": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T03:33:29.858.fits",
+      "raw_sha256": "0252e57ae2ddd90d52e80dfd80af3ab196cc9c869dc906ea7f6a135aac7be8e0",
+      "match_method": "raw_provenance_and_metadata",
+      "reason": "No bounded two-sided background converged for any offered width at the default spatial degree."
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/Anna_20241114/tAT2024zcw_20241114_Gr13_Free_slit1.0_1_f.fits",
+      "sha256": "bfd6d0856eddb8dbfd9c4ef3d3e1ce853608b11db1f4d057cd5084674bf5c9f7",
+      "aliases": [],
+      "object": "AT2024zcw",
+      "status": "compared",
+      "raw": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T04:48:37.003.fits",
+      "raw_sha256": "61434f41c5c27d3d571355da4b12cb34fd8876ef16f0a13a17057c8ed679e701",
+      "match_method": "raw_provenance_and_metadata",
+      "native_product": "/Users/avinash/Work/Reduction/EFOSpec/runs/2024-11-14/nightly/20261111T115520Z-6a5b85/reduction/products/tAT2024zcw_20241114_Gr13_Free_slit1.0_1_f.fits",
+      "native_sha256": "0e146b8a99123253e5dc5ed7fa45043730619a8141b7e8635f956a5faeb686f5",
+      "native": {
+        "wavelength_medium": "air",
+        "wavelength_frame": "TOPOCENT",
+        "aperture": "1 1 438.096 461.096",
+        "detector_section": "unspecified",
+        "trim_record": "unspecified",
+        "band": "optimal flux",
+        "flux_unit": "erg / (Angstrom s cm2)"
+      },
+      "iraf": {
+        "wavelength_medium": "unspecified in IRAF header",
+        "wavelength_frame": "unspecified",
+        "aperture": "1 1 442.21 451.64",
+        "detector_section": "[100:950,1:1015]",
+        "trim_record": "Nov 15 10:41 Trim data section is [100:950,1:1015]",
+        "band": "spectrum - background fit, weights variance, clean yes",
+        "flux_unit": "erg / (Angstrom s cm2)"
+      },
+      "overlap_angstrom": [
+        3894.0,
+        9119.0
+      ],
+      "flux_display_limits_1e_minus16": [
+        -1.3169800718686988,
+        1.0220440599025886
+      ],
+      "display_policy": "All finite samples from both spectra within the displayed wavelength range; include zero and pad by 8 percent",
+      "pdf": "/Users/avinash/Work/Reduction/EFOSpec/runs/2024-11-14/nightly/20261111T115520Z-6a5b85/iraf-comparison/20261111T140639Z-5d6435/pair-003/FitQC_AT2024zcw_iraf-comparison.pdf",
+      "jpg": "/Users/avinash/Work/Reduction/EFOSpec/runs/2024-11-14/nightly/20261111T115520Z-6a5b85/iraf-comparison/20261111T140639Z-5d6435/pair-003/FitQC_AT2024zcw_iraf-comparison.jpg",
+      "figure_sha256": {
+        "pdf": "8bba189bcdaf0d8a9a71247936ec548ce97a31cb3be330b5287df2fbb548dd93",
+        "jpg": "225561458eb39c470c4eb4da250504d56061d4f403092970e6638b1b05a2b163"
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/Anna_20241114/tSN2024abbv_20241114_Gr11_Free_slit1.0_1_f.fits",
+      "sha256": "791a1280ae92118479f558fbc9b333261fe2ea62bc8f32014f456299b41f0ae8",
+      "aliases": [],
+      "object": "SN2024abbv",
+      "status": "no_unique_native_product",
+      "raw": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T04:24:39.345.fits",
+      "raw_sha256": "396678674e066f1cbb3ad2440fd8f47bd17cd3304d76a8926a74b1537c9481c4",
+      "match_method": "raw_provenance_and_metadata",
+      "reason": "no successful same-night response with identical grism/filter/slit/binning/readout"
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/tAT2024aatd_20241114_Gr13_Free_slit1.0_1_f.fits",
+      "sha256": "f35a985db46afa1fe236c4b65d87e79bf8df22bef902c739172c0c9db42bf068",
+      "aliases": [],
+      "object": "AT2024aatd",
+      "status": "compared",
+      "raw": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T08:30:00.913.fits",
+      "raw_sha256": "739a1fabbe0d8e212b6fa4bc43762f4cacab9b01c75e98612037e3330ae7b97c",
+      "match_method": "raw_provenance_and_metadata",
+      "native_product": "/Users/avinash/Work/Reduction/EFOSpec/runs/2024-11-14/nightly/20261111T115520Z-6a5b85/reduction/products/tAT2024aatd_20241114_Gr13_Free_slit1.0_1_f.fits",
+      "native_sha256": "d94e1fdbe4a0cfdd5457883788e8479c52d654ef3e7a375dc95babf4362ae561",
+      "native": {
+        "wavelength_medium": "air",
+        "wavelength_frame": "TOPOCENT",
+        "aperture": "1 1 439.302 464.302",
+        "detector_section": "unspecified",
+        "trim_record": "unspecified",
+        "band": "optimal flux",
+        "flux_unit": "erg / (Angstrom s cm2)"
+      },
+      "iraf": {
+        "wavelength_medium": "unspecified in IRAF header",
+        "wavelength_frame": "unspecified",
+        "aperture": "1 1 443.04 454.98",
+        "detector_section": "[100:950,1:1015]",
+        "trim_record": "Nov 15 10:06 Trim data section is [100:950,1:1015]",
+        "band": "spectrum - background fit, weights variance, clean yes",
+        "flux_unit": "erg / (Angstrom s cm2)"
+      },
+      "overlap_angstrom": [
+        3894.0,
+        9119.0
+      ],
+      "flux_display_limits_1e_minus16": [
+        -0.474564866042755,
+        4.112745657743525
+      ],
+      "display_policy": "All finite samples from both spectra within the displayed wavelength range; include zero and pad by 8 percent",
+      "pdf": "/Users/avinash/Work/Reduction/EFOSpec/runs/2024-11-14/nightly/20261111T115520Z-6a5b85/iraf-comparison/20261111T140639Z-5d6435/pair-005/FitQC_AT2024aatd_iraf-comparison.pdf",
+      "jpg": "/Users/avinash/Work/Reduction/EFOSpec/runs/2024-11-14/nightly/20261111T115520Z-6a5b85/iraf-comparison/20261111T140639Z-5d6435/pair-005/FitQC_AT2024aatd_iraf-comparison.jpg",
+      "figure_sha256": {
+        "pdf": "841f1ed35dd7545035176299287fcf3aaf1b259ff303ee40e8f7fce177c1ae91",
+        "jpg": "82c13878144cf6073c1e6e69c1b5fdec3e82009f23cf6a509f543fa9f7c62c87"
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/tAT2024aatz_20241114_Gr13_Free_slit1.0_1_f.fits",
+      "sha256": "400d3c8536f6c7ff02f045660e7495465c773cde55e44a7c1aab6c403c8ea913",
+      "aliases": [],
+      "object": "AT2024aatz",
+      "status": "compared",
+      "raw": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T07:09:03.747.fits",
+      "raw_sha256": "6e83a0bd1213f29cbbff790a830e54ea55ad6ae8db94cab7696bd6acbdfd7c2e",
+      "match_method": "raw_provenance_and_metadata",
+      "native_product": "/Users/avinash/Work/Reduction/EFOSpec/runs/2024-11-14/nightly/20261111T115520Z-6a5b85/reduction/products/tAT2024aatz_20241114_Gr13_Free_slit1.0_1_f.fits",
+      "native_sha256": "7c2ef8846d7b31143377018b7fa00eed32eff733c426065f88cc21884246a1ef",
+      "native": {
+        "wavelength_medium": "air",
+        "wavelength_frame": "TOPOCENT",
+        "aperture": "1 1 440.762 461.762",
+        "detector_section": "unspecified",
+        "trim_record": "unspecified",
+        "band": "optimal flux",
+        "flux_unit": "erg / (Angstrom s cm2)"
+      },
+      "iraf": {
+        "wavelength_medium": "unspecified in IRAF header",
+        "wavelength_frame": "unspecified",
+        "aperture": "1 1 445.77 455.03",
+        "detector_section": "[100:950,1:1015]",
+        "trim_record": "Nov 15 10:51 Trim data section is [100:950,1:1015]",
+        "band": "spectrum - background fit, weights variance, clean yes",
+        "flux_unit": "erg / (Angstrom s cm2)"
+      },
+      "overlap_angstrom": [
+        3894.0,
+        9119.0
+      ],
+      "flux_display_limits_1e_minus16": [
+        -0.8501511958174766,
+        5.930151689112991
+      ],
+      "display_policy": "All finite samples from both spectra within the displayed wavelength range; include zero and pad by 8 percent",
+      "pdf": "/Users/avinash/Work/Reduction/EFOSpec/runs/2024-11-14/nightly/20261111T115520Z-6a5b85/iraf-comparison/20261111T140639Z-5d6435/pair-006/FitQC_AT2024aatz_iraf-comparison.pdf",
+      "jpg": "/Users/avinash/Work/Reduction/EFOSpec/runs/2024-11-14/nightly/20261111T115520Z-6a5b85/iraf-comparison/20261111T140639Z-5d6435/pair-006/FitQC_AT2024aatz_iraf-comparison.jpg",
+      "figure_sha256": {
+        "pdf": "b8cf23ce292f7283ff6e7138b17bff6942e560cca3b71771124fa1cacaa6ef54",
+        "jpg": "41c0a1ddff244a6b52bd11377559f6ebe21f4da3fd6ef520c035e048c5689d00"
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/tSN2023xxj_20241114_Gr13_Free_slit1.0_1_f.fits",
+      "sha256": "84da013a9be8a80fa9b404e9d9efb0f2a80c2e37800bd6a8ed00f740336731d3",
+      "aliases": [],
+      "object": "SN2023xxj",
+      "status": "compared",
+      "raw": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T07:37:44.091.fits",
+      "raw_sha256": "0a29c0ea783188ead178c0c4750ad9b2cd3ff9f16d6194ff5fe6b704f2545531",
+      "match_method": "raw_provenance_and_metadata",
+      "native_product": "/Users/avinash/Work/Reduction/EFOSpec/runs/2024-11-14/nightly/20261111T115520Z-6a5b85/reduction/products/tSN2023xxj_20241114_Gr13_Free_slit1.0_1_f.fits",
+      "native_sha256": "8d0c00ba02e5f52adc1866883a91c4d22f9518dad0091417ce0bb053938edb29",
+      "native": {
+        "wavelength_medium": "air",
+        "wavelength_frame": "TOPOCENT",
+        "aperture": "1 1 441.017 458.017",
+        "detector_section": "unspecified",
+        "trim_record": "unspecified",
+        "band": "optimal flux",
+        "flux_unit": "erg / (Angstrom s cm2)"
+      },
+      "iraf": {
+        "wavelength_medium": "unspecified in IRAF header",
+        "wavelength_frame": "unspecified",
+        "aperture": "1 1 270.84 280.84",
+        "detector_section": "[100:950,1:1015]",
+        "trim_record": "Nov 15 10:17 Trim data section is [100:950,1:1015]",
+        "band": "spectrum - background fit, weights variance, clean yes",
+        "flux_unit": "erg / (Angstrom s cm2)"
+      },
+      "overlap_angstrom": [
+        3894.0,
+        9119.0
+      ],
+      "flux_display_limits_1e_minus16": [
+        -0.48009476725794026,
+        1.2329244820622105
+      ],
+      "display_policy": "All finite samples from both spectra within the displayed wavelength range; include zero and pad by 8 percent",
+      "pdf": "/Users/avinash/Work/Reduction/EFOSpec/runs/2024-11-14/nightly/20261111T115520Z-6a5b85/iraf-comparison/20261111T140639Z-5d6435/pair-007/FitQC_SN2023xxj_iraf-comparison.pdf",
+      "jpg": "/Users/avinash/Work/Reduction/EFOSpec/runs/2024-11-14/nightly/20261111T115520Z-6a5b85/iraf-comparison/20261111T140639Z-5d6435/pair-007/FitQC_SN2023xxj_iraf-comparison.jpg",
+      "figure_sha256": {
+        "pdf": "68c783a835f14d02be2a46c32f8cbb32a4780b0418f64954d2f6a3fcea71729b",
+        "jpg": "9c02182658e42d50b44700a35e90fa27b71503556a04329bf0e2eb57c2f390bb"
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/tSN2024ztn_20241114_Gr13_Free_slit1.0_1_f.fits",
+      "sha256": "627c69618aafc6a83f0299ba0f7b5ca084c38e5aa2ed3483ec599d1e8098e30b",
+      "aliases": [],
+      "object": "SN2024ztn",
+      "status": "no_unique_native_product",
+      "raw": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:21:18.037.fits",
+      "raw_sha256": "9ab4af7a1f0436af7c7fb8d04e3170ab00233d833a15cd1059cc0bf364c336b2",
+      "match_method": "raw_provenance_and_metadata",
+      "reason": "sky line 6300.3: peak/residual SNR 7.4 below 8 (peak/residual SNR 7.4; minimum 8)"
+    }
+  ],
+  "scan_errors": [],
+  "unmatched_native": [
+    {
+      "object": "AT2024aawp",
+      "raw": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T00:20:43.657.fits"
+    },
+    {
+      "object": "SN2024tvg",
+      "raw": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:02:29.452.fits"
+    },
+    {
+      "object": "AT2024abek",
+      "raw": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:20:02.651.fits"
+    }
+  ],
+  "status": "partial",
+  "limitations": [
+    "Overlays use delivered wavelengths and absolute flux; no shifts, normalization or interpolation.",
+    "Raw-exposure matching does not verify identical source/aperture; inspect both saved APNUM1 records.",
+    "IRAF products are historical comparisons, not ground truth; wavelength medium/frame may be unspecified.",
+    "Extraction, response, telluric and slit-loss differences can affect agreement; no scientific acceptance is inferred."
+  ]
+}

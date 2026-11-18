@@ -1,0 +1,42 @@
+Reading input file 1 of 1: "/Users/avinash/Work/Reduction/EFOSpec/data/2026-10-28/EFOSC.2026-10-29T06:20:25.141.fits"...
+Running command: /opt/homebrew/bin/image2pnm --infile /Users/avinash/Work/Reduction/EFOSpec/data/2026-10-28/EFOSC.2026-10-29T06:20:25.141.fits --uncompressed-outfile /tmp/tmp.uncompressed.gpQoGH --outfile /tmp/tmp.ppm.hDiYSd --ppm --mydir /opt/homebrew/bin/solve-field
+Extracting sources...
+simplexy: found 83 sources.
+Solving...
+Reading file "/Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/QC/catalogues-20261106-transients/EFOSC.2026-10-29T06:20:25.141/astrometry/acquisition.axy"...
+Only searching for solutions within 0.3 degrees of RA,Dec (141.85,-32.014)
+Field 1 did not solve (index index-5203-39.fits, field objects 1-10).
+Field 1 did not solve (index index-5202-39.fits, field objects 1-10).
+Field 1 did not solve (index index-5201-39.fits, field objects 1-10).
+Field 1 did not solve (index index-5200-39.fits, field objects 1-10).
+Field 1 did not solve (index index-4203-39.fits, field objects 1-10).
+Field 1 did not solve (index index-4202-39.fits, field objects 1-10).
+Field 1 did not solve (index index-4201-39.fits, field objects 1-10).
+Field 1 did not solve (index index-4200-39.fits, field objects 1-10).
+Field 1 did not solve (index index-5203-39.fits, field objects 11-20).
+Field 1 did not solve (index index-5202-39.fits, field objects 11-20).
+Field 1 did not solve (index index-5201-39.fits, field objects 11-20).
+Field 1 did not solve (index index-5200-39.fits, field objects 11-20).
+Field 1 did not solve (index index-4203-39.fits, field objects 11-20).
+Field 1 did not solve (index index-4202-39.fits, field objects 11-20).
+Field 1 did not solve (index index-4201-39.fits, field objects 11-20).
+Field 1 did not solve (index index-4200-39.fits, field objects 11-20).
+Field 1 did not solve (index index-5203-39.fits, field objects 21-30).
+Field 1 did not solve (index index-5202-39.fits, field objects 21-30).
+Field 1 did not solve (index index-5201-39.fits, field objects 21-30).
+Field 1 did not solve (index index-5200-39.fits, field objects 21-30).
+Field 1 did not solve (index index-4203-39.fits, field objects 21-30).
+Field 1 did not solve (index index-4202-39.fits, field objects 21-30).
+Field 1 did not solve (index index-4201-39.fits, field objects 21-30).
+  log-odds ratio 98.2153 (4.51177e+42), 26 match, 0 conflict, 22 distractors, 33 index.
+  RA,Dec = (141.844,-32.0082), pixel scale 0.2408 arcsec/pix.
+  Hit/miss:   Hit/miss: ++++----------++--++----+--+++++-+-+-++++++++-++(best)----------------------------c--++++
+Field 1: solved with index index-4200-39.fits.
+Field 1 solved: writing to file /Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/QC/catalogues-20261106-transients/EFOSC.2026-10-29T06:20:25.141/astrometry/acquisition.solved to indicate this.
+Field: /Users/avinash/Work/Reduction/EFOSpec/data/2026-10-28/EFOSC.2026-10-29T06:20:25.141.fits
+Field center: (RA,Dec) = (141.844200, -32.008141) deg.
+Field center: (RA H:M:S, Dec D:M:S) = (09:27:22.608, -32:00:29.309).
+Field size: 4.13885 x 4.13334 arcminutes
+Field rotation angle: up is -21.812 degrees E of N
+Field parity: neg
+

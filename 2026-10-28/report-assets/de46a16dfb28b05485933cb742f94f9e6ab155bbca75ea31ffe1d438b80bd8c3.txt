@@ -1,0 +1,8 @@
+Observing night: 2026-10-28
+Command: ["/Users/avinash/Softwares/miniconda3/envs/efospec/bin/python", "-m", "efospec", "report", "/Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/efosc/nightly/20261115T224937Z-c9a1ea/reduction"]
+{
+  "path": "/Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/efosc/nightly/20261115T224937Z-c9a1ea/reduction/index.html",
+  "status": "complete",
+  "missing_figures": [],
+  "generation_error": null
+}

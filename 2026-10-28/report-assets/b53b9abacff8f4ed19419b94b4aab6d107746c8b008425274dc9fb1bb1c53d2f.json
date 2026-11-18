@@ -1,0 +1,59 @@
+{
+  "object": "AT2024afzf",
+  "raw": "/Users/avinash/Work/Reduction/EFOSpec/data/2026-10-28/EFOSC.2026-10-29T07:12:15.228.fits",
+  "raw_sha256": "bc96a3468e624087a567e49fddff9912b5bf63673305400e2c3064e27357672b",
+  "product": "/Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/efosc/nightly/20261115T224937Z-c9a1ea/reduction/products/tAT2024afzf_20261028_Gr13_Free_slit1.0_1_f.fits",
+  "product_sha256": "f2d147444b5ddb08d6da1936d6260531806268f15f5820c32a1c01607b300427",
+  "images": "/Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/efosc/nightly/20261115T224937Z-c9a1ea/reduction/native/tAT2024afzf_20261028_Gr13_Free_slit1.0_1_images.npz",
+  "images_sha256": "bc29673f74b3872830111ecb1e4c24c024554a4a68049436dac9b0b02057bbbf",
+  "spectral": {
+    "status": "no_reliable_line_system",
+    "z": null,
+    "solutions": [],
+    "line_detection": {
+      "threshold_sigma": 3.0,
+      "maximum_template_snr": 15.394401075031901,
+      "statistic": "continuum-subtracted Gaussian-filtered counts/error with diagonal-noise normalization; not a global false-alarm probability",
+      "scope": "unmasked wavelength coverage near the selected trace; host association not established"
+    },
+    "wavelength_validated": true,
+    "wavelength_warnings": [],
+    "wavelength_acceptance_policy": "three-line",
+    "diagnostic_6363_error": null,
+    "method_parameters": {
+      "nominal_fwhm_angstrom": 35.0,
+      "aperture_radius_pixels": 20.0,
+      "minimum_independent_groups": 3,
+      "minimum_line_snr": 5.0,
+      "minimum_delta_chi2": 30.0,
+      "search_range": [
+        -0.003,
+        1.0
+      ],
+      "redshift_error": "fit covariance with unresolved-blend centroid floors; excludes wavelength and background systematics"
+    },
+    "wavelength_systematic_error": null,
+    "wavelength_warning": "sky check passed; full calibration covariance unavailable"
+  },
+  "ned": {
+    "status": "ok",
+    "candidate": null,
+    "candidates": [],
+    "association": "nearest catalogue galaxy within 30 arcsec of header pointing; not a confirmed host",
+    "query_file": "/Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/efosc/nightly/20261115T224937Z-c9a1ea/QC/redshifts-20261117T110057Z/EFOSC.2026-10-29T07:12:15.228/catalogue/NED.json",
+    "query_sha256": "b562d18fe8a27889cf166fcfb09b004c041fbbad9385e3b6e608491eae6819ec",
+    "reference_frame": "heliocentric",
+    "coordinate_basis": "science header RA/DEC; no slit-to-sky registration"
+  },
+  "reference_frame": "heliocentric",
+  "input_wavelength_medium": "air",
+  "fit_wavelength_medium": "vacuum",
+  "host_identified": false,
+  "diagnostic_arrays": "/Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/efosc/nightly/20261115T224937Z-c9a1ea/QC/redshifts-20261117T110057Z/EFOSC.2026-10-29T07:12:15.228/line-spectrum.npz",
+  "diagnostic_arrays_sha256": "7194c99548c903e3ab22249ca2d3002cd29747efffe4ea47a1a5b49241b7f88b",
+  "figures": {
+    "/Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/efosc/nightly/20261115T224937Z-c9a1ea/QC/redshifts-20261117T110057Z/EFOSC.2026-10-29T07:12:15.228/FitQC_AT2024afzf_redshift.pdf": "25a2b4987ea5641548cdcc3af1ea24ed64152538929c68057a82fece480c9639",
+    "/Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/efosc/nightly/20261115T224937Z-c9a1ea/QC/redshifts-20261117T110057Z/EFOSC.2026-10-29T07:12:15.228/FitQC_AT2024afzf_redshift.jpg": "06f46fda311d9c628c792e8017933cd773b6f4a9fe5980ec26905c3c3ccce18e",
+    "/Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/efosc/nightly/20261115T224937Z-c9a1ea/QC/redshifts-20261117T110057Z/EFOSC.2026-10-29T07:12:15.228/redshift.png": "822fe086b2e5b35a175d9914133132fe25e15e8ff534dbf80260a1f8067d2830"
+  }
+}

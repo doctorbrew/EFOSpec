@@ -1,0 +1,25 @@
+Reading input file 1 of 1: "/Users/avinash/Work/Reduction/EFOSpec/data/2026-10-28/EFOSC.2026-10-29T02:51:49.307.fits"...
+Running command: /opt/homebrew/bin/image2pnm --infile /Users/avinash/Work/Reduction/EFOSpec/data/2026-10-28/EFOSC.2026-10-29T02:51:49.307.fits --uncompressed-outfile /tmp/tmp.uncompressed.GSV2nf --outfile /tmp/tmp.ppm.WI9jXQ --ppm --mydir /opt/homebrew/bin/solve-field
+Extracting sources...
+simplexy: found 76 sources.
+Solving...
+Reading file "/Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/QC/catalogues-20261106-transients/EFOSC.2026-10-29T02:51:49.307/astrometry/acquisition.axy"...
+Only searching for solutions within 0.3 degrees of RA,Dec (351.93,23.5889)
+Field 1 did not solve (index index-5203-19.fits, field objects 1-10).
+Field 1 did not solve (index index-5202-19.fits, field objects 1-10).
+Field 1 did not solve (index index-5201-19.fits, field objects 1-10).
+Field 1 did not solve (index index-5200-19.fits, field objects 1-10).
+Field 1 did not solve (index index-4203-19.fits, field objects 1-10).
+Field 1 did not solve (index index-4202-19.fits, field objects 1-10).
+  log-odds ratio 43.2703 (6.19503e+18), 11 match, 0 conflict, 28 distractors, 18 index.
+  RA,Dec = (351.924,23.5853), pixel scale 0.241015 arcsec/pix.
+  Hit/miss:   Hit/miss: -++--+--+-------+-+-++-+---+----------+(best)---------------------------------++++
+Field 1: solved with index index-4201-19.fits.
+Field 1 solved: writing to file /Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/QC/catalogues-20261106-transients/EFOSC.2026-10-29T02:51:49.307/astrometry/acquisition.solved to indicate this.
+Field: /Users/avinash/Work/Reduction/EFOSpec/data/2026-10-28/EFOSC.2026-10-29T02:51:49.307.fits
+Field center: (RA,Dec) = (351.924061, 23.585289) deg.
+Field center: (RA H:M:S, Dec D:M:S) = (23:27:41.775, +23:35:07.041).
+Field size: 4.12825 x 4.11476 arcminutes
+Field rotation angle: up is -107.47 degrees E of N
+Field parity: neg
+

@@ -1,0 +1,3208 @@
+{
+  "schema_version": 1,
+  "calibration_policy": "native_only",
+  "iraf_runtime_required": false,
+  "iraf_calibration_products_allowed": false,
+  "processed_inputs_ignored": [
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/Anna_20241114/tAT2024aamn_20241114_Gr11_Free_slit1.0_1.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/Anna_20241114/tAT2024aamn_20241114_Gr11_Free_slit1.0_1_2df.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/Anna_20241114/tAT2024aamn_20241114_Gr11_Free_slit1.0_1_ex.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/Anna_20241114/tAT2024aamn_20241114_Gr11_Free_slit1.0_1_f.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/Anna_20241114/tAT2024tvb_20241114_Gr13_Free_slit1.0_1.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/Anna_20241114/tAT2024tvb_20241114_Gr13_Free_slit1.0_1_2df.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/Anna_20241114/tAT2024tvb_20241114_Gr13_Free_slit1.0_1_ex.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/Anna_20241114/tAT2024tvb_20241114_Gr13_Free_slit1.0_1_f.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/Anna_20241114/tAT2024zcw_20241114_Gr13_Free_slit1.0_1.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/Anna_20241114/tAT2024zcw_20241114_Gr13_Free_slit1.0_1_2df.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/Anna_20241114/tAT2024zcw_20241114_Gr13_Free_slit1.0_1_ex.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/Anna_20241114/tAT2024zcw_20241114_Gr13_Free_slit1.0_1_f.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/Anna_20241114/tSN2024abbv_20241114_Gr11_Free_slit1.0_1.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/Anna_20241114/tSN2024abbv_20241114_Gr11_Free_slit1.0_1_2df.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/Anna_20241114/tSN2024abbv_20241114_Gr11_Free_slit1.0_1_ex.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/Anna_20241114/tSN2024abbv_20241114_Gr11_Free_slit1.0_1_f.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/arc_20120825_Gr13_Free_slit1.0_56442_1.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/tAT2024aatd_20241114_Gr13_Free_slit1.0_1.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/tAT2024aatd_20241114_Gr13_Free_slit1.0_1_2df.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/tAT2024aatd_20241114_Gr13_Free_slit1.0_1_ex.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/tAT2024aatd_20241114_Gr13_Free_slit1.0_1_f.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/tAT2024aatz_20241114_Gr13_Free_slit1.0_1.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/tAT2024aatz_20241114_Gr13_Free_slit1.0_1_2df.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/tAT2024aatz_20241114_Gr13_Free_slit1.0_1_ex.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/tAT2024aatz_20241114_Gr13_Free_slit1.0_1_f.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/tSN2023xxj_20241114_Gr13_Free_slit1.0_1.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/tSN2023xxj_20241114_Gr13_Free_slit1.0_1_2df.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/tSN2023xxj_20241114_Gr13_Free_slit1.0_1_f.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/tSN2024ztn_20241114_Gr13_Free_slit1.0_1.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/tSN2024ztn_20241114_Gr13_Free_slit1.0_1_2df.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/tSN2024ztn_20241114_Gr13_Free_slit1.0_1_ex.fits",
+    "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/tSN2024ztn_20241114_Gr13_Free_slit1.0_1_f.fits"
+  ],
+  "invalid_inputs": [],
+  "calibration_tests_ignored": [],
+  "input_errors": [],
+  "identity_conflicts": {},
+  "exposures": [
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T00:20:43.657.fits",
+      "setup": {
+        "grism": "Gr13",
+        "filter": "Free",
+        "slit": "slit1.0",
+        "binx": 2,
+        "biny": 2,
+        "readout": "fastL",
+        "shape_yx": [
+          1030,
+          1030
+        ]
+      },
+      "raw_calibrations": {
+        "arc": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:00:31.548.fits"
+          ],
+          "sha256": [
+            "b0ed5bbda52d43a8a51eb27a24cf3159264c1be4d8bd0b91499d77215c41474d"
+          ],
+          "time_separation_days": 0.36097095999866724,
+          "source": "supplied_raw",
+          "policy": "nearest compatible arc; slit5.0 uses slit1.0",
+          "rejected": []
+        },
+        "bias": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:51:55.833.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:26.834.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:57.766.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:28.788.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:59.760.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:54:30.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:01.794.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:32.785.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:03.756.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:34.778.fits"
+          ],
+          "sha256": [
+            "fcfacf29f3db95020654ebb45a1e70d4d170d9ed76c1277e47a85d0a2f0a5cfd",
+            "24cda6c49c3dba5fbf29c259456c276cec356f97ad9ef416bf8f0882c3d3faca",
+            "e3690e2971631db9a4869ec345e44671047d86878854793faa36ea26b4343433",
+            "f3d24e95a8b84b5f48cb7ee333c73cf8d1efbec333f33abd98a21fdc1677130f",
+            "ebf48cfec51609b31ff0fc006dfe33a3b043b8cb1d18d19af4b6a74d2fda80b3",
+            "cbd21092fa6c1aebeeab1c2522cd84b2db012b5727a4a51e5980b09793663aa2",
+            "472bdd7d1052c689e5c9571afc4968a5e36f84e2fdc5d00fbc7f380af5f08799",
+            "e8a7fda864a4f7f8ba9ca78a4f9373828207e10020264f1df23f0b8343140fe6",
+            "55776d137d418b652341da4b488a0999d0879699e0a347ec9b3ef80074571fa9",
+            "92f1eefb22e2c38d62a5cd9dcfbda100e2a2eff57788064797efbe23753df86e"
+          ],
+          "time_separation_days": 7.643383886002994,
+          "source": "supplied_raw",
+          "policy": "nearest compatible nightly group of at least three",
+          "rejected": []
+        },
+        "flat": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:02:54.773.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:04:33.810.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:06:12.828.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:07:51.836.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:09:29.793.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:11:08.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:12:47.808.fits"
+          ],
+          "sha256": [
+            "04bcd05a97aae78d22a066e9c2918926899ccec76b9286cef06ac2781252ef1a",
+            "a7a2291629295ac09b37c81b526e4b64f8ee1c1cc5918760b465647d83c965a9",
+            "0d7a4e1bd4dd8c70935a27ba9963d73932b45fe051f3e925922381f6ba5f4b05",
+            "b9370eec09ba71491ae54661f5bc7baae27a186a4b5f954ed454810267e28357",
+            "1eb13561bb6902f12fecf27330387dfab2dbdd1752afc9bfedc60333871bb4ad",
+            "31c2582ddc213d334906de98c99f5d68c292091199f096767ed59560ad4ad642",
+            "daf3f238477c2ddcee6a76620d81e8525063731b41909fff63d1a1aeba971dc6"
+          ],
+          "time_separation_days": 0.3660615885673906,
+          "source": "supplied_raw",
+          "policy": "lamp-flat preference, same OBID then time; at least three",
+          "rejected": []
+        },
+        "standard_candidate": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:10:36.267.fits"
+          ],
+          "sha256": [
+            "0ed407a1646c19013726416996726c3403fadd833789ffe08c017fe8b7a847c5"
+          ],
+          "time_separation_days": 0.07630335000430932,
+          "source": "supplied_raw",
+          "policy": "nearest same-night raw standard candidate in identical setup; identity and physical reference not yet verified",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:53:55.725.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:55:45.947.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:12:25.708.fits",
+              "reasons": [
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:53:20.457.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:55:50.955.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T07:00:49.749.fits",
+              "reasons": [
+                "different slit"
+              ]
+            }
+          ]
+        }
+      },
+      "pipeline_support": {
+        "archive_bridge": "enabled",
+        "archive_issue": null,
+        "native_masters": "experimental",
+        "native_pair": "experimental",
+        "separate_filtered_standards": "not_enabled",
+        "red_counts_diagnostic": "not_enabled",
+        "scientifically_validated": false,
+        "development_required": [],
+        "validation_required": [
+          "Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.",
+          "Verify standard identity, physical reference, response coverage and independent flux/uncertainty checks.",
+          "Retain source-identification and bounded two-sided background checks."
+        ]
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T00:46:30.806.fits",
+      "setup": {
+        "grism": "Gr11",
+        "filter": "Free",
+        "slit": "slit1.0",
+        "binx": 2,
+        "biny": 2,
+        "readout": "fastL",
+        "shape_yx": [
+          1030,
+          1030
+        ]
+      },
+      "raw_calibrations": {
+        "arc": {
+          "status": "missing",
+          "files": [],
+          "sha256": [],
+          "time_separation_days": null,
+          "source": "supplied_raw",
+          "policy": "nearest compatible arc; slit5.0 uses slit1.0",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:00:31.548.fits",
+              "reasons": [
+                "different grism"
+              ]
+            }
+          ]
+        },
+        "bias": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:51:55.833.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:26.834.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:57.766.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:28.788.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:59.760.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:54:30.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:01.794.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:32.785.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:03.756.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:34.778.fits"
+          ],
+          "sha256": [
+            "fcfacf29f3db95020654ebb45a1e70d4d170d9ed76c1277e47a85d0a2f0a5cfd",
+            "24cda6c49c3dba5fbf29c259456c276cec356f97ad9ef416bf8f0882c3d3faca",
+            "e3690e2971631db9a4869ec345e44671047d86878854793faa36ea26b4343433",
+            "f3d24e95a8b84b5f48cb7ee333c73cf8d1efbec333f33abd98a21fdc1677130f",
+            "ebf48cfec51609b31ff0fc006dfe33a3b043b8cb1d18d19af4b6a74d2fda80b3",
+            "cbd21092fa6c1aebeeab1c2522cd84b2db012b5727a4a51e5980b09793663aa2",
+            "472bdd7d1052c689e5c9571afc4968a5e36f84e2fdc5d00fbc7f380af5f08799",
+            "e8a7fda864a4f7f8ba9ca78a4f9373828207e10020264f1df23f0b8343140fe6",
+            "55776d137d418b652341da4b488a0999d0879699e0a347ec9b3ef80074571fa9",
+            "92f1eefb22e2c38d62a5cd9dcfbda100e2a2eff57788064797efbe23753df86e"
+          ],
+          "time_separation_days": 7.661290706004365,
+          "source": "supplied_raw",
+          "policy": "nearest compatible nightly group of at least three",
+          "rejected": []
+        },
+        "flat": {
+          "status": "missing",
+          "files": [],
+          "sha256": [],
+          "time_separation_days": null,
+          "source": "supplied_raw",
+          "policy": "lamp-flat preference, same OBID then time; at least three",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:02:54.773.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:04:33.810.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:06:12.828.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:07:51.836.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:09:29.793.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:11:08.801.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:12:47.808.fits",
+              "reasons": [
+                "different grism"
+              ]
+            }
+          ]
+        },
+        "standard_candidate": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:53:55.725.fits"
+          ],
+          "sha256": [
+            "c2d08246dfb867ebfe820b29532d48ceebe72ee3afa2c8dfc69e51b7eecde594"
+          ],
+          "time_separation_days": 0.04681618999893544,
+          "source": "supplied_raw",
+          "policy": "nearest same-night raw standard candidate in identical setup; identity and physical reference not yet verified",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:55:45.947.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:10:36.267.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:12:25.708.fits",
+              "reasons": [
+                "different grism",
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:55:50.955.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:58:20.732.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T07:00:49.749.fits",
+              "reasons": [
+                "different grism",
+                "different slit"
+              ]
+            }
+          ]
+        }
+      },
+      "pipeline_support": {
+        "archive_bridge": "enabled",
+        "archive_issue": null,
+        "native_masters": "experimental",
+        "native_pair": "experimental",
+        "separate_filtered_standards": "not_enabled",
+        "red_counts_diagnostic": "not_enabled",
+        "scientifically_validated": false,
+        "development_required": [],
+        "validation_required": [
+          "Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.",
+          "Verify standard identity, physical reference, response coverage and independent flux/uncertainty checks.",
+          "Retain source-identification and bounded two-sided background checks."
+        ]
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:02:29.452.fits",
+      "setup": {
+        "grism": "Gr13",
+        "filter": "Free",
+        "slit": "slit1.0",
+        "binx": 2,
+        "biny": 2,
+        "readout": "fastL",
+        "shape_yx": [
+          1030,
+          1030
+        ]
+      },
+      "raw_calibrations": {
+        "arc": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:00:31.548.fits"
+          ],
+          "sha256": [
+            "b0ed5bbda52d43a8a51eb27a24cf3159264c1be4d8bd0b91499d77215c41474d"
+          ],
+          "time_separation_days": 0.33196870999381645,
+          "source": "supplied_raw",
+          "policy": "nearest compatible arc; slit5.0 uses slit1.0",
+          "rejected": []
+        },
+        "bias": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:51:55.833.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:26.834.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:57.766.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:28.788.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:59.760.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:54:30.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:01.794.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:32.785.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:03.756.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:34.778.fits"
+          ],
+          "sha256": [
+            "fcfacf29f3db95020654ebb45a1e70d4d170d9ed76c1277e47a85d0a2f0a5cfd",
+            "24cda6c49c3dba5fbf29c259456c276cec356f97ad9ef416bf8f0882c3d3faca",
+            "e3690e2971631db9a4869ec345e44671047d86878854793faa36ea26b4343433",
+            "f3d24e95a8b84b5f48cb7ee333c73cf8d1efbec333f33abd98a21fdc1677130f",
+            "ebf48cfec51609b31ff0fc006dfe33a3b043b8cb1d18d19af4b6a74d2fda80b3",
+            "cbd21092fa6c1aebeeab1c2522cd84b2db012b5727a4a51e5980b09793663aa2",
+            "472bdd7d1052c689e5c9571afc4968a5e36f84e2fdc5d00fbc7f380af5f08799",
+            "e8a7fda864a4f7f8ba9ca78a4f9373828207e10020264f1df23f0b8343140fe6",
+            "55776d137d418b652341da4b488a0999d0879699e0a347ec9b3ef80074571fa9",
+            "92f1eefb22e2c38d62a5cd9dcfbda100e2a2eff57788064797efbe23753df86e"
+          ],
+          "time_separation_days": 7.6723861360078445,
+          "source": "supplied_raw",
+          "policy": "nearest compatible nightly group of at least three",
+          "rejected": []
+        },
+        "flat": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:02:54.773.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:04:33.810.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:06:12.828.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:07:51.836.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:09:29.793.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:11:08.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:12:47.808.fits"
+          ],
+          "sha256": [
+            "04bcd05a97aae78d22a066e9c2918926899ccec76b9286cef06ac2781252ef1a",
+            "a7a2291629295ac09b37c81b526e4b64f8ee1c1cc5918760b465647d83c965a9",
+            "0d7a4e1bd4dd8c70935a27ba9963d73932b45fe051f3e925922381f6ba5f4b05",
+            "b9370eec09ba71491ae54661f5bc7baae27a186a4b5f954ed454810267e28357",
+            "1eb13561bb6902f12fecf27330387dfab2dbdd1752afc9bfedc60333871bb4ad",
+            "31c2582ddc213d334906de98c99f5d68c292091199f096767ed59560ad4ad642",
+            "daf3f238477c2ddcee6a76620d81e8525063731b41909fff63d1a1aeba971dc6"
+          ],
+          "time_separation_days": 0.3370593385625398,
+          "source": "supplied_raw",
+          "policy": "lamp-flat preference, same OBID then time; at least three",
+          "rejected": []
+        },
+        "standard_candidate": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:10:36.267.fits"
+          ],
+          "sha256": [
+            "0ed407a1646c19013726416996726c3403fadd833789ffe08c017fe8b7a847c5"
+          ],
+          "time_separation_days": 0.04730109999945853,
+          "source": "supplied_raw",
+          "policy": "nearest same-night raw standard candidate in identical setup; identity and physical reference not yet verified",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:53:55.725.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:55:45.947.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:12:25.708.fits",
+              "reasons": [
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:53:20.457.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:55:50.955.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T07:00:49.749.fits",
+              "reasons": [
+                "different slit"
+              ]
+            }
+          ]
+        }
+      },
+      "pipeline_support": {
+        "archive_bridge": "enabled",
+        "archive_issue": null,
+        "native_masters": "experimental",
+        "native_pair": "experimental",
+        "separate_filtered_standards": "not_enabled",
+        "red_counts_diagnostic": "not_enabled",
+        "scientifically_validated": false,
+        "development_required": [],
+        "validation_required": [
+          "Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.",
+          "Verify standard identity, physical reference, response coverage and independent flux/uncertainty checks.",
+          "Retain source-identification and bounded two-sided background checks."
+        ]
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:53:55.725.fits",
+      "setup": {
+        "grism": "Gr11",
+        "filter": "Free",
+        "slit": "slit1.0",
+        "binx": 2,
+        "biny": 2,
+        "readout": "fastL",
+        "shape_yx": [
+          1030,
+          1030
+        ]
+      },
+      "raw_calibrations": {
+        "arc": {
+          "status": "missing",
+          "files": [],
+          "sha256": [],
+          "time_separation_days": null,
+          "source": "supplied_raw",
+          "policy": "nearest compatible arc; slit5.0 uses slit1.0",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:00:31.548.fits",
+              "reasons": [
+                "different grism"
+              ]
+            }
+          ]
+        },
+        "bias": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:51:55.833.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:26.834.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:57.766.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:28.788.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:59.760.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:54:30.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:01.794.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:32.785.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:03.756.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:34.778.fits"
+          ],
+          "sha256": [
+            "fcfacf29f3db95020654ebb45a1e70d4d170d9ed76c1277e47a85d0a2f0a5cfd",
+            "24cda6c49c3dba5fbf29c259456c276cec356f97ad9ef416bf8f0882c3d3faca",
+            "e3690e2971631db9a4869ec345e44671047d86878854793faa36ea26b4343433",
+            "f3d24e95a8b84b5f48cb7ee333c73cf8d1efbec333f33abd98a21fdc1677130f",
+            "ebf48cfec51609b31ff0fc006dfe33a3b043b8cb1d18d19af4b6a74d2fda80b3",
+            "cbd21092fa6c1aebeeab1c2522cd84b2db012b5727a4a51e5980b09793663aa2",
+            "472bdd7d1052c689e5c9571afc4968a5e36f84e2fdc5d00fbc7f380af5f08799",
+            "e8a7fda864a4f7f8ba9ca78a4f9373828207e10020264f1df23f0b8343140fe6",
+            "55776d137d418b652341da4b488a0999d0879699e0a347ec9b3ef80074571fa9",
+            "92f1eefb22e2c38d62a5cd9dcfbda100e2a2eff57788064797efbe23753df86e"
+          ],
+          "time_separation_days": 7.708106896003301,
+          "source": "supplied_raw",
+          "policy": "nearest compatible nightly group of at least three",
+          "rejected": []
+        },
+        "flat": {
+          "status": "missing",
+          "files": [],
+          "sha256": [],
+          "time_separation_days": null,
+          "source": "supplied_raw",
+          "policy": "lamp-flat preference, same OBID then time; at least three",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:02:54.773.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:04:33.810.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:06:12.828.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:07:51.836.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:09:29.793.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:11:08.801.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:12:47.808.fits",
+              "reasons": [
+                "different grism"
+              ]
+            }
+          ]
+        }
+      },
+      "pipeline_support": {
+        "archive_bridge": "enabled",
+        "archive_issue": null,
+        "native_masters": "experimental",
+        "native_pair": "experimental",
+        "separate_filtered_standards": "not_enabled",
+        "red_counts_diagnostic": "not_enabled",
+        "scientifically_validated": false,
+        "development_required": [],
+        "validation_required": [
+          "Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.",
+          "Verify standard identity, physical reference, response coverage and independent flux/uncertainty checks.",
+          "Retain source-identification and bounded two-sided background checks."
+        ]
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:55:45.947.fits",
+      "setup": {
+        "grism": "Gr16",
+        "filter": "OG530",
+        "slit": "slit1.0",
+        "binx": 2,
+        "biny": 2,
+        "readout": "fastL",
+        "shape_yx": [
+          1030,
+          1030
+        ]
+      },
+      "raw_calibrations": {
+        "arc": {
+          "status": "missing",
+          "files": [],
+          "sha256": [],
+          "time_separation_days": null,
+          "source": "supplied_raw",
+          "policy": "nearest compatible arc; slit5.0 uses slit1.0",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:00:31.548.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            }
+          ]
+        },
+        "bias": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:51:55.833.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:26.834.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:57.766.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:28.788.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:59.760.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:54:30.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:01.794.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:32.785.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:03.756.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:34.778.fits"
+          ],
+          "sha256": [
+            "fcfacf29f3db95020654ebb45a1e70d4d170d9ed76c1277e47a85d0a2f0a5cfd",
+            "24cda6c49c3dba5fbf29c259456c276cec356f97ad9ef416bf8f0882c3d3faca",
+            "e3690e2971631db9a4869ec345e44671047d86878854793faa36ea26b4343433",
+            "f3d24e95a8b84b5f48cb7ee333c73cf8d1efbec333f33abd98a21fdc1677130f",
+            "ebf48cfec51609b31ff0fc006dfe33a3b043b8cb1d18d19af4b6a74d2fda80b3",
+            "cbd21092fa6c1aebeeab1c2522cd84b2db012b5727a4a51e5980b09793663aa2",
+            "472bdd7d1052c689e5c9571afc4968a5e36f84e2fdc5d00fbc7f380af5f08799",
+            "e8a7fda864a4f7f8ba9ca78a4f9373828207e10020264f1df23f0b8343140fe6",
+            "55776d137d418b652341da4b488a0999d0879699e0a347ec9b3ef80074571fa9",
+            "92f1eefb22e2c38d62a5cd9dcfbda100e2a2eff57788064797efbe23753df86e"
+          ],
+          "time_separation_days": 7.709382616005314,
+          "source": "supplied_raw",
+          "policy": "nearest compatible nightly group of at least three",
+          "rejected": []
+        },
+        "flat": {
+          "status": "missing",
+          "files": [],
+          "sha256": [],
+          "time_separation_days": null,
+          "source": "supplied_raw",
+          "policy": "lamp-flat preference, same OBID then time; at least three",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:02:54.773.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:04:33.810.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:06:12.828.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:07:51.836.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:09:29.793.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:11:08.801.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:12:47.808.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            }
+          ]
+        }
+      },
+      "pipeline_support": {
+        "archive_bridge": "not_enabled",
+        "archive_issue": "Gr16/OG530 is not enabled in the archive reduction: reduce-red provides experimental review counts, while red-sky flexure validation and a matching flux response are still required for science delivery.",
+        "native_masters": "experimental",
+        "native_pair": "not_enabled",
+        "separate_filtered_standards": "not_enabled",
+        "red_counts_diagnostic": "experimental",
+        "scientifically_validated": false,
+        "development_required": [
+          "Use reduce-red for native Gr16/OG530 review counts with propagated variance; these are not accepted science products.",
+          "Validate red-sky flexure with held-out features; 5577 A is outside Gr16 coverage. Existing correlation is diagnostic only.",
+          "Register the observed standard against a physical flux reference and validate an OG530 response.",
+          "Measure red fringing and define supported wavelength/telluric masks.",
+          "Integrate accepted native products into the dated nightly workflow with explicit calibration provenance."
+        ],
+        "validation_required": [
+          "Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.",
+          "Verify standard identity, physical reference, response coverage and independent flux/uncertainty checks.",
+          "Retain source-identification and bounded two-sided background checks."
+        ]
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:10:36.267.fits",
+      "setup": {
+        "grism": "Gr13",
+        "filter": "Free",
+        "slit": "slit1.0",
+        "binx": 2,
+        "biny": 2,
+        "readout": "fastL",
+        "shape_yx": [
+          1030,
+          1030
+        ]
+      },
+      "raw_calibrations": {
+        "arc": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:00:31.548.fits"
+          ],
+          "sha256": [
+            "b0ed5bbda52d43a8a51eb27a24cf3159264c1be4d8bd0b91499d77215c41474d"
+          ],
+          "time_separation_days": 0.2846676099943579,
+          "source": "supplied_raw",
+          "policy": "nearest compatible arc; slit5.0 uses slit1.0",
+          "rejected": []
+        },
+        "bias": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:51:55.833.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:26.834.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:57.766.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:28.788.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:59.760.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:54:30.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:01.794.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:32.785.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:03.756.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:34.778.fits"
+          ],
+          "sha256": [
+            "fcfacf29f3db95020654ebb45a1e70d4d170d9ed76c1277e47a85d0a2f0a5cfd",
+            "24cda6c49c3dba5fbf29c259456c276cec356f97ad9ef416bf8f0882c3d3faca",
+            "e3690e2971631db9a4869ec345e44671047d86878854793faa36ea26b4343433",
+            "f3d24e95a8b84b5f48cb7ee333c73cf8d1efbec333f33abd98a21fdc1677130f",
+            "ebf48cfec51609b31ff0fc006dfe33a3b043b8cb1d18d19af4b6a74d2fda80b3",
+            "cbd21092fa6c1aebeeab1c2522cd84b2db012b5727a4a51e5980b09793663aa2",
+            "472bdd7d1052c689e5c9571afc4968a5e36f84e2fdc5d00fbc7f380af5f08799",
+            "e8a7fda864a4f7f8ba9ca78a4f9373828207e10020264f1df23f0b8343140fe6",
+            "55776d137d418b652341da4b488a0999d0879699e0a347ec9b3ef80074571fa9",
+            "92f1eefb22e2c38d62a5cd9dcfbda100e2a2eff57788064797efbe23753df86e"
+          ],
+          "time_separation_days": 7.719687236007303,
+          "source": "supplied_raw",
+          "policy": "nearest compatible nightly group of at least three",
+          "rejected": []
+        },
+        "flat": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:02:54.773.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:04:33.810.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:06:12.828.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:07:51.836.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:09:29.793.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:11:08.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:12:47.808.fits"
+          ],
+          "sha256": [
+            "04bcd05a97aae78d22a066e9c2918926899ccec76b9286cef06ac2781252ef1a",
+            "a7a2291629295ac09b37c81b526e4b64f8ee1c1cc5918760b465647d83c965a9",
+            "0d7a4e1bd4dd8c70935a27ba9963d73932b45fe051f3e925922381f6ba5f4b05",
+            "b9370eec09ba71491ae54661f5bc7baae27a186a4b5f954ed454810267e28357",
+            "1eb13561bb6902f12fecf27330387dfab2dbdd1752afc9bfedc60333871bb4ad",
+            "31c2582ddc213d334906de98c99f5d68c292091199f096767ed59560ad4ad642",
+            "daf3f238477c2ddcee6a76620d81e8525063731b41909fff63d1a1aeba971dc6"
+          ],
+          "time_separation_days": 0.28975823856308125,
+          "source": "supplied_raw",
+          "policy": "lamp-flat preference, same OBID then time; at least three",
+          "rejected": []
+        }
+      },
+      "pipeline_support": {
+        "archive_bridge": "enabled",
+        "archive_issue": null,
+        "native_masters": "experimental",
+        "native_pair": "experimental",
+        "separate_filtered_standards": "not_enabled",
+        "red_counts_diagnostic": "not_enabled",
+        "scientifically_validated": false,
+        "development_required": [],
+        "validation_required": [
+          "Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.",
+          "Verify standard identity, physical reference, response coverage and independent flux/uncertainty checks.",
+          "Retain source-identification and bounded two-sided background checks."
+        ]
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:12:25.708.fits",
+      "setup": {
+        "grism": "Gr13",
+        "filter": "Free",
+        "slit": "slit1.5",
+        "binx": 2,
+        "biny": 2,
+        "readout": "fastL",
+        "shape_yx": [
+          1030,
+          1030
+        ]
+      },
+      "raw_calibrations": {
+        "arc": {
+          "status": "missing",
+          "files": [],
+          "sha256": [],
+          "time_separation_days": null,
+          "source": "supplied_raw",
+          "policy": "nearest compatible arc; slit5.0 uses slit1.0",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:00:31.548.fits",
+              "reasons": [
+                "different slit"
+              ]
+            }
+          ]
+        },
+        "bias": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:51:55.833.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:26.834.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:57.766.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:28.788.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:59.760.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:54:30.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:01.794.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:32.785.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:03.756.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:34.778.fits"
+          ],
+          "sha256": [
+            "fcfacf29f3db95020654ebb45a1e70d4d170d9ed76c1277e47a85d0a2f0a5cfd",
+            "24cda6c49c3dba5fbf29c259456c276cec356f97ad9ef416bf8f0882c3d3faca",
+            "e3690e2971631db9a4869ec345e44671047d86878854793faa36ea26b4343433",
+            "f3d24e95a8b84b5f48cb7ee333c73cf8d1efbec333f33abd98a21fdc1677130f",
+            "ebf48cfec51609b31ff0fc006dfe33a3b043b8cb1d18d19af4b6a74d2fda80b3",
+            "cbd21092fa6c1aebeeab1c2522cd84b2db012b5727a4a51e5980b09793663aa2",
+            "472bdd7d1052c689e5c9571afc4968a5e36f84e2fdc5d00fbc7f380af5f08799",
+            "e8a7fda864a4f7f8ba9ca78a4f9373828207e10020264f1df23f0b8343140fe6",
+            "55776d137d418b652341da4b488a0999d0879699e0a347ec9b3ef80074571fa9",
+            "92f1eefb22e2c38d62a5cd9dcfbda100e2a2eff57788064797efbe23753df86e"
+          ],
+          "time_separation_days": 7.7209539160030545,
+          "source": "supplied_raw",
+          "policy": "nearest compatible nightly group of at least three",
+          "rejected": []
+        },
+        "flat": {
+          "status": "missing",
+          "files": [],
+          "sha256": [],
+          "time_separation_days": null,
+          "source": "supplied_raw",
+          "policy": "lamp-flat preference, same OBID then time; at least three",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:02:54.773.fits",
+              "reasons": [
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:04:33.810.fits",
+              "reasons": [
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:06:12.828.fits",
+              "reasons": [
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:07:51.836.fits",
+              "reasons": [
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:09:29.793.fits",
+              "reasons": [
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:11:08.801.fits",
+              "reasons": [
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:12:47.808.fits",
+              "reasons": [
+                "different slit"
+              ]
+            }
+          ]
+        }
+      },
+      "pipeline_support": {
+        "archive_bridge": "enabled",
+        "archive_issue": null,
+        "native_masters": "experimental",
+        "native_pair": "experimental",
+        "separate_filtered_standards": "not_enabled",
+        "red_counts_diagnostic": "not_enabled",
+        "scientifically_validated": false,
+        "development_required": [],
+        "validation_required": [
+          "Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.",
+          "Verify standard identity, physical reference, response coverage and independent flux/uncertainty checks.",
+          "Retain source-identification and bounded two-sided background checks."
+        ]
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:20:02.651.fits",
+      "setup": {
+        "grism": "Gr13",
+        "filter": "Free",
+        "slit": "slit1.0",
+        "binx": 2,
+        "biny": 2,
+        "readout": "fastL",
+        "shape_yx": [
+          1030,
+          1030
+        ]
+      },
+      "raw_calibrations": {
+        "arc": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:00:31.548.fits"
+          ],
+          "sha256": [
+            "b0ed5bbda52d43a8a51eb27a24cf3159264c1be4d8bd0b91499d77215c41474d"
+          ],
+          "time_separation_days": 0.2781122299929848,
+          "source": "supplied_raw",
+          "policy": "nearest compatible arc; slit5.0 uses slit1.0",
+          "rejected": []
+        },
+        "bias": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:51:55.833.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:26.834.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:57.766.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:28.788.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:59.760.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:54:30.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:01.794.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:32.785.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:03.756.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:34.778.fits"
+          ],
+          "sha256": [
+            "fcfacf29f3db95020654ebb45a1e70d4d170d9ed76c1277e47a85d0a2f0a5cfd",
+            "24cda6c49c3dba5fbf29c259456c276cec356f97ad9ef416bf8f0882c3d3faca",
+            "e3690e2971631db9a4869ec345e44671047d86878854793faa36ea26b4343433",
+            "f3d24e95a8b84b5f48cb7ee333c73cf8d1efbec333f33abd98a21fdc1677130f",
+            "ebf48cfec51609b31ff0fc006dfe33a3b043b8cb1d18d19af4b6a74d2fda80b3",
+            "cbd21092fa6c1aebeeab1c2522cd84b2db012b5727a4a51e5980b09793663aa2",
+            "472bdd7d1052c689e5c9571afc4968a5e36f84e2fdc5d00fbc7f380af5f08799",
+            "e8a7fda864a4f7f8ba9ca78a4f9373828207e10020264f1df23f0b8343140fe6",
+            "55776d137d418b652341da4b488a0999d0879699e0a347ec9b3ef80074571fa9",
+            "92f1eefb22e2c38d62a5cd9dcfbda100e2a2eff57788064797efbe23753df86e"
+          ],
+          "time_separation_days": 7.726242616008676,
+          "source": "supplied_raw",
+          "policy": "nearest compatible nightly group of at least three",
+          "rejected": []
+        },
+        "flat": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:02:54.773.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:04:33.810.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:06:12.828.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:07:51.836.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:09:29.793.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:11:08.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:12:47.808.fits"
+          ],
+          "sha256": [
+            "04bcd05a97aae78d22a066e9c2918926899ccec76b9286cef06ac2781252ef1a",
+            "a7a2291629295ac09b37c81b526e4b64f8ee1c1cc5918760b465647d83c965a9",
+            "0d7a4e1bd4dd8c70935a27ba9963d73932b45fe051f3e925922381f6ba5f4b05",
+            "b9370eec09ba71491ae54661f5bc7baae27a186a4b5f954ed454810267e28357",
+            "1eb13561bb6902f12fecf27330387dfab2dbdd1752afc9bfedc60333871bb4ad",
+            "31c2582ddc213d334906de98c99f5d68c292091199f096767ed59560ad4ad642",
+            "daf3f238477c2ddcee6a76620d81e8525063731b41909fff63d1a1aeba971dc6"
+          ],
+          "time_separation_days": 0.2832028585617081,
+          "source": "supplied_raw",
+          "policy": "lamp-flat preference, same OBID then time; at least three",
+          "rejected": []
+        },
+        "standard_candidate": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:10:36.267.fits"
+          ],
+          "sha256": [
+            "0ed407a1646c19013726416996726c3403fadd833789ffe08c017fe8b7a847c5"
+          ],
+          "time_separation_days": 0.006555380001373123,
+          "source": "supplied_raw",
+          "policy": "nearest same-night raw standard candidate in identical setup; identity and physical reference not yet verified",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:53:55.725.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:55:45.947.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:12:25.708.fits",
+              "reasons": [
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:53:20.457.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:55:50.955.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T07:00:49.749.fits",
+              "reasons": [
+                "different slit"
+              ]
+            }
+          ]
+        }
+      },
+      "pipeline_support": {
+        "archive_bridge": "enabled",
+        "archive_issue": null,
+        "native_masters": "experimental",
+        "native_pair": "experimental",
+        "separate_filtered_standards": "not_enabled",
+        "red_counts_diagnostic": "not_enabled",
+        "scientifically_validated": false,
+        "development_required": [],
+        "validation_required": [
+          "Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.",
+          "Verify standard identity, physical reference, response coverage and independent flux/uncertainty checks.",
+          "Retain source-identification and bounded two-sided background checks."
+        ]
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:38:55.253.fits",
+      "setup": {
+        "grism": "Gr11",
+        "filter": "Free",
+        "slit": "slit1.0",
+        "binx": 2,
+        "biny": 2,
+        "readout": "fastL",
+        "shape_yx": [
+          1030,
+          1030
+        ]
+      },
+      "raw_calibrations": {
+        "arc": {
+          "status": "missing",
+          "files": [],
+          "sha256": [],
+          "time_separation_days": null,
+          "source": "supplied_raw",
+          "policy": "nearest compatible arc; slit5.0 uses slit1.0",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:00:31.548.fits",
+              "reasons": [
+                "different grism"
+              ]
+            }
+          ]
+        },
+        "bias": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:51:55.833.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:26.834.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:57.766.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:28.788.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:59.760.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:54:30.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:01.794.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:32.785.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:03.756.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:34.778.fits"
+          ],
+          "sha256": [
+            "fcfacf29f3db95020654ebb45a1e70d4d170d9ed76c1277e47a85d0a2f0a5cfd",
+            "24cda6c49c3dba5fbf29c259456c276cec356f97ad9ef416bf8f0882c3d3faca",
+            "e3690e2971631db9a4869ec345e44671047d86878854793faa36ea26b4343433",
+            "f3d24e95a8b84b5f48cb7ee333c73cf8d1efbec333f33abd98a21fdc1677130f",
+            "ebf48cfec51609b31ff0fc006dfe33a3b043b8cb1d18d19af4b6a74d2fda80b3",
+            "cbd21092fa6c1aebeeab1c2522cd84b2db012b5727a4a51e5980b09793663aa2",
+            "472bdd7d1052c689e5c9571afc4968a5e36f84e2fdc5d00fbc7f380af5f08799",
+            "e8a7fda864a4f7f8ba9ca78a4f9373828207e10020264f1df23f0b8343140fe6",
+            "55776d137d418b652341da4b488a0999d0879699e0a347ec9b3ef80074571fa9",
+            "92f1eefb22e2c38d62a5cd9dcfbda100e2a2eff57788064797efbe23753df86e"
+          ],
+          "time_separation_days": 7.73935142600385,
+          "source": "supplied_raw",
+          "policy": "nearest compatible nightly group of at least three",
+          "rejected": []
+        },
+        "flat": {
+          "status": "missing",
+          "files": [],
+          "sha256": [],
+          "time_separation_days": null,
+          "source": "supplied_raw",
+          "policy": "lamp-flat preference, same OBID then time; at least three",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:02:54.773.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:04:33.810.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:06:12.828.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:07:51.836.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:09:29.793.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:11:08.801.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:12:47.808.fits",
+              "reasons": [
+                "different grism"
+              ]
+            }
+          ]
+        },
+        "standard_candidate": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:53:55.725.fits"
+          ],
+          "sha256": [
+            "c2d08246dfb867ebfe820b29532d48ceebe72ee3afa2c8dfc69e51b7eecde594"
+          ],
+          "time_separation_days": 0.031244530000549275,
+          "source": "supplied_raw",
+          "policy": "nearest same-night raw standard candidate in identical setup; identity and physical reference not yet verified",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:55:45.947.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:10:36.267.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:12:25.708.fits",
+              "reasons": [
+                "different grism",
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:55:50.955.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:58:20.732.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T07:00:49.749.fits",
+              "reasons": [
+                "different grism",
+                "different slit"
+              ]
+            }
+          ]
+        }
+      },
+      "pipeline_support": {
+        "archive_bridge": "enabled",
+        "archive_issue": null,
+        "native_masters": "experimental",
+        "native_pair": "experimental",
+        "separate_filtered_standards": "not_enabled",
+        "red_counts_diagnostic": "not_enabled",
+        "scientifically_validated": false,
+        "development_required": [],
+        "validation_required": [
+          "Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.",
+          "Verify standard identity, physical reference, response coverage and independent flux/uncertainty checks.",
+          "Retain source-identification and bounded two-sided background checks."
+        ]
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T03:04:53.075.fits",
+      "setup": {
+        "grism": "Gr11",
+        "filter": "Free",
+        "slit": "slit1.0",
+        "binx": 2,
+        "biny": 2,
+        "readout": "fastL",
+        "shape_yx": [
+          1030,
+          1030
+        ]
+      },
+      "raw_calibrations": {
+        "arc": {
+          "status": "missing",
+          "files": [],
+          "sha256": [],
+          "time_separation_days": null,
+          "source": "supplied_raw",
+          "policy": "nearest compatible arc; slit5.0 uses slit1.0",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:00:31.548.fits",
+              "reasons": [
+                "different grism"
+              ]
+            }
+          ]
+        },
+        "bias": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:51:55.833.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:26.834.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:57.766.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:28.788.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:59.760.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:54:30.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:01.794.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:32.785.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:03.756.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:34.778.fits"
+          ],
+          "sha256": [
+            "fcfacf29f3db95020654ebb45a1e70d4d170d9ed76c1277e47a85d0a2f0a5cfd",
+            "24cda6c49c3dba5fbf29c259456c276cec356f97ad9ef416bf8f0882c3d3faca",
+            "e3690e2971631db9a4869ec345e44671047d86878854793faa36ea26b4343433",
+            "f3d24e95a8b84b5f48cb7ee333c73cf8d1efbec333f33abd98a21fdc1677130f",
+            "ebf48cfec51609b31ff0fc006dfe33a3b043b8cb1d18d19af4b6a74d2fda80b3",
+            "cbd21092fa6c1aebeeab1c2522cd84b2db012b5727a4a51e5980b09793663aa2",
+            "472bdd7d1052c689e5c9571afc4968a5e36f84e2fdc5d00fbc7f380af5f08799",
+            "e8a7fda864a4f7f8ba9ca78a4f9373828207e10020264f1df23f0b8343140fe6",
+            "55776d137d418b652341da4b488a0999d0879699e0a347ec9b3ef80074571fa9",
+            "92f1eefb22e2c38d62a5cd9dcfbda100e2a2eff57788064797efbe23753df86e"
+          ],
+          "time_separation_days": 7.757381776005786,
+          "source": "supplied_raw",
+          "policy": "nearest compatible nightly group of at least three",
+          "rejected": []
+        },
+        "flat": {
+          "status": "missing",
+          "files": [],
+          "sha256": [],
+          "time_separation_days": null,
+          "source": "supplied_raw",
+          "policy": "lamp-flat preference, same OBID then time; at least three",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:02:54.773.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:04:33.810.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:06:12.828.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:07:51.836.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:09:29.793.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:11:08.801.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:12:47.808.fits",
+              "reasons": [
+                "different grism"
+              ]
+            }
+          ]
+        },
+        "standard_candidate": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:53:55.725.fits"
+          ],
+          "sha256": [
+            "c2d08246dfb867ebfe820b29532d48ceebe72ee3afa2c8dfc69e51b7eecde594"
+          ],
+          "time_separation_days": 0.04927488000248559,
+          "source": "supplied_raw",
+          "policy": "nearest same-night raw standard candidate in identical setup; identity and physical reference not yet verified",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:55:45.947.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:10:36.267.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:12:25.708.fits",
+              "reasons": [
+                "different grism",
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:55:50.955.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:58:20.732.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T07:00:49.749.fits",
+              "reasons": [
+                "different grism",
+                "different slit"
+              ]
+            }
+          ]
+        }
+      },
+      "pipeline_support": {
+        "archive_bridge": "enabled",
+        "archive_issue": null,
+        "native_masters": "experimental",
+        "native_pair": "experimental",
+        "separate_filtered_standards": "not_enabled",
+        "red_counts_diagnostic": "not_enabled",
+        "scientifically_validated": false,
+        "development_required": [],
+        "validation_required": [
+          "Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.",
+          "Verify standard identity, physical reference, response coverage and independent flux/uncertainty checks.",
+          "Retain source-identification and bounded two-sided background checks."
+        ]
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T03:33:29.858.fits",
+      "setup": {
+        "grism": "Gr13",
+        "filter": "Free",
+        "slit": "slit1.0",
+        "binx": 2,
+        "biny": 2,
+        "readout": "fastL",
+        "shape_yx": [
+          1030,
+          1030
+        ]
+      },
+      "raw_calibrations": {
+        "arc": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:00:31.548.fits"
+          ],
+          "sha256": [
+            "b0ed5bbda52d43a8a51eb27a24cf3159264c1be4d8bd0b91499d77215c41474d"
+          ],
+          "time_separation_days": 0.22710288999951445,
+          "source": "supplied_raw",
+          "policy": "nearest compatible arc; slit5.0 uses slit1.0",
+          "rejected": []
+        },
+        "bias": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:51:55.833.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:26.834.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:57.766.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:28.788.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:59.760.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:54:30.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:01.794.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:32.785.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:03.756.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:34.778.fits"
+          ],
+          "sha256": [
+            "fcfacf29f3db95020654ebb45a1e70d4d170d9ed76c1277e47a85d0a2f0a5cfd",
+            "24cda6c49c3dba5fbf29c259456c276cec356f97ad9ef416bf8f0882c3d3faca",
+            "e3690e2971631db9a4869ec345e44671047d86878854793faa36ea26b4343433",
+            "f3d24e95a8b84b5f48cb7ee333c73cf8d1efbec333f33abd98a21fdc1677130f",
+            "ebf48cfec51609b31ff0fc006dfe33a3b043b8cb1d18d19af4b6a74d2fda80b3",
+            "cbd21092fa6c1aebeeab1c2522cd84b2db012b5727a4a51e5980b09793663aa2",
+            "472bdd7d1052c689e5c9571afc4968a5e36f84e2fdc5d00fbc7f380af5f08799",
+            "e8a7fda864a4f7f8ba9ca78a4f9373828207e10020264f1df23f0b8343140fe6",
+            "55776d137d418b652341da4b488a0999d0879699e0a347ec9b3ef80074571fa9",
+            "92f1eefb22e2c38d62a5cd9dcfbda100e2a2eff57788064797efbe23753df86e"
+          ],
+          "time_separation_days": 7.7772519560021465,
+          "source": "supplied_raw",
+          "policy": "nearest compatible nightly group of at least three",
+          "rejected": []
+        },
+        "flat": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:02:54.773.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:04:33.810.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:06:12.828.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:07:51.836.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:09:29.793.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:11:08.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:12:47.808.fits"
+          ],
+          "sha256": [
+            "04bcd05a97aae78d22a066e9c2918926899ccec76b9286cef06ac2781252ef1a",
+            "a7a2291629295ac09b37c81b526e4b64f8ee1c1cc5918760b465647d83c965a9",
+            "0d7a4e1bd4dd8c70935a27ba9963d73932b45fe051f3e925922381f6ba5f4b05",
+            "b9370eec09ba71491ae54661f5bc7baae27a186a4b5f954ed454810267e28357",
+            "1eb13561bb6902f12fecf27330387dfab2dbdd1752afc9bfedc60333871bb4ad",
+            "31c2582ddc213d334906de98c99f5d68c292091199f096767ed59560ad4ad642",
+            "daf3f238477c2ddcee6a76620d81e8525063731b41909fff63d1a1aeba971dc6"
+          ],
+          "time_separation_days": 0.23219351856823778,
+          "source": "supplied_raw",
+          "policy": "lamp-flat preference, same OBID then time; at least three",
+          "rejected": []
+        },
+        "standard_candidate": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:10:36.267.fits"
+          ],
+          "sha256": [
+            "0ed407a1646c19013726416996726c3403fadd833789ffe08c017fe8b7a847c5"
+          ],
+          "time_separation_days": 0.05756471999484347,
+          "source": "supplied_raw",
+          "policy": "nearest same-night raw standard candidate in identical setup; identity and physical reference not yet verified",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:53:55.725.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:55:45.947.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:12:25.708.fits",
+              "reasons": [
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:53:20.457.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:55:50.955.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T07:00:49.749.fits",
+              "reasons": [
+                "different slit"
+              ]
+            }
+          ]
+        }
+      },
+      "pipeline_support": {
+        "archive_bridge": "enabled",
+        "archive_issue": null,
+        "native_masters": "experimental",
+        "native_pair": "experimental",
+        "separate_filtered_standards": "not_enabled",
+        "red_counts_diagnostic": "not_enabled",
+        "scientifically_validated": false,
+        "development_required": [],
+        "validation_required": [
+          "Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.",
+          "Verify standard identity, physical reference, response coverage and independent flux/uncertainty checks.",
+          "Retain source-identification and bounded two-sided background checks."
+        ]
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T04:24:39.345.fits",
+      "setup": {
+        "grism": "Gr11",
+        "filter": "Free",
+        "slit": "slit1.0",
+        "binx": 2,
+        "biny": 2,
+        "readout": "fastL",
+        "shape_yx": [
+          1030,
+          1030
+        ]
+      },
+      "raw_calibrations": {
+        "arc": {
+          "status": "missing",
+          "files": [],
+          "sha256": [],
+          "time_separation_days": null,
+          "source": "supplied_raw",
+          "policy": "nearest compatible arc; slit5.0 uses slit1.0",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:00:31.548.fits",
+              "reasons": [
+                "different grism"
+              ]
+            }
+          ]
+        },
+        "bias": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:51:55.833.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:26.834.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:57.766.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:28.788.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:59.760.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:54:30.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:01.794.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:32.785.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:03.756.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:34.778.fits"
+          ],
+          "sha256": [
+            "fcfacf29f3db95020654ebb45a1e70d4d170d9ed76c1277e47a85d0a2f0a5cfd",
+            "24cda6c49c3dba5fbf29c259456c276cec356f97ad9ef416bf8f0882c3d3faca",
+            "e3690e2971631db9a4869ec345e44671047d86878854793faa36ea26b4343433",
+            "f3d24e95a8b84b5f48cb7ee333c73cf8d1efbec333f33abd98a21fdc1677130f",
+            "ebf48cfec51609b31ff0fc006dfe33a3b043b8cb1d18d19af4b6a74d2fda80b3",
+            "cbd21092fa6c1aebeeab1c2522cd84b2db012b5727a4a51e5980b09793663aa2",
+            "472bdd7d1052c689e5c9571afc4968a5e36f84e2fdc5d00fbc7f380af5f08799",
+            "e8a7fda864a4f7f8ba9ca78a4f9373828207e10020264f1df23f0b8343140fe6",
+            "55776d137d418b652341da4b488a0999d0879699e0a347ec9b3ef80074571fa9",
+            "92f1eefb22e2c38d62a5cd9dcfbda100e2a2eff57788064797efbe23753df86e"
+          ],
+          "time_separation_days": 7.812778426006844,
+          "source": "supplied_raw",
+          "policy": "nearest compatible nightly group of at least three",
+          "rejected": []
+        },
+        "flat": {
+          "status": "missing",
+          "files": [],
+          "sha256": [],
+          "time_separation_days": null,
+          "source": "supplied_raw",
+          "policy": "lamp-flat preference, same OBID then time; at least three",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:02:54.773.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:04:33.810.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:06:12.828.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:07:51.836.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:09:29.793.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:11:08.801.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:12:47.808.fits",
+              "reasons": [
+                "different grism"
+              ]
+            }
+          ]
+        },
+        "standard_candidate": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:53:20.457.fits"
+          ],
+          "sha256": [
+            "46341fd84f2f4cdbc3811ae9579bed4256e859230724e69690575ea9f90a1231"
+          ],
+          "time_separation_days": 0.10325360999559052,
+          "source": "supplied_raw",
+          "policy": "nearest same-night raw standard candidate in identical setup; identity and physical reference not yet verified",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:55:45.947.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:10:36.267.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:12:25.708.fits",
+              "reasons": [
+                "different grism",
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:55:50.955.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:58:20.732.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T07:00:49.749.fits",
+              "reasons": [
+                "different grism",
+                "different slit"
+              ]
+            }
+          ]
+        }
+      },
+      "pipeline_support": {
+        "archive_bridge": "enabled",
+        "archive_issue": null,
+        "native_masters": "experimental",
+        "native_pair": "experimental",
+        "separate_filtered_standards": "not_enabled",
+        "red_counts_diagnostic": "not_enabled",
+        "scientifically_validated": false,
+        "development_required": [],
+        "validation_required": [
+          "Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.",
+          "Verify standard identity, physical reference, response coverage and independent flux/uncertainty checks.",
+          "Retain source-identification and bounded two-sided background checks."
+        ]
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T04:48:37.003.fits",
+      "setup": {
+        "grism": "Gr13",
+        "filter": "Free",
+        "slit": "slit1.0",
+        "binx": 2,
+        "biny": 2,
+        "readout": "fastL",
+        "shape_yx": [
+          1030,
+          1030
+        ]
+      },
+      "raw_calibrations": {
+        "arc": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:00:31.548.fits"
+          ],
+          "sha256": [
+            "b0ed5bbda52d43a8a51eb27a24cf3159264c1be4d8bd0b91499d77215c41474d"
+          ],
+          "time_separation_days": 0.17493686999659985,
+          "source": "supplied_raw",
+          "policy": "nearest compatible arc; slit5.0 uses slit1.0",
+          "rejected": []
+        },
+        "bias": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:51:55.833.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:26.834.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:57.766.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:28.788.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:59.760.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:54:30.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:01.794.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:32.785.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:03.756.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:34.778.fits"
+          ],
+          "sha256": [
+            "fcfacf29f3db95020654ebb45a1e70d4d170d9ed76c1277e47a85d0a2f0a5cfd",
+            "24cda6c49c3dba5fbf29c259456c276cec356f97ad9ef416bf8f0882c3d3faca",
+            "e3690e2971631db9a4869ec345e44671047d86878854793faa36ea26b4343433",
+            "f3d24e95a8b84b5f48cb7ee333c73cf8d1efbec333f33abd98a21fdc1677130f",
+            "ebf48cfec51609b31ff0fc006dfe33a3b043b8cb1d18d19af4b6a74d2fda80b3",
+            "cbd21092fa6c1aebeeab1c2522cd84b2db012b5727a4a51e5980b09793663aa2",
+            "472bdd7d1052c689e5c9571afc4968a5e36f84e2fdc5d00fbc7f380af5f08799",
+            "e8a7fda864a4f7f8ba9ca78a4f9373828207e10020264f1df23f0b8343140fe6",
+            "55776d137d418b652341da4b488a0999d0879699e0a347ec9b3ef80074571fa9",
+            "92f1eefb22e2c38d62a5cd9dcfbda100e2a2eff57788064797efbe23753df86e"
+          ],
+          "time_separation_days": 7.829417976005061,
+          "source": "supplied_raw",
+          "policy": "nearest compatible nightly group of at least three",
+          "rejected": []
+        },
+        "flat": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:02:54.773.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:04:33.810.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:06:12.828.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:07:51.836.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:09:29.793.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:11:08.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:12:47.808.fits"
+          ],
+          "sha256": [
+            "04bcd05a97aae78d22a066e9c2918926899ccec76b9286cef06ac2781252ef1a",
+            "a7a2291629295ac09b37c81b526e4b64f8ee1c1cc5918760b465647d83c965a9",
+            "0d7a4e1bd4dd8c70935a27ba9963d73932b45fe051f3e925922381f6ba5f4b05",
+            "b9370eec09ba71491ae54661f5bc7baae27a186a4b5f954ed454810267e28357",
+            "1eb13561bb6902f12fecf27330387dfab2dbdd1752afc9bfedc60333871bb4ad",
+            "31c2582ddc213d334906de98c99f5d68c292091199f096767ed59560ad4ad642",
+            "daf3f238477c2ddcee6a76620d81e8525063731b41909fff63d1a1aeba971dc6"
+          ],
+          "time_separation_days": 0.18002749856532319,
+          "source": "supplied_raw",
+          "policy": "lamp-flat preference, same OBID then time; at least three",
+          "rejected": []
+        },
+        "standard_candidate": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:58:20.732.fits"
+          ],
+          "sha256": [
+            "45f12081fd12958d3c89f5e8e0a489e4d5912088e43158f3c3e84485364d3c6d"
+          ],
+          "time_separation_days": 0.09008945999812568,
+          "source": "supplied_raw",
+          "policy": "nearest same-night raw standard candidate in identical setup; identity and physical reference not yet verified",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:53:55.725.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:55:45.947.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:12:25.708.fits",
+              "reasons": [
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:53:20.457.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:55:50.955.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T07:00:49.749.fits",
+              "reasons": [
+                "different slit"
+              ]
+            }
+          ]
+        }
+      },
+      "pipeline_support": {
+        "archive_bridge": "enabled",
+        "archive_issue": null,
+        "native_masters": "experimental",
+        "native_pair": "experimental",
+        "separate_filtered_standards": "not_enabled",
+        "red_counts_diagnostic": "not_enabled",
+        "scientifically_validated": false,
+        "development_required": [],
+        "validation_required": [
+          "Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.",
+          "Verify standard identity, physical reference, response coverage and independent flux/uncertainty checks.",
+          "Retain source-identification and bounded two-sided background checks."
+        ]
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:21:18.037.fits",
+      "setup": {
+        "grism": "Gr13",
+        "filter": "Free",
+        "slit": "slit1.0",
+        "binx": 2,
+        "biny": 2,
+        "readout": "fastL",
+        "shape_yx": [
+          1030,
+          1030
+        ]
+      },
+      "raw_calibrations": {
+        "arc": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:00:31.548.fits"
+          ],
+          "sha256": [
+            "b0ed5bbda52d43a8a51eb27a24cf3159264c1be4d8bd0b91499d77215c41474d"
+          ],
+          "time_separation_days": 0.11057304999849293,
+          "source": "supplied_raw",
+          "policy": "nearest compatible arc; slit5.0 uses slit1.0",
+          "rejected": []
+        },
+        "bias": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:51:55.833.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:26.834.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:57.766.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:28.788.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:59.760.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:54:30.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:01.794.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:32.785.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:03.756.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:34.778.fits"
+          ],
+          "sha256": [
+            "fcfacf29f3db95020654ebb45a1e70d4d170d9ed76c1277e47a85d0a2f0a5cfd",
+            "24cda6c49c3dba5fbf29c259456c276cec356f97ad9ef416bf8f0882c3d3faca",
+            "e3690e2971631db9a4869ec345e44671047d86878854793faa36ea26b4343433",
+            "f3d24e95a8b84b5f48cb7ee333c73cf8d1efbec333f33abd98a21fdc1677130f",
+            "ebf48cfec51609b31ff0fc006dfe33a3b043b8cb1d18d19af4b6a74d2fda80b3",
+            "cbd21092fa6c1aebeeab1c2522cd84b2db012b5727a4a51e5980b09793663aa2",
+            "472bdd7d1052c689e5c9571afc4968a5e36f84e2fdc5d00fbc7f380af5f08799",
+            "e8a7fda864a4f7f8ba9ca78a4f9373828207e10020264f1df23f0b8343140fe6",
+            "55776d137d418b652341da4b488a0999d0879699e0a347ec9b3ef80074571fa9",
+            "92f1eefb22e2c38d62a5cd9dcfbda100e2a2eff57788064797efbe23753df86e"
+          ],
+          "time_separation_days": 7.893781796003168,
+          "source": "supplied_raw",
+          "policy": "nearest compatible nightly group of at least three",
+          "rejected": []
+        },
+        "flat": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:02:54.773.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:04:33.810.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:06:12.828.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:07:51.836.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:09:29.793.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:11:08.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:12:47.808.fits"
+          ],
+          "sha256": [
+            "04bcd05a97aae78d22a066e9c2918926899ccec76b9286cef06ac2781252ef1a",
+            "a7a2291629295ac09b37c81b526e4b64f8ee1c1cc5918760b465647d83c965a9",
+            "0d7a4e1bd4dd8c70935a27ba9963d73932b45fe051f3e925922381f6ba5f4b05",
+            "b9370eec09ba71491ae54661f5bc7baae27a186a4b5f954ed454810267e28357",
+            "1eb13561bb6902f12fecf27330387dfab2dbdd1752afc9bfedc60333871bb4ad",
+            "31c2582ddc213d334906de98c99f5d68c292091199f096767ed59560ad4ad642",
+            "daf3f238477c2ddcee6a76620d81e8525063731b41909fff63d1a1aeba971dc6"
+          ],
+          "time_separation_days": 0.11566367856721627,
+          "source": "supplied_raw",
+          "policy": "lamp-flat preference, same OBID then time; at least three",
+          "rejected": []
+        },
+        "standard_candidate": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:58:20.732.fits"
+          ],
+          "sha256": [
+            "45f12081fd12958d3c89f5e8e0a489e4d5912088e43158f3c3e84485364d3c6d"
+          ],
+          "time_separation_days": 0.025725640000018757,
+          "source": "supplied_raw",
+          "policy": "nearest same-night raw standard candidate in identical setup; identity and physical reference not yet verified",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:53:55.725.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:55:45.947.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:12:25.708.fits",
+              "reasons": [
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:53:20.457.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:55:50.955.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T07:00:49.749.fits",
+              "reasons": [
+                "different slit"
+              ]
+            }
+          ]
+        }
+      },
+      "pipeline_support": {
+        "archive_bridge": "enabled",
+        "archive_issue": null,
+        "native_masters": "experimental",
+        "native_pair": "experimental",
+        "separate_filtered_standards": "not_enabled",
+        "red_counts_diagnostic": "not_enabled",
+        "scientifically_validated": false,
+        "development_required": [],
+        "validation_required": [
+          "Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.",
+          "Verify standard identity, physical reference, response coverage and independent flux/uncertainty checks.",
+          "Retain source-identification and bounded two-sided background checks."
+        ]
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:53:20.457.fits",
+      "setup": {
+        "grism": "Gr11",
+        "filter": "Free",
+        "slit": "slit1.0",
+        "binx": 2,
+        "biny": 2,
+        "readout": "fastL",
+        "shape_yx": [
+          1030,
+          1030
+        ]
+      },
+      "raw_calibrations": {
+        "arc": {
+          "status": "missing",
+          "files": [],
+          "sha256": [],
+          "time_separation_days": null,
+          "source": "supplied_raw",
+          "policy": "nearest compatible arc; slit5.0 uses slit1.0",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:00:31.548.fits",
+              "reasons": [
+                "different grism"
+              ]
+            }
+          ]
+        },
+        "bias": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:51:55.833.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:26.834.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:57.766.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:28.788.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:59.760.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:54:30.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:01.794.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:32.785.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:03.756.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:34.778.fits"
+          ],
+          "sha256": [
+            "fcfacf29f3db95020654ebb45a1e70d4d170d9ed76c1277e47a85d0a2f0a5cfd",
+            "24cda6c49c3dba5fbf29c259456c276cec356f97ad9ef416bf8f0882c3d3faca",
+            "e3690e2971631db9a4869ec345e44671047d86878854793faa36ea26b4343433",
+            "f3d24e95a8b84b5f48cb7ee333c73cf8d1efbec333f33abd98a21fdc1677130f",
+            "ebf48cfec51609b31ff0fc006dfe33a3b043b8cb1d18d19af4b6a74d2fda80b3",
+            "cbd21092fa6c1aebeeab1c2522cd84b2db012b5727a4a51e5980b09793663aa2",
+            "472bdd7d1052c689e5c9571afc4968a5e36f84e2fdc5d00fbc7f380af5f08799",
+            "e8a7fda864a4f7f8ba9ca78a4f9373828207e10020264f1df23f0b8343140fe6",
+            "55776d137d418b652341da4b488a0999d0879699e0a347ec9b3ef80074571fa9",
+            "92f1eefb22e2c38d62a5cd9dcfbda100e2a2eff57788064797efbe23753df86e"
+          ],
+          "time_separation_days": 7.916032036002434,
+          "source": "supplied_raw",
+          "policy": "nearest compatible nightly group of at least three",
+          "rejected": []
+        },
+        "flat": {
+          "status": "missing",
+          "files": [],
+          "sha256": [],
+          "time_separation_days": null,
+          "source": "supplied_raw",
+          "policy": "lamp-flat preference, same OBID then time; at least three",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:02:54.773.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:04:33.810.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:06:12.828.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:07:51.836.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:09:29.793.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:11:08.801.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:12:47.808.fits",
+              "reasons": [
+                "different grism"
+              ]
+            }
+          ]
+        }
+      },
+      "pipeline_support": {
+        "archive_bridge": "enabled",
+        "archive_issue": null,
+        "native_masters": "experimental",
+        "native_pair": "experimental",
+        "separate_filtered_standards": "not_enabled",
+        "red_counts_diagnostic": "not_enabled",
+        "scientifically_validated": false,
+        "development_required": [],
+        "validation_required": [
+          "Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.",
+          "Verify standard identity, physical reference, response coverage and independent flux/uncertainty checks.",
+          "Retain source-identification and bounded two-sided background checks."
+        ]
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:55:50.955.fits",
+      "setup": {
+        "grism": "Gr16",
+        "filter": "OG530",
+        "slit": "slit1.0",
+        "binx": 2,
+        "biny": 2,
+        "readout": "fastL",
+        "shape_yx": [
+          1030,
+          1030
+        ]
+      },
+      "raw_calibrations": {
+        "arc": {
+          "status": "missing",
+          "files": [],
+          "sha256": [],
+          "time_separation_days": null,
+          "source": "supplied_raw",
+          "policy": "nearest compatible arc; slit5.0 uses slit1.0",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:00:31.548.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            }
+          ]
+        },
+        "bias": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:51:55.833.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:26.834.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:57.766.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:28.788.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:59.760.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:54:30.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:01.794.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:32.785.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:03.756.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:34.778.fits"
+          ],
+          "sha256": [
+            "fcfacf29f3db95020654ebb45a1e70d4d170d9ed76c1277e47a85d0a2f0a5cfd",
+            "24cda6c49c3dba5fbf29c259456c276cec356f97ad9ef416bf8f0882c3d3faca",
+            "e3690e2971631db9a4869ec345e44671047d86878854793faa36ea26b4343433",
+            "f3d24e95a8b84b5f48cb7ee333c73cf8d1efbec333f33abd98a21fdc1677130f",
+            "ebf48cfec51609b31ff0fc006dfe33a3b043b8cb1d18d19af4b6a74d2fda80b3",
+            "cbd21092fa6c1aebeeab1c2522cd84b2db012b5727a4a51e5980b09793663aa2",
+            "472bdd7d1052c689e5c9571afc4968a5e36f84e2fdc5d00fbc7f380af5f08799",
+            "e8a7fda864a4f7f8ba9ca78a4f9373828207e10020264f1df23f0b8343140fe6",
+            "55776d137d418b652341da4b488a0999d0879699e0a347ec9b3ef80074571fa9",
+            "92f1eefb22e2c38d62a5cd9dcfbda100e2a2eff57788064797efbe23753df86e"
+          ],
+          "time_separation_days": 7.917773906003276,
+          "source": "supplied_raw",
+          "policy": "nearest compatible nightly group of at least three",
+          "rejected": []
+        },
+        "flat": {
+          "status": "missing",
+          "files": [],
+          "sha256": [],
+          "time_separation_days": null,
+          "source": "supplied_raw",
+          "policy": "lamp-flat preference, same OBID then time; at least three",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:02:54.773.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:04:33.810.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:06:12.828.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:07:51.836.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:09:29.793.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:11:08.801.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:12:47.808.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            }
+          ]
+        }
+      },
+      "pipeline_support": {
+        "archive_bridge": "not_enabled",
+        "archive_issue": "Gr16/OG530 is not enabled in the archive reduction: reduce-red provides experimental review counts, while red-sky flexure validation and a matching flux response are still required for science delivery.",
+        "native_masters": "experimental",
+        "native_pair": "not_enabled",
+        "separate_filtered_standards": "not_enabled",
+        "red_counts_diagnostic": "experimental",
+        "scientifically_validated": false,
+        "development_required": [
+          "Use reduce-red for native Gr16/OG530 review counts with propagated variance; these are not accepted science products.",
+          "Validate red-sky flexure with held-out features; 5577 A is outside Gr16 coverage. Existing correlation is diagnostic only.",
+          "Register the observed standard against a physical flux reference and validate an OG530 response.",
+          "Measure red fringing and define supported wavelength/telluric masks.",
+          "Integrate accepted native products into the dated nightly workflow with explicit calibration provenance."
+        ],
+        "validation_required": [
+          "Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.",
+          "Verify standard identity, physical reference, response coverage and independent flux/uncertainty checks.",
+          "Retain source-identification and bounded two-sided background checks."
+        ]
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:58:20.732.fits",
+      "setup": {
+        "grism": "Gr13",
+        "filter": "Free",
+        "slit": "slit1.0",
+        "binx": 2,
+        "biny": 2,
+        "readout": "fastL",
+        "shape_yx": [
+          1030,
+          1030
+        ]
+      },
+      "raw_calibrations": {
+        "arc": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:00:31.548.fits"
+          ],
+          "sha256": [
+            "b0ed5bbda52d43a8a51eb27a24cf3159264c1be4d8bd0b91499d77215c41474d"
+          ],
+          "time_separation_days": 0.08484740999847418,
+          "source": "supplied_raw",
+          "policy": "nearest compatible arc; slit5.0 uses slit1.0",
+          "rejected": []
+        },
+        "bias": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:51:55.833.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:26.834.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:57.766.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:28.788.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:59.760.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:54:30.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:01.794.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:32.785.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:03.756.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:34.778.fits"
+          ],
+          "sha256": [
+            "fcfacf29f3db95020654ebb45a1e70d4d170d9ed76c1277e47a85d0a2f0a5cfd",
+            "24cda6c49c3dba5fbf29c259456c276cec356f97ad9ef416bf8f0882c3d3faca",
+            "e3690e2971631db9a4869ec345e44671047d86878854793faa36ea26b4343433",
+            "f3d24e95a8b84b5f48cb7ee333c73cf8d1efbec333f33abd98a21fdc1677130f",
+            "ebf48cfec51609b31ff0fc006dfe33a3b043b8cb1d18d19af4b6a74d2fda80b3",
+            "cbd21092fa6c1aebeeab1c2522cd84b2db012b5727a4a51e5980b09793663aa2",
+            "472bdd7d1052c689e5c9571afc4968a5e36f84e2fdc5d00fbc7f380af5f08799",
+            "e8a7fda864a4f7f8ba9ca78a4f9373828207e10020264f1df23f0b8343140fe6",
+            "55776d137d418b652341da4b488a0999d0879699e0a347ec9b3ef80074571fa9",
+            "92f1eefb22e2c38d62a5cd9dcfbda100e2a2eff57788064797efbe23753df86e"
+          ],
+          "time_separation_days": 7.919507436003187,
+          "source": "supplied_raw",
+          "policy": "nearest compatible nightly group of at least three",
+          "rejected": []
+        },
+        "flat": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:02:54.773.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:04:33.810.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:06:12.828.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:07:51.836.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:09:29.793.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:11:08.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:12:47.808.fits"
+          ],
+          "sha256": [
+            "04bcd05a97aae78d22a066e9c2918926899ccec76b9286cef06ac2781252ef1a",
+            "a7a2291629295ac09b37c81b526e4b64f8ee1c1cc5918760b465647d83c965a9",
+            "0d7a4e1bd4dd8c70935a27ba9963d73932b45fe051f3e925922381f6ba5f4b05",
+            "b9370eec09ba71491ae54661f5bc7baae27a186a4b5f954ed454810267e28357",
+            "1eb13561bb6902f12fecf27330387dfab2dbdd1752afc9bfedc60333871bb4ad",
+            "31c2582ddc213d334906de98c99f5d68c292091199f096767ed59560ad4ad642",
+            "daf3f238477c2ddcee6a76620d81e8525063731b41909fff63d1a1aeba971dc6"
+          ],
+          "time_separation_days": 0.08993803856719751,
+          "source": "supplied_raw",
+          "policy": "lamp-flat preference, same OBID then time; at least three",
+          "rejected": []
+        }
+      },
+      "pipeline_support": {
+        "archive_bridge": "enabled",
+        "archive_issue": null,
+        "native_masters": "experimental",
+        "native_pair": "experimental",
+        "separate_filtered_standards": "not_enabled",
+        "red_counts_diagnostic": "not_enabled",
+        "scientifically_validated": false,
+        "development_required": [],
+        "validation_required": [
+          "Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.",
+          "Verify standard identity, physical reference, response coverage and independent flux/uncertainty checks.",
+          "Retain source-identification and bounded two-sided background checks."
+        ]
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T07:00:49.749.fits",
+      "setup": {
+        "grism": "Gr13",
+        "filter": "Free",
+        "slit": "slit1.5",
+        "binx": 2,
+        "biny": 2,
+        "readout": "fastL",
+        "shape_yx": [
+          1030,
+          1030
+        ]
+      },
+      "raw_calibrations": {
+        "arc": {
+          "status": "missing",
+          "files": [],
+          "sha256": [],
+          "time_separation_days": null,
+          "source": "supplied_raw",
+          "policy": "nearest compatible arc; slit5.0 uses slit1.0",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:00:31.548.fits",
+              "reasons": [
+                "different slit"
+              ]
+            }
+          ]
+        },
+        "bias": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:51:55.833.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:26.834.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:57.766.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:28.788.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:59.760.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:54:30.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:01.794.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:32.785.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:03.756.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:34.778.fits"
+          ],
+          "sha256": [
+            "fcfacf29f3db95020654ebb45a1e70d4d170d9ed76c1277e47a85d0a2f0a5cfd",
+            "24cda6c49c3dba5fbf29c259456c276cec356f97ad9ef416bf8f0882c3d3faca",
+            "e3690e2971631db9a4869ec345e44671047d86878854793faa36ea26b4343433",
+            "f3d24e95a8b84b5f48cb7ee333c73cf8d1efbec333f33abd98a21fdc1677130f",
+            "ebf48cfec51609b31ff0fc006dfe33a3b043b8cb1d18d19af4b6a74d2fda80b3",
+            "cbd21092fa6c1aebeeab1c2522cd84b2db012b5727a4a51e5980b09793663aa2",
+            "472bdd7d1052c689e5c9571afc4968a5e36f84e2fdc5d00fbc7f380af5f08799",
+            "e8a7fda864a4f7f8ba9ca78a4f9373828207e10020264f1df23f0b8343140fe6",
+            "55776d137d418b652341da4b488a0999d0879699e0a347ec9b3ef80074571fa9",
+            "92f1eefb22e2c38d62a5cd9dcfbda100e2a2eff57788064797efbe23753df86e"
+          ],
+          "time_separation_days": 7.921232166001573,
+          "source": "supplied_raw",
+          "policy": "nearest compatible nightly group of at least three",
+          "rejected": []
+        },
+        "flat": {
+          "status": "missing",
+          "files": [],
+          "sha256": [],
+          "time_separation_days": null,
+          "source": "supplied_raw",
+          "policy": "lamp-flat preference, same OBID then time; at least three",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:02:54.773.fits",
+              "reasons": [
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:04:33.810.fits",
+              "reasons": [
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:06:12.828.fits",
+              "reasons": [
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:07:51.836.fits",
+              "reasons": [
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:09:29.793.fits",
+              "reasons": [
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:11:08.801.fits",
+              "reasons": [
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:12:47.808.fits",
+              "reasons": [
+                "different slit"
+              ]
+            }
+          ]
+        }
+      },
+      "pipeline_support": {
+        "archive_bridge": "enabled",
+        "archive_issue": null,
+        "native_masters": "experimental",
+        "native_pair": "experimental",
+        "separate_filtered_standards": "not_enabled",
+        "red_counts_diagnostic": "not_enabled",
+        "scientifically_validated": false,
+        "development_required": [],
+        "validation_required": [
+          "Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.",
+          "Verify standard identity, physical reference, response coverage and independent flux/uncertainty checks.",
+          "Retain source-identification and bounded two-sided background checks."
+        ]
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T07:09:03.747.fits",
+      "setup": {
+        "grism": "Gr13",
+        "filter": "Free",
+        "slit": "slit1.0",
+        "binx": 2,
+        "biny": 2,
+        "readout": "fastL",
+        "shape_yx": [
+          1030,
+          1030
+        ]
+      },
+      "raw_calibrations": {
+        "arc": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:00:31.548.fits"
+          ],
+          "sha256": [
+            "b0ed5bbda52d43a8a51eb27a24cf3159264c1be4d8bd0b91499d77215c41474d"
+          ],
+          "time_separation_days": 0.07740510999428807,
+          "source": "supplied_raw",
+          "policy": "nearest compatible arc; slit5.0 uses slit1.0",
+          "rejected": []
+        },
+        "bias": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:51:55.833.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:26.834.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:57.766.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:28.788.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:59.760.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:54:30.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:01.794.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:32.785.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:03.756.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:34.778.fits"
+          ],
+          "sha256": [
+            "fcfacf29f3db95020654ebb45a1e70d4d170d9ed76c1277e47a85d0a2f0a5cfd",
+            "24cda6c49c3dba5fbf29c259456c276cec356f97ad9ef416bf8f0882c3d3faca",
+            "e3690e2971631db9a4869ec345e44671047d86878854793faa36ea26b4343433",
+            "f3d24e95a8b84b5f48cb7ee333c73cf8d1efbec333f33abd98a21fdc1677130f",
+            "ebf48cfec51609b31ff0fc006dfe33a3b043b8cb1d18d19af4b6a74d2fda80b3",
+            "cbd21092fa6c1aebeeab1c2522cd84b2db012b5727a4a51e5980b09793663aa2",
+            "472bdd7d1052c689e5c9571afc4968a5e36f84e2fdc5d00fbc7f380af5f08799",
+            "e8a7fda864a4f7f8ba9ca78a4f9373828207e10020264f1df23f0b8343140fe6",
+            "55776d137d418b652341da4b488a0999d0879699e0a347ec9b3ef80074571fa9",
+            "92f1eefb22e2c38d62a5cd9dcfbda100e2a2eff57788064797efbe23753df86e"
+          ],
+          "time_separation_days": 7.926949736007373,
+          "source": "supplied_raw",
+          "policy": "nearest compatible nightly group of at least three",
+          "rejected": []
+        },
+        "flat": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:02:54.773.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:04:33.810.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:06:12.828.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:07:51.836.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:09:29.793.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:11:08.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:12:47.808.fits"
+          ],
+          "sha256": [
+            "04bcd05a97aae78d22a066e9c2918926899ccec76b9286cef06ac2781252ef1a",
+            "a7a2291629295ac09b37c81b526e4b64f8ee1c1cc5918760b465647d83c965a9",
+            "0d7a4e1bd4dd8c70935a27ba9963d73932b45fe051f3e925922381f6ba5f4b05",
+            "b9370eec09ba71491ae54661f5bc7baae27a186a4b5f954ed454810267e28357",
+            "1eb13561bb6902f12fecf27330387dfab2dbdd1752afc9bfedc60333871bb4ad",
+            "31c2582ddc213d334906de98c99f5d68c292091199f096767ed59560ad4ad642",
+            "daf3f238477c2ddcee6a76620d81e8525063731b41909fff63d1a1aeba971dc6"
+          ],
+          "time_separation_days": 0.0824957385630114,
+          "source": "supplied_raw",
+          "policy": "lamp-flat preference, same OBID then time; at least three",
+          "rejected": []
+        },
+        "standard_candidate": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:58:20.732.fits"
+          ],
+          "sha256": [
+            "45f12081fd12958d3c89f5e8e0a489e4d5912088e43158f3c3e84485364d3c6d"
+          ],
+          "time_separation_days": 0.007442300004186109,
+          "source": "supplied_raw",
+          "policy": "nearest same-night raw standard candidate in identical setup; identity and physical reference not yet verified",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:53:55.725.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:55:45.947.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:12:25.708.fits",
+              "reasons": [
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:53:20.457.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:55:50.955.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T07:00:49.749.fits",
+              "reasons": [
+                "different slit"
+              ]
+            }
+          ]
+        }
+      },
+      "pipeline_support": {
+        "archive_bridge": "enabled",
+        "archive_issue": null,
+        "native_masters": "experimental",
+        "native_pair": "experimental",
+        "separate_filtered_standards": "not_enabled",
+        "red_counts_diagnostic": "not_enabled",
+        "scientifically_validated": false,
+        "development_required": [],
+        "validation_required": [
+          "Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.",
+          "Verify standard identity, physical reference, response coverage and independent flux/uncertainty checks.",
+          "Retain source-identification and bounded two-sided background checks."
+        ]
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T07:37:44.091.fits",
+      "setup": {
+        "grism": "Gr13",
+        "filter": "Free",
+        "slit": "slit1.0",
+        "binx": 2,
+        "biny": 2,
+        "readout": "fastL",
+        "shape_yx": [
+          1030,
+          1030
+        ]
+      },
+      "raw_calibrations": {
+        "arc": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:00:31.548.fits"
+          ],
+          "sha256": [
+            "b0ed5bbda52d43a8a51eb27a24cf3159264c1be4d8bd0b91499d77215c41474d"
+          ],
+          "time_separation_days": 0.057493719999911264,
+          "source": "supplied_raw",
+          "policy": "nearest compatible arc; slit5.0 uses slit1.0",
+          "rejected": []
+        },
+        "bias": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:51:55.833.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:26.834.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:57.766.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:28.788.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:59.760.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:54:30.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:01.794.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:32.785.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:03.756.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:34.778.fits"
+          ],
+          "sha256": [
+            "fcfacf29f3db95020654ebb45a1e70d4d170d9ed76c1277e47a85d0a2f0a5cfd",
+            "24cda6c49c3dba5fbf29c259456c276cec356f97ad9ef416bf8f0882c3d3faca",
+            "e3690e2971631db9a4869ec345e44671047d86878854793faa36ea26b4343433",
+            "f3d24e95a8b84b5f48cb7ee333c73cf8d1efbec333f33abd98a21fdc1677130f",
+            "ebf48cfec51609b31ff0fc006dfe33a3b043b8cb1d18d19af4b6a74d2fda80b3",
+            "cbd21092fa6c1aebeeab1c2522cd84b2db012b5727a4a51e5980b09793663aa2",
+            "472bdd7d1052c689e5c9571afc4968a5e36f84e2fdc5d00fbc7f380af5f08799",
+            "e8a7fda864a4f7f8ba9ca78a4f9373828207e10020264f1df23f0b8343140fe6",
+            "55776d137d418b652341da4b488a0999d0879699e0a347ec9b3ef80074571fa9",
+            "92f1eefb22e2c38d62a5cd9dcfbda100e2a2eff57788064797efbe23753df86e"
+          ],
+          "time_separation_days": 7.94686112600175,
+          "source": "supplied_raw",
+          "policy": "nearest compatible nightly group of at least three",
+          "rejected": []
+        },
+        "flat": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:02:54.773.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:04:33.810.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:06:12.828.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:07:51.836.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:09:29.793.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:11:08.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:12:47.808.fits"
+          ],
+          "sha256": [
+            "04bcd05a97aae78d22a066e9c2918926899ccec76b9286cef06ac2781252ef1a",
+            "a7a2291629295ac09b37c81b526e4b64f8ee1c1cc5918760b465647d83c965a9",
+            "0d7a4e1bd4dd8c70935a27ba9963d73932b45fe051f3e925922381f6ba5f4b05",
+            "b9370eec09ba71491ae54661f5bc7baae27a186a4b5f954ed454810267e28357",
+            "1eb13561bb6902f12fecf27330387dfab2dbdd1752afc9bfedc60333871bb4ad",
+            "31c2582ddc213d334906de98c99f5d68c292091199f096767ed59560ad4ad642",
+            "daf3f238477c2ddcee6a76620d81e8525063731b41909fff63d1a1aeba971dc6"
+          ],
+          "time_separation_days": 0.0625843485686346,
+          "source": "supplied_raw",
+          "policy": "lamp-flat preference, same OBID then time; at least three",
+          "rejected": []
+        },
+        "standard_candidate": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:58:20.732.fits"
+          ],
+          "sha256": [
+            "45f12081fd12958d3c89f5e8e0a489e4d5912088e43158f3c3e84485364d3c6d"
+          ],
+          "time_separation_days": 0.027353689998562913,
+          "source": "supplied_raw",
+          "policy": "nearest same-night raw standard candidate in identical setup; identity and physical reference not yet verified",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:53:55.725.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:55:45.947.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:12:25.708.fits",
+              "reasons": [
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:53:20.457.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:55:50.955.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T07:00:49.749.fits",
+              "reasons": [
+                "different slit"
+              ]
+            }
+          ]
+        }
+      },
+      "pipeline_support": {
+        "archive_bridge": "enabled",
+        "archive_issue": null,
+        "native_masters": "experimental",
+        "native_pair": "experimental",
+        "separate_filtered_standards": "not_enabled",
+        "red_counts_diagnostic": "not_enabled",
+        "scientifically_validated": false,
+        "development_required": [],
+        "validation_required": [
+          "Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.",
+          "Verify standard identity, physical reference, response coverage and independent flux/uncertainty checks.",
+          "Retain source-identification and bounded two-sided background checks."
+        ]
+      }
+    },
+    {
+      "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T08:30:00.913.fits",
+      "setup": {
+        "grism": "Gr13",
+        "filter": "Free",
+        "slit": "slit1.0",
+        "binx": 2,
+        "biny": 2,
+        "readout": "fastL",
+        "shape_yx": [
+          1030,
+          1030
+        ]
+      },
+      "raw_calibrations": {
+        "arc": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:00:31.548.fits"
+          ],
+          "sha256": [
+            "b0ed5bbda52d43a8a51eb27a24cf3159264c1be4d8bd0b91499d77215c41474d"
+          ],
+          "time_separation_days": 0.0211879099952057,
+          "source": "supplied_raw",
+          "policy": "nearest compatible arc; slit5.0 uses slit1.0",
+          "rejected": []
+        },
+        "bias": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:51:55.833.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:26.834.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:52:57.766.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:28.788.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:53:59.760.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:54:30.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:01.794.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:55:32.785.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:03.756.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-07T08:56:34.778.fits"
+          ],
+          "sha256": [
+            "fcfacf29f3db95020654ebb45a1e70d4d170d9ed76c1277e47a85d0a2f0a5cfd",
+            "24cda6c49c3dba5fbf29c259456c276cec356f97ad9ef416bf8f0882c3d3faca",
+            "e3690e2971631db9a4869ec345e44671047d86878854793faa36ea26b4343433",
+            "f3d24e95a8b84b5f48cb7ee333c73cf8d1efbec333f33abd98a21fdc1677130f",
+            "ebf48cfec51609b31ff0fc006dfe33a3b043b8cb1d18d19af4b6a74d2fda80b3",
+            "cbd21092fa6c1aebeeab1c2522cd84b2db012b5727a4a51e5980b09793663aa2",
+            "472bdd7d1052c689e5c9571afc4968a5e36f84e2fdc5d00fbc7f380af5f08799",
+            "e8a7fda864a4f7f8ba9ca78a4f9373828207e10020264f1df23f0b8343140fe6",
+            "55776d137d418b652341da4b488a0999d0879699e0a347ec9b3ef80074571fa9",
+            "92f1eefb22e2c38d62a5cd9dcfbda100e2a2eff57788064797efbe23753df86e"
+          ],
+          "time_separation_days": 7.983166936006455,
+          "source": "supplied_raw",
+          "policy": "nearest compatible nightly group of at least three",
+          "rejected": []
+        },
+        "flat": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:02:54.773.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:04:33.810.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:06:12.828.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:07:51.836.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:09:29.793.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:11:08.801.fits",
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/eso-calibrations/EFOSC.2024-11-15T09:12:47.808.fits"
+          ],
+          "sha256": [
+            "04bcd05a97aae78d22a066e9c2918926899ccec76b9286cef06ac2781252ef1a",
+            "a7a2291629295ac09b37c81b526e4b64f8ee1c1cc5918760b465647d83c965a9",
+            "0d7a4e1bd4dd8c70935a27ba9963d73932b45fe051f3e925922381f6ba5f4b05",
+            "b9370eec09ba71491ae54661f5bc7baae27a186a4b5f954ed454810267e28357",
+            "1eb13561bb6902f12fecf27330387dfab2dbdd1752afc9bfedc60333871bb4ad",
+            "31c2582ddc213d334906de98c99f5d68c292091199f096767ed59560ad4ad642",
+            "daf3f238477c2ddcee6a76620d81e8525063731b41909fff63d1a1aeba971dc6"
+          ],
+          "time_separation_days": 0.026278538563929033,
+          "source": "supplied_raw",
+          "policy": "lamp-flat preference, same OBID then time; at least three",
+          "rejected": []
+        },
+        "standard_candidate": {
+          "status": "selected",
+          "files": [
+            "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:58:20.732.fits"
+          ],
+          "sha256": [
+            "45f12081fd12958d3c89f5e8e0a489e4d5912088e43158f3c3e84485364d3c6d"
+          ],
+          "time_separation_days": 0.06365950000326848,
+          "source": "supplied_raw",
+          "policy": "nearest same-night raw standard candidate in identical setup; identity and physical reference not yet verified",
+          "rejected": [
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:53:55.725.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:55:45.947.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:12:25.708.fits",
+              "reasons": [
+                "different slit"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:53:20.457.fits",
+              "reasons": [
+                "different grism"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:55:50.955.fits",
+              "reasons": [
+                "different grism",
+                "different filter"
+              ]
+            },
+            {
+              "path": "/Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T07:00:49.749.fits",
+              "reasons": [
+                "different slit"
+              ]
+            }
+          ]
+        }
+      },
+      "pipeline_support": {
+        "archive_bridge": "enabled",
+        "archive_issue": null,
+        "native_masters": "experimental",
+        "native_pair": "experimental",
+        "separate_filtered_standards": "not_enabled",
+        "red_counts_diagnostic": "not_enabled",
+        "scientifically_validated": false,
+        "development_required": [],
+        "validation_required": [
+          "Verify selected raw inputs and master hashes, wavelength coverage and exposure-specific sky checks.",
+          "Verify standard identity, physical reference, response coverage and independent flux/uncertainty checks.",
+          "Retain source-identification and bounded two-sided background checks."
+        ]
+      }
+    }
+  ],
+  "raw_candidates_complete": false,
+  "native_calibration_execution_implemented": true,
+  "native_execution_implemented": true,
+  "reduction_ready": false,
+  "blockers": [
+    "arc missing: /Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T00:46:30.806.fits",
+    "flat missing: /Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T00:46:30.806.fits",
+    "arc missing: /Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:53:55.725.fits",
+    "flat missing: /Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:53:55.725.fits",
+    "arc missing: /Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:55:45.947.fits",
+    "flat missing: /Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T01:55:45.947.fits",
+    "arc missing: /Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:12:25.708.fits",
+    "flat missing: /Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:12:25.708.fits",
+    "arc missing: /Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:38:55.253.fits",
+    "flat missing: /Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T02:38:55.253.fits",
+    "arc missing: /Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T03:04:53.075.fits",
+    "flat missing: /Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T03:04:53.075.fits",
+    "arc missing: /Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T04:24:39.345.fits",
+    "flat missing: /Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T04:24:39.345.fits",
+    "arc missing: /Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:53:20.457.fits",
+    "flat missing: /Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:53:20.457.fits",
+    "arc missing: /Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:55:50.955.fits",
+    "flat missing: /Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T06:55:50.955.fits",
+    "arc missing: /Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T07:00:49.749.fits",
+    "flat missing: /Users/avinash/Work/Reduction/EFOSpec/data/2024-11-14/EFOSC.2024-11-15T07:00:49.749.fits",
+    "Experimental native masters and wavelength fits require per-group calibration and independent science validation; run calibrate-native. No IRAF IDs or processed arcs may substitute.",
+    "Standard identities and independent physical flux references must be matched; sensitivity must be derived from the supplied observations.",
+    "This preflight checks candidate availability only; execute reduce-native and inspect its scientific validation before accepting products."
+  ]
+}

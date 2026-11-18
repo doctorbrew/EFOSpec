@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "<stdin>", line 7, in <module>
+  File "/Users/avinash/Work/Reduction/EFOSpec/src/efospec/telluric_products.py", line 127, in render_selected
+    subprocess.run([sys.executable,str(script),'--run',str(run),'--telluric-only','--no-legacy'],
+  File "/Users/avinash/Softwares/miniconda3/envs/efospec/lib/python3.11/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/Users/avinash/Softwares/miniconda3/envs/efospec/bin/python', '/Users/avinash/Work/Reduction/EFOSpec/scripts/preview_spectrum_style.py', '--run', '/Users/avinash/Work/Reduction/EFOSpec/runs/2026-10-28/efosc/nightly/20261115T224937Z-c9a1ea/reduction', '--telluric-only', '--no-legacy']' returned non-zero exit status 1.
