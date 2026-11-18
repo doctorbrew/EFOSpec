@@ -1,4 +1,4 @@
-"""Repository entry point for reviewed public/private WISeREP handoff ZIPs."""
+"""Repository entry point for public/private PESSTOWISE TGZ packaging."""
 from efospec.wiserep import main
 
 

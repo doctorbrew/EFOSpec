@@ -1,4 +1,4 @@
-"""Prepare separate, reviewed WISeREP handoff ZIPs without uploading data.
+"""Prepare separate public/private PESSTOWISE TGZs without uploading data.
 
 The TSV follows the preserved PESSTOWISE column layout, NOT the WISeREP v2
 bulk API schema. See docs/wiserep-delivery.md for sources and ingestion steps.
@@ -6,7 +6,7 @@ bulk API schema. See docs/wiserep-delivery.md for sources and ingestion steps.
 
 import argparse
 import csv
-from datetime import date, timedelta
+from datetime import date, timedelta, timezone
 import json
 import math
 import os
@@ -14,12 +14,15 @@ from pathlib import Path
 import re
 import shutil
 import tempfile
+import tarfile
 from zipfile import ZipFile, ZIP_DEFLATED
 
+from astropy import units as u
 from astropy.io import fits
 from astropy.time import Time
 
 from .delivery import digest, prepare
+from .wiserep_tar import write_tar, validate_tar
 
 
 LEGACY_COLUMNS = (
@@ -94,29 +97,36 @@ def init_manifest(night, products, output):
     return output
 
 
-def _legacy_row(row, header, names, related):
+def _legacy_row(row, header, names, related, *, tgz=False):
     stamp = Time(header['DATE-OBS'], format='isot', scale='utc')
-    stamp.precision = 6
+    stamp.precision = 3 if tgz else 6
     day, ut = stamp.isot.split('T')
     slit = str(header['SLIT'])
     if slit.lower().startswith('slit'):
         slit = slit[4:]
     # 31 is the EFOSC instrument ID used by the preserved PESSTOWISE script.
-    # FILTER is recorded in JSON/FITS, never mislabeled as a grating.
+    # TGZ reproduces the examples' FILTER-in-Grating convention. ZIP keeps the
+    # literal grating field unknown and records FILTER separately in JSON/FITS.
     values = [
         row['object'], names['ascii'], names['fits'], day, ut, 31,
-        row['observers'], header['EXPTIME'], slit, row['reducers'],
-        row['reduction_date'], row['quality'], row['spectrum_type'],
+        row['observers'], int(header['EXPTIME']) if tgz else header['EXPTIME'], slit, row['reducers'],
+        row['reduction_date'][:10] if tgz else row['reduction_date'], row['quality'], row['spectrum_type'],
         row['review_notes'], row.get('publish'), row.get('contrib'),
-        header.get('AIRMASS'), header.get('DICHROIC'), header['GRISM'], None,
-        header['RA'], header['DEC'], row.get('iau_name'), row.get('object_type_id'),
+        header.get('AIRMASS'), header.get('DICHROIC'), header['GRISM'], header['FILTER'] if tgz else None,
+        header['RA'], header['DEC'], row.get('iau_name'),
+        (row.get('object_type_id') or 0) if tgz else row.get('object_type_id'),
         row.get('redshift'), row.get('host'), *related,
     ]
     return ['NULL' if v is None or v == '' else str(v) for v in values]
 
 
-def package(manifest, destination):
-    """Validate all selections, then atomically expose independently shareable ZIPs."""
+def package(manifest, destination, *, archive_format='tgz', timestamp=None):
+    """Validate selections, then atomically expose independent upload archives."""
+    if archive_format not in {'tgz', 'zip'}:
+        raise ValueError('archive_format must be tgz or zip')
+    tgz = archive_format == 'tgz'
+    packaged_at = Time(timestamp, format='isot', scale='utc') if timestamp else Time.now()
+    stamp = packaged_at.to_datetime(timezone=timezone.utc).strftime('%Y%m%d_%H_%M')
     manifest, destination = Path(manifest).resolve(), Path(destination).resolve()
     if destination.exists():
         raise ValueError('Destination exists; use a new delivery revision')
@@ -128,6 +138,7 @@ def package(manifest, destination):
         raise ValueError('No spectra selected')
     selected, attachments, names_seen, hashes_seen = [], [], set(), {}
     source_hashes = {}
+    qualities = {}
 
     def register(path, expected, visibility):
         actual = digest(path)
@@ -159,6 +170,10 @@ def package(manifest, destination):
             raise ValueError('Explicit spectrum quality required')
         if h.get('QUALITY') and h['QUALITY'] != row['quality']:
             raise ValueError('Quality differs from source FITS; resolve upstream')
+        if tgz:
+            previous = qualities.setdefault(row.get('visibility'), row['quality'])
+            if previous != row['quality']:
+                raise ValueError('TGZ requires one quality per access class; use separate manifests')
         for key in ('iau_name', 'host', 'publish', 'contrib'):
             if row.get(key) is not None and not isinstance(row[key], str):
                 raise ValueError(key + ' must be a string or null')
@@ -179,12 +194,21 @@ def package(manifest, destination):
         if not isinstance(related, list) or len(related) > 2:
             raise ValueError('related_files permits at most two reviewed plot/2D files')
         files = []
+        roles = set()
         for item in related:
             if item.get('role') not in {'plot', '2d'}:
                 raise ValueError('Related file role must be plot or 2d')
+            if tgz and item['role'] in roles:
+                raise ValueError('TGZ supports one plot and one calibrated 2D attachment per spectrum')
+            roles.add(item['role'])
             path = (manifest.parent / item['path']).resolve()
             if item['role'] == '2d' and path.suffix.lower() != '.fits':
                 raise ValueError('Related 2D product must be a FITS file')
+            if tgz and item['role'] == '2d':
+                with fits.open(path) as hdus:
+                    if (hdus[0].data is None or hdus[0].data.ndim != 2 or
+                            u.Unit(hdus[0].header.get('BUNIT', '')) != u.Unit('erg / (s cm2 Angstrom)')):
+                        raise ValueError('TGZ needs a calibrated primary 2D image, not native PypeIt spec2d')
             if item['role'] == 'plot' and path.suffix.lower() not in {'.png', '.jpg', '.jpeg', '.pdf', '.ps'}:
                 raise ValueError('Related plot must be PNG, JPG, PDF or PS')
             register(path, item['sha256'], row.get('visibility'))
@@ -235,24 +259,35 @@ def package(manifest, destination):
                 related_records.append(dict(filename=path.name, role=role, sha256=digest(path)))
             record = json.loads((original / 'metadata.json').read_text())
             record.update(observing_night=night.isoformat(), related_files=related_records,
-                          archive_ingestion=HANDOFF_NOTE.strip(),
+                          archive_ingestion=(
+                              'PESSTOWISE TGZ matching supplied examples; local format validation only. '
+                              'Share the separate public/private TGZ with the intended ingest team. '
+                              'No upload performed.' if tgz else HANDOFF_NOTE.strip()),
                           files={name: digest(folder / name) for key, name in names.items() if key != 'metadata'})
             (folder / names['metadata']).write_text(json.dumps(record, indent=2) + '\n')
+            if tgz:
+                by_role = {role: path.name for path, role in related}
+                related_names = [by_role.get('plot'), by_role.get('2d')]
             tables.setdefault(visibility, []).append(_legacy_row(
-                row, header, names, related_names + [None] * (2 - len(related_names))))
+                row, header, names, related_names + [None] * (2 - len(related_names)), tgz=tgz))
             access.setdefault(visibility, []).append(dict(
                 fits=names['fits'], object=row['object'], source_group=row['source_group'],
                 associated_groups=row['associated_groups'], proprietary_until=row.get('proprietary_until')))
         for visibility, table in tables.items():
             folder = exported / visibility
-            with (folder / 'pesstowise-metadata.tsv').open('w', newline='') as stream:
-                writer = csv.writer(stream, delimiter='\t', lineterminator='\n')
-                writer.writerow(LEGACY_COLUMNS)
-                writer.writerows(table)
+            if not tgz:
+                with (folder / 'pesstowise-metadata.tsv').open('w', newline='') as stream:
+                    writer = csv.writer(stream, delimiter='\t', lineterminator='\n')
+                    writer.writerow(LEGACY_COLUMNS)
+                    writer.writerows(table)
             (folder / 'access.json').write_text(json.dumps(dict(
                 visibility=visibility, observing_night=night.isoformat(), spectra=access[visibility]), indent=2) + '\n')
-            (folder / 'README.txt').write_text(HANDOFF_NOTE +
-                'The TSV uses the 28 PESSTOWISE columns with one header row; no legacy defaults row.\n'
+            introduction = (
+                'Local audit sidecars; share the separate TGZ. It matches the supplied PESSTOWISE '
+                'layout, including the defaults line. Masks remain in these audit FITS; the TGZ '
+                'contains primary-only four-band FITS. No upload performed.\n' if tgz else
+                HANDOFF_NOTE + 'The TSV uses one header row; no legacy defaults row.\n')
+            (folder / 'README.txt').write_text(introduction +
                 'ASCII: header-free wavelength in air Angstrom, flux in erg/s/cm2/Angstrom '
                 '(coefficient 1); topocentric observed frame. Error sidecars contain statistical '
                 'sigma only. Invalid samples are omitted from ASCII, not filled or resampled. '
@@ -260,13 +295,22 @@ def package(manifest, destination):
                 'or final-quality claim is added. Inspect the original correction keywords.\n')
             files = sorted(folder.iterdir())
             (folder / 'SHA256SUMS').write_text(''.join(f'{digest(p)}  {p.name}\n' for p in files))
-            archive = exported / f'efospec_{night.isoformat()}_upload_{visibility}.zip'
-            with ZipFile(archive, 'x', compression=ZIP_DEFLATED) as zipped:
-                for path in sorted(folder.iterdir()):
-                    zipped.write(path, arcname=path.name)
-            with ZipFile(archive) as zipped:
-                if zipped.testzip() is not None:
-                    raise ValueError('ZIP integrity check failed')
+            if tgz:
+                base = f'pessto_{stamp}_{qualities[visibility]}_upload'
+                archive = exported / f'{base}_{visibility}.tgz'
+                result = write_tar(folder, staging / f'tar-{visibility}', archive,
+                                   table, base + '.txt', packaged_at.unix)
+                result['archive'] = archive.name
+                result['sha256'] = digest(archive)
+                (folder / 'tar-validation.json').write_text(json.dumps(result, indent=2) + '\n')
+            else:
+                archive = exported / f'efospec_{night.isoformat()}_upload_{visibility}.zip'
+                with ZipFile(archive, 'x', compression=ZIP_DEFLATED) as zipped:
+                    for path in sorted(folder.iterdir()):
+                        zipped.write(path, arcname=path.name)
+                with ZipFile(archive) as zipped:
+                    if zipped.testzip() is not None:
+                        raise ValueError('ZIP integrity check failed')
             if visibility == 'private':
                 archive.chmod(0o600)
         for source, expected in source_hashes.items():
@@ -285,14 +329,23 @@ def main(argv=None):
     initial.add_argument('night')
     initial.add_argument('products', nargs='+', type=Path)
     initial.add_argument('--output', required=True, type=Path)
-    build = commands.add_parser('build', help='Build reviewed public/private ZIPs; never upload')
+    build = commands.add_parser('build', help='Build reviewed public/private TGZs; never upload')
     build.add_argument('manifest', type=Path)
     build.add_argument('destination', type=Path)
+    build.add_argument('--format', choices=('tgz', 'zip'), default='tgz')
+    build.add_argument('--timestamp', help='UTC packaging time for reproducible filenames (ISO format)')
+    validate = commands.add_parser('validate', help='Check existing PESSTOWISE TGZ layout and spectra')
+    validate.add_argument('archives', type=Path, nargs='+')
     args = parser.parse_args(argv)
     try:
+        if args.command == 'validate':
+            for archive in args.archives:
+                print(json.dumps(validate_tar(archive)))
+            return
         output = (init_manifest(args.night, args.products, args.output) if args.command == 'init'
-                  else package(args.manifest, args.destination))
-    except (ValueError, KeyError, TypeError, OSError) as error:
+                  else package(args.manifest, args.destination,
+                               archive_format=args.format, timestamp=args.timestamp))
+    except (ValueError, KeyError, TypeError, OSError, tarfile.TarError) as error:
         parser.exit(2, f'Packaging failed: {error}\n')
     print(output)
 

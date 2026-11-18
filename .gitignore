@@ -3,6 +3,7 @@
 /data/
 /runs/
 /outputs/
+/wiserep_tns_upload/
 
 # Python builds, virtual environments and caches.
 /build/

@@ -1,0 +1,2 @@
+Obj-name	Ascii-filename	FITS-filename	Obs-date [YYYY-MM-DD]	Obs-UT [HH:MM:SS]	Inst-Id	Observer/s	Exptime	Slit	Reducer	Reduction-date	Quality [Rapid/Final/Low/Med/High] 	Spec-Type [Object/Host/Sky/Arcs]	Spec-Remarks	Publish	Contrib	Airmass	Dichroic	Grism	Grating	Obj-RA	Obj-DEC	IAU-name	Obj-type-Id	Redshift	Host	Related-file1	Related-file2
+[NULL]	[NULL]	[Unknown]	[0]	[0]	[Unknown]	[Obs-date]	[NULL]	[NULL]	[NULL]	[NULL]	[NULL]	[NULL]	[NULL]	[NULL]	[NULL]	[NULL]	[NULL]	[NULL]	[NULL]	[NULL]

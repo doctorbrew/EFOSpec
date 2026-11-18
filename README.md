@@ -64,7 +64,7 @@ to the nightly report requires the [reviewed-geometry workflow](docs/epoch-workf
 [Open published nightly logs, IRAF comparisons and Spectypus fitting logs](OUTPUTS_PIPELINE.md).
 
 [Package reviewed spectra for WISeREP](docs/wiserep-delivery.md) using
-`python scripts/package_wiserep.py`: separate public/private ZIPs with FITS,
+`python scripts/package_wiserep.py`: separate public/private `.tgz` files with FITS,
 ASCII, metadata and optional related files. Packaging does not upload data.
 
 | Location | Contents |
@@ -76,6 +76,46 @@ ASCII, metadata and optional related files. Packaging does not upload data.
 Original inputs and previous revisions are preserved. Local observing data and
 outputs are ignored by Git. Code lives in `src/efospec/`; `trunk/` retains the
 legacy engine and reference calibrations.
+
+## Create the public and private upload tarballs
+
+Run in the `efospec` environment. Select the accepted PypeIt-derived `_f.fits`
+products from one revision; replace the paths below with your selected files:
+
+```sh
+python scripts/package_wiserep.py init 2026-11-10 \
+  runs/2026-11-10/efosc/nightly/REVISION/reduction/products/TARGET1_f.fits \
+  runs/2026-11-10/efosc/nightly/REVISION/reduction/products/TARGET2_f.fits \
+  --output runs/2026-11-10/efosc/delivery-review.json
+```
+
+Edit the JSON: set each spectrum's `visibility` to `public` or `private`, fill
+observer/reducer attribution and review fields, and supply the private group and
+embargo end time. Confirm the exact product hashes and review/release flags.
+Then one command builds both tarballs and checks their contents:
+
+```sh
+python scripts/package_wiserep.py build \
+  runs/2026-11-10/efosc/delivery-review.json \
+  runs/2026-11-10/efosc/delivery/review-001
+
+python scripts/package_wiserep.py validate \
+  runs/2026-11-10/efosc/delivery/review-001/*.tgz
+```
+
+Share `pessto_YYYYMMDD_HH_MM_Rapid_upload_public.tgz` and
+`pessto_YYYYMMDD_HH_MM_Rapid_upload_private.tgz` with the respective recipients.
+The timestamp is the **UTC packaging time**, and `Rapid` is the reviewed quality.
+Only populated access classes are produced; existing destinations are never
+overwritten. Both classes must be present in the manifest to produce two tars.
+
+The tarballs match the supplied `wiserep_tns_upload/` examples: a flat archive,
+one `pessto_…_upload.txt` with the original header/defaults line, four-band
+primary FITS and tab-separated two-column `.asci` spectra. Optional plots and
+calibrated 2D products occupy the same related-file columns. Local masks, JSON,
+error sidecars and checksums stay outside the upload tars. Native PypeIt `spec2d`
+files are not relabelled as calibrated `_2df.fits`.
+[Metadata fields and compatibility details](docs/wiserep-delivery.md).
 
 ## Status and documentation
 

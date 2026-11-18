@@ -1,8 +1,9 @@
 # WISeREP delivery packages
 
 **Implemented:** `scripts/package_wiserep.py` creates separate public/private
-ZIPs from explicitly reviewed EFOSpec flux products. It runs offline and never
-uploads, sends mail, changes source data or assigns access from target names.
+PESSTOWISE `.tgz` tarballs from explicitly reviewed EFOSpec flux products. It runs
+offline and never uploads, sends mail, changes source data or assigns access from
+target names.
 
 ## Prepare one observing night
 
@@ -46,8 +47,9 @@ Complete each spectrum's manifest entry:
 | `publish`, `contrib` | Optional publication/contribution text, if established. |
 
 `related_files` optionally contains up to two explicitly reviewed attachments,
-matching the legacy table's two related-file columns. Use `role: "2d"` for an
-associated calibrated 2D FITS product or `role: "plot"` for PNG/JPG/PDF/PS plots:
+matching the legacy table's two related-file columns (one plot and one 2D image).
+Use `role: "2d"` for an associated calibrated 2D FITS product or `role: "plot"`
+for PNG/JPG/PDF/PS plots:
 
 ```json
 {"path": "relative/to/manifest/target_2df.fits", "role": "2d", "sha256": "EXACT_SHA256"}
@@ -60,57 +62,95 @@ report containing other targets to an individual public spectrum.
 
 ## Output and headers
 
-The destination contains `public/`, `private/` and
-`efospec_2026-11-10_upload_public.zip` /
-`efospec_2026-11-10_upload_private.zip`. An unused class is omitted. Each ZIP has
-its own flat file layout and contains only its selected spectra and attachments:
+The default output is two gzip-compressed tar archives, for the populated classes:
 
-- Original FITS basenames, with all four scientific bands and `VALID` masks
-  preserved. Delivery copies add `OBSERVER`, `REDUCER`, `DATE-RED`, `TELESCOP`,
-  `PESSTO ACCESS`, `EFOSPEC NIGHT` and descriptive `WISEREP …` HIERARCH cards.
-  Private copies record their associated groups and embargo end time. These
-  cards are handoff instructions, **not archive-enforced access controls**.
-- Header-free two-column `.asci` spectra: air wavelength in Angstrom and physical
-  flux density in erg s⁻¹ cm⁻² Å⁻¹, coefficient **1**, topocentric observed frame.
-  Do not apply another vacuum/air conversion, redshift correction or scaling.
-  Samples with invalid primary flux/error masks or nonfinite/nonpositive sigma
-  are omitted. Negative valid flux is retained; no interpolation is performed.
-- Separate three-column `-errors.txt` files with statistical sigma in the same
-  flux units. The two-column files are the spectrum ingestion files.
-- Per-spectrum `-metadata.json` with review, correction/status provenance,
-  omitted-sample counts and hashes; `access.json` lists that ZIP's access settings.
-- `pesstowise-metadata.tsv`, `README.txt` and `SHA256SUMS`.
+```text
+pessto_YYYYMMDD_HH_MM_Rapid_upload_public.tgz
+pessto_YYYYMMDD_HH_MM_Rapid_upload_private.tgz
+```
 
-The exporter checks FITS structure/checksums, linear wavelength units/grid,
-observation time/MJD agreement, coordinates, positive exposure time, physical
-flux units and the selected file hashes. Failed calibration flags, provisional
-products, count-only spectra, ambiguous visibility, changed inputs and duplicate
-archive names are rejected. Weak but valid reviewed spectra can retain `Low` or
-`Rapid` quality. No silent skipping occurs: a failure leaves no delivery directory.
-Original sources are checked again before the completed directory is exposed.
+The timestamp is UTC **packaging time**, as in the reference filenames, not the
+observing-night date. Each spectrum retains its actual `DATE-OBS`. `Rapid` is the
+reviewed quality; each access class must have one quality, otherwise use separate
+manifests. `--timestamp 2026-11-18T14:03:00` optionally fixes the filename stamp.
+An unused access class is omitted. There is no automatic public/private inference.
 
-## Ingest into WISeREP
+The upload archives contain **only** these flat, referenced files:
 
-Unzip one access class at a time. Use the Report form to select the exact object,
-upload its `.asci`/FITS files, check observation metadata, select ESO-NTT / EFOSC2,
-and set the units and wavelength medium above. Check actual extinction/telluric
-history in the FITS/JSON; packaging adds no corrections. Associate related files
-with the corresponding spectrum. Set source group, proprietary period and
-associated groups explicitly, checking both report-level and spectrum-level
-settings before submission. Public and private batches must stay separate.
+- `pessto_YYYYMMDD_HH_MM_Rapid_upload.txt`: exact 28-column header (including the
+  old trailing space in the Quality label), the exact **21-field defaults line**,
+  then 28 tab-separated fields per spectrum. Do not pad or delete that defaults
+  line: all four supplied examples use it. Missing optional fields use `NULL`;
+  unknown object type uses the legacy code `0`.
+- Original `_f.fits` basenames: **one primary HDU**, four bands shaped `(4, 1, N)`.
+  Science values, binning, extraction labels, flux units and air/topocentric
+  wavelengths are retained. Delivery copies add observer/reducer attribution,
+  reduction time and access instructions, plus legacy `CD1_1`, `WCSDIM` and
+  `WAT*` wavelength descriptors. The legacy `BUNIT` spelling is
+  `erg/cm2/s/Angstrom`. No IRAF aperture coordinates or extraction claims are
+  fabricated; `BANDID*` continues to describe the actual PypeIt extraction.
+- Header-free, **tab-separated** two-column `.asci` spectra: air Angstrom and
+  erg s⁻¹ cm⁻² Å⁻¹, coefficient **1**, topocentric observed frame. Invalid
+  primary flux/error samples are omitted, with no interpolation or rescaling.
+  Negative valid flux remains. The wavelength grid and sample count need not
+  equal the older IRAF examples; their numerical values are preserved.
+- Explicit optional attachments: plot in `Related-file1`, calibrated 2D image in
+  `Related-file2`, or `NULL`. A native PypeIt multi-extension `spec2d` is not a
+  legacy flux-calibrated `_2df.fits` and is rejected for that slot.
 
-The ZIPs are also suitable for handing the files and metadata to the authorized
-WISeREP ingest team. Private ZIPs have restrictive local permissions but are not
-encrypted; deliver them only to the intended recipients. They are not published
-by the GitHub Pages workflow.
+For exact compatibility, the table's historically labelled **Grating** column
+contains the **filter** (`Free`, `OG530`, etc.), as in the supplied archives.
+Exposure time in that table uses legacy integer seconds; FITS retains the full
+precision. Observation UT uses milliseconds, and reduction date is a UTC date;
+full reduction time stays in FITS/local JSON. No object classification or redshift
+is inferred. These conventions are specific to the collaborators' legacy format.
 
-**Compatibility boundary:** the TSV uses the preserved **28-column PESSTOWISE
-layout**, with one header row and one row per spectrum, without its old defaults
-row. EFOSC's legacy instrument ID is `31`. It is a documented team handoff,
-**not a claimed WISeREP v2 bulk-API or Report-form TSV payload**. Current WISeREP
-supports form entry and its own TSV/JSON bulk schemas. Obtain and verify its
-current template before using automated bulk ingestion. No network ingestion
-acceptance test has been performed.
+The local `public/` and `private/` audit folders retain full FITS copies including
+`VALID` masks, error sidecars, per-spectrum JSON, access instructions and hashes.
+Both native `(4, N)` and singleton-aperture `(4, 1, N)` mask layouts are supported.
+The primary-only FITS copies **inside the TGZ** omit the mask extension for legacy
+reader compatibility; always retain the audit/source products for further science.
+JSON, error text, README and checksum files do not go inside the upload TGZ, so
+there is exactly one `.txt` metadata file. macOS `._*` files are not generated.
+
+## Validate and share
+
+```sh
+python scripts/package_wiserep.py validate \
+  runs/2026-11-10/efosc/delivery/review-001/*.tgz
+
+# Optional: verify the supplied reference examples locally
+python scripts/package_wiserep.py validate wiserep_tns_upload/*.tgz
+```
+
+`build` runs the same validator before exposing the output directory. It checks
+the metadata preamble, column count, unique flat members, all referenced files,
+primary FITS structure/units/checksums, and ASCII wavelength/flux agreement with
+the FITS primary spectrum. The validator reads without extracting. For the
+original examples it ignores AppleDouble `._*` files. A failure leaves no delivery
+directory, and source hashes are checked again before completion.
+
+The scientific review checks also reject failed calibration flags, provisional
+or count-only products, inconsistent date/MJD, invalid coordinates/units, changed
+inputs and ambiguous access. Weak but valid reviewed spectra can retain `Low` or
+`Rapid` quality. Packaging does not upgrade their scientific status.
+
+Send each tarball to its intended collaborators for their existing PESSTOWISE
+server-ingestion workflow. If inspecting both archives, extract them into separate
+directories: the public/private tarballs can contain the same metadata filename.
+Private archives have restrictive local permissions but are not encrypted. Access
+cards in FITS are instructions; the ingest team still applies archive permissions.
+No delivery data or reference tarballs are published by GitHub Pages.
+
+**Verified locally:** all four supplied TGZs (15 spectra) and conversion of the
+current 2026-11-10 PypeIt-derived flux products. This establishes file-format and
+numerical compatibility, not a completed remote-server upload or science release.
+These tarballs are not a TNS classification API request or a WISeREP v2 JSON
+payload. No upload is performed by this script.
+
+The earlier collaborator ZIP layout remains available with `build … --format zip`.
+It keeps full masked FITS and audit sidecars inside ZIPs, with its earlier
+single-header TSV. Use the default TGZ mode for the supplied server-ingest format.
 
 ## Sources checked
 
@@ -121,9 +161,14 @@ acceptance test has been performed.
 - Supplied **ePESSTO NTT pipeline user manual draft**, “Preparing data for
   WISEREP”: `PESSTOWISE`, reviewed names/coordinates and observer/reducer names.
   Source PDF hashes are in [manual provenance](manual/source-hashes.json).
+- Four local `wiserep_tns_upload/pessto_20261028_*.tgz` and
+  `pessto_20261029_*.tgz` examples: archive membership, exact two-line metadata
+  preamble, column conventions, FITS structure and numerical ASCII agreement.
+  They remain local/Git-ignored; only the non-scientific header/defaults fixture
+  is tracked for regression checks.
 - Preserved [PESSTOWISE](../trunk/bin/PESSTOWISE): column order and EFOSC ID.
-  The exporter keeps fractional exposure seconds and does not mislabel the
-  filter as a grating.
+  TGZ deliberately reproduces its integer exposure seconds and legacy
+  filter-in-Grating convention; physical metadata remains explicit in FITS.
 - [WISeREP getting started](https://www.wiserep.org/content/wiserep-getting-started):
   Report form, bulk templates and group/proprietary controls. Checked
   2026-11-18 via the indexed official documentation; direct page access returned

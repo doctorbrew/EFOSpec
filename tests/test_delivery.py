@@ -55,3 +55,11 @@ def test_duplicate_across_classes(example):
     second=dict(row,visibility='private',associated_groups=['Test'],proprietary_until='2099-01-01T00:00:00')
     manifest=p/'manifest.json'; manifest.write_text(json.dumps({'spectra':[row,second]}))
     with pytest.raises(ValueError,match='Duplicate'): prepare(manifest,p/'out')
+
+def test_native_two_dimensional_valid_mask(example):
+    _, row = example
+    with fits.open(row['product'], mode='update') as hdus:
+        hdus['VALID'].data = hdus['VALID'].data[:, 0, :]
+    out = run(example, sha256=digest(row['product']))
+    assert np.loadtxt(out/'public/spectrum-001/spectrum.ascii').shape == (4, 2)
+    assert fits.getdata(out/'public/spectrum-001/spectrum.fits', 'VALID').shape == (4, 5)

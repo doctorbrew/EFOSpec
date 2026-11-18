@@ -86,6 +86,10 @@ def prepare(manifest, destination):
             if u.Unit(h['BUNIT']) != u.Unit('erg / (s cm2 Angstrom)'):
                 raise ValueError('Expected unscaled physical flux density')
             valid = hdus['VALID'].data
+            if valid.shape == (4, data.shape[-1]):
+                # Native EFOSpec stores one mask per band, without the singleton
+                # aperture axis. Normalize the view, not the saved extension.
+                valid = valid[:, np.newaxis, :]
             if valid.shape != data.shape:
                 raise ValueError('Mask shape mismatch')
             wave = h['CRVAL1'] + (np.arange(data.shape[-1])+1-h['CRPIX1'])*h['CDELT1']
