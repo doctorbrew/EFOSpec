@@ -7,6 +7,7 @@ This index routes readers to the existing owners of each topic.
 | Install and reduce an observing date | [README](../README.md) |
 | Find CLI options | [Command reference](../EFOSPEC.md) |
 | Download, reduce, publish and locate nightly outputs | [Epoch workflow](epoch-workflow.md) |
+| Package public/private spectra for WISeREP | [Delivery guide](wiserep-delivery.md) |
 | Edit source/aperture/background in the desktop app | [Desktop guide](desktop.md) |
 | Review host association and adopted redshift | [Typing metadata](typing-metadata.md) |
 | Understand calibration and extraction responsibilities | [Pipeline stages](pipeline-stages.md) |

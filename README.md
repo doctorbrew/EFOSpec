@@ -19,8 +19,9 @@ remain available alongside the main Python pipeline.
 | IRAF/PyRAF — fast | A quick-look spectrum using archived calibrations | `PESSTOFASTSPEC` |
 | IRAF/PyRAF — full | Bias/flat/arc processing, interactive extraction and standard-based calibration | `PESSTOEFOSC2dSPEC`, then `PESSTOEFOSC1dSPEC` |
 
-**[Reduction Manual](manual_pessto.html)** — all three routes, step by step,
-including frame lists, IRAF keyboard shortcuts and inspection plots.
+**[Open the Reduction Manual](https://doctorbrew.github.io/EFOSpec/manual_pessto.html)** —
+all three routes, frame lists, IRAF keyboard shortcuts, inspection plots and
+WISeREP packaging. [Offline HTML/source](manual_pessto.html).
 
 IRAF routes use a separate PESSTO/PyRAF environment. The modernized legacy engine
 lives on [pyraf-pipeline](https://github.com/doctorbrew/EFOSpec/tree/pyraf-pipeline);
@@ -61,6 +62,10 @@ to the nightly report requires the [reviewed-geometry workflow](docs/epoch-workf
 ## Files and outputs
 
 [Open published nightly logs, IRAF comparisons and Spectypus fitting logs](OUTPUTS_PIPELINE.md).
+
+[Package reviewed spectra for WISeREP](docs/wiserep-delivery.md) using
+`python scripts/package_wiserep.py`: separate public/private ZIPs with FITS,
+ASCII, metadata and optional related files. Packaging does not upload data.
 
 | Location | Contents |
 | --- | --- |
