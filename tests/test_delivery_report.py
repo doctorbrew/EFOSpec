@@ -76,6 +76,8 @@ def test_browser_tars_match_reference_and_preserve_science(delivery_page):
     assert len(config['groups']) == 2
     assert 'Standard' not in html
     assert 'selected' not in re.search(r'<select.*?</select>', html, re.S)[0]
+    for name in ('delivery-group', 'delivery-private-groups'):
+        assert re.search(fr'name="{name}"[^>]+value="ePESSTO\+"', html)
     before = {r['product']: digest(root / r['product']) for r in rows}
     names = attribution()
     names['types'] = {g['id']: 'Host' if g['object'].endswith('private') else 'Object' for g in config['groups']}
@@ -128,13 +130,22 @@ def test_browser_rejects_incomplete_delivery(delivery_page, change, message):
 
 
 def test_browser_single_access_class_and_corrupt_payload(delivery_page):
-    root, config, _, _ = delivery_page
+    root, config, html, _ = delivery_page
     selected = {g['id']: 'public' for g in config['groups']}
-    settings = attribution(); settings.update(privateGroups='', embargo='')
+    settings = attribution()
+    settings.update(group=re.search(r'name="delivery-group"[^>]+value="([^"]+)"', html)[1],
+                    privateGroups=re.search(r'name="delivery-private-groups"[^>]+value="([^"]+)"', html)[1],
+                    embargo='')
     result = node_export(root, config, settings, selected)
     assert result.returncode == 0, result.stderr
     assert len(list(root.glob('*.tgz'))) == 1
     assert validate_tar(next(root.glob('*.tgz')))['spectra'] == 2
+    with tarfile.open(next(root.glob('*.tgz'))) as tar:
+        for member in tar:
+            if member.name.endswith('.fits'):
+                h = fits.getheader(io.BytesIO(tar.extractfile(member).read()))
+                assert h['WISEREP SOURCE GROUP'] == 'ePESSTO+'
+                assert 'WISEREP ASSOCIATED GROUPS' not in h
     # Embedded bytes must pass their original checksum before any header editing.
     import base64
     product = config['groups'][0]['products'][0]

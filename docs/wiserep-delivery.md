@@ -18,9 +18,10 @@ also includes these controls.
    eligible setup listed for a target goes into its chosen archive. Check the
    **Object / Host** spectrum type, especially for host-galaxy extractions.
 2. In **Observer / reducer names and delivery details**, enter observer and
-   reducer names, the actual UTC reduction date (`YYYY-MM-DD`) and source group.
-   For private selections, also enter associated groups and a future UTC embargo
-   end. FITS header text uses ASCII; spell accented names in ASCII for this format.
+   reducer names and the actual UTC reduction date (`YYYY-MM-DD`). Source group
+   and private associated groups are prefilled with **ePESSTO+**, and remain
+   editable for another collaboration. For private selections, enter a future
+   UTC embargo end. FITS header text uses ASCII; spell accented names in ASCII.
 3. Confirm the review, then click **Prepare public / private tarballs**. Download
    the separate public/private links. Only populated classes produce a file.
 
@@ -30,6 +31,8 @@ embargo/group information are recorded in FITS. Source quality and scientific
 arrays are preserved; checksums are recalculated. No names or access choices are
 saved in the HTML or sent to a server; reloading clears them. Changing a choice or
 field removes old download links until the archives are prepared again.
+Reloading or **Clear choices and names** restores the two group defaults to
+**ePESSTO+**. Prefilled private groups are ignored for public exports.
 
 The report builder uses the same Python science validation and primary-FITS
 conversion as the CLI. The browser assembles the archives offline from those saved
@@ -70,6 +73,13 @@ command overwrites an existing manifest or delivery directory. The night is the
 start date of the observing night; exposure UTC dates must be that date or the
 following day. Each invocation handles one night.
 
+New manifests prefill `source_group: "ePESSTO+"` and include
+`private_defaults: {"associated_groups": ["ePESSTO+"]}`. A private spectrum with
+an empty or missing `associated_groups` inherits that manifest default; a nonempty
+per-spectrum list overrides it. Public spectra never inherit private groups.
+Older manifests without `private_defaults` still require an explicit private
+group list. No embargo date is inferred.
+
 Complete each spectrum's manifest entry:
 
 | Field | Required value |
@@ -78,12 +88,12 @@ Complete each spectrum's manifest entry:
 | `observers`, `reducers` | Full names, comma separated; no guessed attribution. |
 | `reviewer`, `review_notes` | Who checked the product and the remaining limitations. These notes travel with the spectrum. |
 | `reduction_date` | Actual UTC reduction time, `YYYY-MM-DDTHH:MM:SS`; not the packaging time. |
-| `source_group` | Actual WISeREP source group name. |
+| `source_group` | Defaults to `ePESSTO+`; editable for another collaboration. |
 | `spectrum_type` | `Object`, `Host`, `Sky` or `Arcs`; the initialization default `Object` must be checked. The exporter itself accepts only the supported calibrated EFOSpec product format. |
 | `quality` | `Rapid`, `Final`, `Low`, `Med` or `High`, consistent with source `QUALITY`. Packaging does not promote rapid/experimental data to final quality. |
 | `identity_reviewed`, `wavelength_reviewed`, `flux_reviewed`, `release_authorized` | Set each to `true` only after reviewing this exact hashed product and its intended recipients. |
 | `visibility` | Explicit `public` or `private`. Public classification versus private follow-up is a review decision, never inferred from SN/AT or an OB name. |
-| `associated_groups`, `proprietary_until` | Private: nonempty group-name list and future UTC end time. Public: `[]` and `null`. |
+| `associated_groups`, `proprietary_until` | Private: group-name list (or inherit the manifest's private default) and future UTC end time. Public: `[]` and `null`. |
 | `iau_name`, `object_type_id`, `redshift`, `host` | Optional reviewed information. Leave `null` when unknown; do not infer classification or redshift from a candidate fit. Type IDs refer to the legacy PESSTOWISE vocabulary, not a verified current API enumeration. |
 | `publish`, `contrib` | Optional publication/contribution text, if established. |
 
@@ -196,6 +206,15 @@ single-header TSV. Use the default TGZ mode for the supplied server-ingest forma
 
 ## Sources checked
 
+- **Group defaults:** the supplied handbook identifies the programme as
+  **ePESSTO+** on p. 1. Its ingest instructions on pp. 35–36 prescribe separate
+  public/private tarballs but do not state WISeREP group-field values or an
+  embargo duration; neither do the four example tarballs. The exact spelling
+  **ePESSTO+** is corroborated by WISeREP's
+  [source-group record](https://www.wiserep.org/form-edit/spectrum/62438) and
+  [EFOSC2 spectrum with source and associated group ePESSTO+](https://www.wiserep.org/object/28770).
+  Checked 2026-11-18. We use that collaboration as the editable default for this
+  workflow; this is not a statement about the uploader account's permissions.
 - Supplied **PESSTO Handbook v1.39**, printed pp. 35–36, “Preparing quick
   reductions for ingest to WISEREP”: separate public classifications and private
   follow-up batches; include metadata and associated 2D/plot products; retain

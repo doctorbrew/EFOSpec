@@ -86,7 +86,8 @@ is directly below the observing log:
 1. Choose **Public**, **Private**, or **Do not export** for each target, and check
    **Object / Host**. The choice covers all eligible setups listed for that target.
 2. Open **Observer / reducer names and delivery details**. Enter names, the UTC
-   reduction date and source group; private spectra also need groups and an embargo end.
+   reduction date. Source and private groups are prefilled with **ePESSTO+**;
+   private spectra also need an embargo end. Both group fields remain editable.
 3. Confirm your review, click **Prepare public / private tarballs**, then download
    each populated archive. Observer/reducer names go into both the FITS headers
    and the upload table. Choices start unset and are cleared on reload.
@@ -107,8 +108,10 @@ python scripts/package_wiserep.py init 2026-11-10 \
 ```
 
 Edit the JSON: set each spectrum's `visibility` to `public` or `private`, fill
-observer/reducer attribution and review fields, and supply the private group and
-embargo end time. Confirm the exact product hashes and review/release flags.
+observer/reducer attribution and review fields, and supply the private embargo
+end time. Source group defaults to **ePESSTO+**; private entries without an override
+inherit **ePESSTO+** from `private_defaults.associated_groups`. Public entries keep
+`associated_groups: []`. Confirm the exact product hashes and review/release flags.
 Then one command builds both tarballs and checks their contents:
 
 ```sh

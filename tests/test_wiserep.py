@@ -161,12 +161,42 @@ def test_init_requires_review_and_never_overwrites(reviewed):
     manifest, rows = reviewed
     output = init_manifest('2026-11-10', [manifest.parent / rows[0]['product']], manifest.parent / 'review.json')
     cfg = json.loads(output.read_text())
+    assert cfg['spectra'][0]['source_group'] == 'ePESSTO+'
+    assert cfg['private_defaults']['associated_groups'] == ['ePESSTO+']
+    assert cfg['spectra'][0]['associated_groups'] == []
     assert cfg['spectra'][0]['visibility'] is None
     assert cfg['spectra'][0]['release_authorized'] is False
     with pytest.raises(ValueError):
         zip_package(output, manifest.parent / 'out')
     with pytest.raises(FileExistsError):
         init_manifest('2026-11-10', [manifest.parent / rows[0]['product']], output)
+
+
+def test_manifest_group_defaults_apply_only_to_private_spectra(reviewed):
+    manifest, rows = reviewed
+    output = init_manifest('2026-11-10', [manifest.parent / r['product'] for r in rows],
+                           manifest.parent / 'defaults.json')
+    config = json.loads(output.read_text())
+    for initialized, reviewed_row in zip(config['spectra'], rows):
+        initialized.update({k: v for k, v in reviewed_row.items()
+                            if k not in {'source_group', 'associated_groups'}})
+    # Retain the generated private default, with no per-spectrum override.
+    for groups, expected in [(None, 'ePESSTO+'), (['Other collaboration'], 'Other collaboration')]:
+        config['spectra'][1]['associated_groups'] = groups or []
+        output.write_text(json.dumps(config))
+        destination = package(output, manifest.parent / expected)
+        for access in ('public', 'private'):
+            row = next(r for r in rows if r['visibility'] == access)
+            header = fits.getheader(destination / access / row['product'])
+            assert header['WISEREP SOURCE GROUP'] == 'ePESSTO+'
+            if access == 'private':
+                assert header['WISEREP ASSOCIATED GROUPS'] == expected
+            else:
+                assert 'WISEREP ASSOCIATED GROUPS' not in header
+    config['spectra'][1]['associated_groups'] = ''
+    output.write_text(json.dumps(config))
+    with pytest.raises(ValueError, match='Invalid associated_groups'):
+        package(output, manifest.parent / 'invalid-groups')
 
 
 def test_single_class_no_empty_archive_and_no_overwrite(reviewed):

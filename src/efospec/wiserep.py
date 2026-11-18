@@ -35,6 +35,10 @@ LEGACY_COLUMNS = (
 )
 REVIEW_FIELDS = ('identity_reviewed', 'wavelength_reviewed', 'flux_reviewed',
                  'release_authorized')
+# The handbook identifies the current programme as ePESSTO+; WISeREP records
+# confirm this exact source/associated-group spelling. See docs/wiserep-delivery.md.
+DEFAULT_SOURCE_GROUP = 'ePESSTO+'
+DEFAULT_PRIVATE_GROUPS = ('ePESSTO+',)
 HANDOFF_NOTE = (
     'PESSTOWISE-style collaborator handoff; not a WISeREP v2 bulk payload. '
     'Unzip, inspect the spectra and metadata, and set source group, associated '
@@ -82,7 +86,7 @@ def init_manifest(night, products, output):
         rows.append(dict(
             product=os.path.relpath(product, output.parent), sha256=digest(product),
             object=h.get('OBJECT', ''), observers='', reducers='', reviewer='',
-            review_notes='', source_group='', reduction_date='', spectrum_type='Object',
+            review_notes='', source_group=DEFAULT_SOURCE_GROUP, reduction_date='', spectrum_type='Object',
             **{key: False for key in REVIEW_FIELDS}, visibility=None,
             associated_groups=[], proprietary_until=None,
             quality=h.get('QUALITY', ''), iau_name=None, object_type_id=None,
@@ -92,7 +96,9 @@ def init_manifest(night, products, output):
         raise ValueError('Select at least one spectrum')
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open('x') as stream:
-        json.dump(dict(observing_night=night, spectra=rows), stream, indent=2)
+        json.dump(dict(observing_night=night,
+                       private_defaults=dict(associated_groups=list(DEFAULT_PRIVATE_GROUPS)),
+                       spectra=rows), stream, indent=2)
         stream.write('\n')
     return output
 
@@ -132,6 +138,9 @@ def package(manifest, destination, *, archive_format='tgz', timestamp=None):
         raise ValueError('Destination exists; use a new delivery revision')
     config = json.loads(manifest.read_text())
     _text_checks(config)
+    private_defaults = config.get('private_defaults', {})
+    if not isinstance(private_defaults, dict):
+        raise ValueError('private_defaults must be an object')
     night = _night(config['observing_night'])
     rows = config['spectra']
     if not rows:
@@ -157,6 +166,9 @@ def package(manifest, destination, *, archive_format='tgz', timestamp=None):
 
     for original in rows:
         row = dict(original)
+        if row.get('visibility') == 'private' and (
+                'associated_groups' not in row or row['associated_groups'] == []):
+            row['associated_groups'] = private_defaults.get('associated_groups', [])
         source = (manifest.parent / row['product']).resolve()
         if source.suffix.lower() != '.fits':
             raise ValueError('Selected flux products must have .fits filenames')

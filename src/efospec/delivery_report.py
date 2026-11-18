@@ -10,7 +10,7 @@ import numpy as np
 
 from .delivery import digest, inspect_product
 from .naming import source_order
-from .wiserep import _legacy_row, _safe_name
+from .wiserep import _legacy_row, _safe_name, DEFAULT_SOURCE_GROUP, DEFAULT_PRIVATE_GROUPS
 from .wiserep_tar import HEADER, DEFAULTS, primary_copy
 
 
@@ -101,10 +101,13 @@ def render_delivery(page, revision, run, manuals=()):
         '<label>Observer names<input name="delivery-observers" autocomplete="off" placeholder="Full names, comma separated"></label>'
         '<label>Reducer names<input name="delivery-reducers" autocomplete="off" placeholder="Full names, comma separated"></label>'
         '<label>Reduction date (UTC)<input name="delivery-date" type="date"></label>'
-        '<label>Source group<input name="delivery-group" autocomplete="off" placeholder="WISeREP source group"></label>'
-        '<label>Private associated groups<input name="delivery-private-groups" autocomplete="off" placeholder="Comma-separated group names"></label>'
+        '<label>WISeREP source group<input name="delivery-group" autocomplete="off"'
+        f' value="{escape(DEFAULT_SOURCE_GROUP, quote=True)}"></label>'
+        '<label>Private associated groups<input name="delivery-private-groups" autocomplete="off"'
+        f' value="{escape(", ".join(DEFAULT_PRIVATE_GROUPS), quote=True)}"></label>'
         '<label>Private embargo ends (UTC)<input name="delivery-embargo" type="datetime-local" step="1"></label>'
-        '</div></details>'
+        '</div><p class="caption">Both groups default to ePESSTO+ for this programme. '
+        'Change them only for a different collaboration; private groups apply only to private exports.</p></details>'
         '<label class="delivery-confirm"><input name="delivery-reviewed" type="checkbox"> '
         'I have reviewed the selected spectra and their public/private settings.</label>'
         '<div class="delivery-actions"><button type="button" id="delivery-build">Prepare public / private tarballs</button>'

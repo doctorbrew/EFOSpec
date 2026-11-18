@@ -179,6 +179,7 @@
   document.getElementById('delivery-clear').addEventListener('click', () => {
     root.querySelectorAll('input,select').forEach(el => {
       if (el.type === 'checkbox') el.checked = false;
+      else if (el.tagName === 'INPUT') el.value = el.defaultValue;
       else el.value = el.hasAttribute('data-delivery-type') ? 'Object' : '';
     }); invalidate();
   });
