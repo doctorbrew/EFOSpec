@@ -79,8 +79,9 @@ uncommitted changes, rather than a branch diff.
   The old Conda environment was **not preserved**. The separate `.venv-pyraf`,
   original pipeline checkout and reduction data were retained.
 - Re-creation used explicit `--platform osx-arm64`. The rebuilt environment's
-  `.condarc` now pins `subdir: osx-arm64`; its Conda environment variables set
-  `iraf=/usr/local/lib/iraf/`. No global Conda settings were changed.
+  `.condarc` now pins `subdir: osx-arm64`. Environment activation hooks set
+  lowercase `iraf=/usr/local/lib/iraf/` and restore its previous value on
+  deactivation (see follow-up below). No global Conda settings were changed.
 - PypeIt uses the existing **`efospec`** environment, not `efosc`.
   Python 3.11, PypeIt 3.0.0, NumPy 2.4.6, SciPy 1.17.1 and Astropy 7.2.3
   import successfully. Its dependencies needed no repair.
@@ -128,3 +129,35 @@ legacy HEAD `f3de549f050431d808e3037945cd267c6e2320a8`, plus working trees.
 The ESO [PESSTO release description](https://cdn3.eso.org/sci/observing/phase3/data_releases/pessto_dr3.pdf)
 also documents object/date/setup/processing-MJD/counter naming for released
 products; those binary-table Phase 3 products are distinct from rapid ingest FITS.
+
+
+## Follow-up: interactive startup and two science spectra
+
+- Interactive `pyraf` reaches its prompt through both `conda run` and a fresh
+  Zsh `conda activate pessto`; `noao`, `imred` and `specred` load. Tk 8.6 window
+  creation/event processing also passes. The user's earlier startup error was
+  not captured, so its exact cause is not established.
+- Corrected a stale Conda executable path in local `.zshrc`, retaining backup
+  `.zshrc.before-pessto-fix-20261125`. Its fallback had allowed activation during
+  this check, so the typo alone does not explain the reported failure.
+- Found Conda `envvars_force_uppercase=True` converting the configured `iraf`
+  variable to `IRAF`. Replaced that entry with environment-specific activation
+  and deactivation hooks. Verified lowercase `iraf` and restoration of an
+  existing value after deactivation. Start a fresh terminal and activate
+  `pessto` to load these changes.
+- Replayed **AT2024afzf and AT2026aeul**, observing night **2026-10-28**, using
+  22 raw science/standard/calibration inputs, Gr13/Free/slit1.0 and vma2.
+  Full 2D and full 1D both return zero; all input hashes remain unchanged.
+  Both final four-band spectra are finite, have positive statistical sigma,
+  physical flux units, and matching FITS/ASCII wavelengths and flux.
+- **Not release-approved:** AT2026aeul's automatic aperture is at spatial pixel
+  80.18 while the strongest median spatial-profile peak is at pixel 453.
+  The legacy `apall` automatic finder has no expected-central-position constraint
+  in this path. This warrants source/trace review, not automatic substitution
+  of the strongest peak. Both source identities remain unverified. Internal
+  sky-line measurements are retained in JSON; absolute flux accuracy and
+  physical cursor/DS9 interaction were not certified.
+- Evidence: `runs/2026-10-28/pessto/two-spectra-check-20261125-full2d/` and
+  `two-spectra-check-20261125-full1d/`, each with `reduction.log` and
+  `verification.json`; the latter also contains `output-check.json`.
+  All 11 legacy regression tests and `pip check` pass after the startup changes.
