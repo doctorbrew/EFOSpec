@@ -84,7 +84,8 @@ Complete each spectrum's manifest entry:
 
 | Field | Required value |
 | --- | --- |
-| `object` | Exact reviewed FITS `OBJECT`; correct identity upstream if necessary. Preserve the full survey/TNS name, including punctuation. |
+| `object` | Exact original FITS `OBJECT`; keep this bound to the source hash. |
+| `delivery_object`, `identity_evidence` | Optional corrected full name and required evidence for a correction (TNS/Marshall record or checked OB typo). Packaging changes delivery copies only. Preserve full survey/TNS punctuation. |
 | `observers`, `reducers` | Full names, comma separated; no guessed attribution. |
 | `reviewer`, `review_notes` | Who checked the product and the remaining limitations. These notes travel with the spectrum. |
 | `reduction_date` | Actual UTC reduction time, `YYYY-MM-DDTHH:MM:SS`; not the packaging time. |
@@ -94,7 +95,7 @@ Complete each spectrum's manifest entry:
 | `identity_reviewed`, `wavelength_reviewed`, `flux_reviewed`, `release_authorized` | Set each to `true` only after reviewing this exact hashed product and its intended recipients. |
 | `visibility` | Explicit `public` or `private`. Public classification versus private follow-up is a review decision, never inferred from SN/AT or an OB name. |
 | `associated_groups`, `proprietary_until` | Private: group-name list (or inherit the manifest's private default) and future UTC end time. Public: `[]` and `null`. |
-| `iau_name`, `object_type_id`, `redshift`, `host` | Optional reviewed information. Leave `null` when unknown; do not infer classification or redshift from a candidate fit. Type IDs refer to the legacy PESSTOWISE vocabulary, not a verified current API enumeration. |
+| `iau_name`, `object_type_id`, `redshift`, `host` | Optional reviewed information. If supplied, `iau_name` must equal the final delivery name. Leave `null` when unknown; do not infer classification or redshift from a candidate fit. Type IDs refer to the legacy PESSTOWISE vocabulary, not a verified current API enumeration. |
 | `publish`, `contrib` | Optional publication/contribution text, if established. |
 
 `related_files` optionally contains up to two explicitly reviewed attachments,
@@ -133,7 +134,8 @@ The upload archives contain **only** these flat, referenced files:
   then 28 tab-separated fields per spectrum. Do not pad or delete that defaults
   line: all four supplied examples use it. Missing optional fields use `NULL`;
   unknown object type uses the legacy code `0`.
-- Original `_f.fits` basenames: **one primary HDU**, four bands shaped `(4, 1, N)`.
+- Canonical `tOBJECT_NIGHT_GRISM_FILTER_SLIT_COUNTER_f.fits` basenames (existing
+  full-run MJD/counters retained): **one primary HDU**, four bands shaped `(4, 1, N)`.
   Science values, binning, extraction labels, flux units and air/topocentric
   wavelengths are retained. Delivery copies add observer/reducer attribution,
   reduction time and access instructions, plus legacy `CD1_1`, `WCSDIM` and
@@ -167,7 +169,7 @@ there is exactly one `.txt` metadata file. macOS `._*` files are not generated.
 ## Validate and share
 
 ```sh
-python scripts/package_wiserep.py validate \
+python scripts/package_wiserep.py validate --strict \
   runs/2026-11-10/efosc/delivery/review-001/*.tgz
 
 # Optional: verify the supplied reference examples locally
@@ -238,3 +240,70 @@ single-header TSV. Use the default TGZ mode for the supplied server-ingest forma
 This is EFOSpec delivery packaging, not ESO Phase 3 certification or a port of
 the IRAF-only input format. Legacy products without EFOSpec's masks still use
 their preserved legacy workflow.
+
+## Identity corrections and pre-send checks (25 November 2026)
+
+The supplied Handbook v1.39, pp. 35–36, already specifies reduced `_f.fits`
+inputs, SN/AT/survey naming, separate access classes, and the need to tell the
+ingest team about a corrected TXT outside the tarball. The pipeline draft's
+“Preparing data for WISEREP” recommends `PESSTOWISE listspectra -c listcandidates`.
+Neither describes an immutable, synchronized rename of all delivery products.
+This was missing from our local checklist; it is now implemented for PypeIt CLI
+delivery copies. Legacy interactive table-only corrections remain a separate issue.
+
+Example manifest correction (keep the other review fields and original hash):
+
+```json
+{
+  "object": "AT2026advo",
+  "delivery_object": "AT2025advo",
+  "identity_evidence": "Checked OB typo against the target record; record URL/reference here",
+  "identity_reviewed": true
+}
+```
+
+For a reviewed classification update, use e.g. `delivery_object: "SN2026afqt"`.
+The examples illustrate corrections, not verified classifications of these objects.
+Use the current reviewed designation; never derive its year from the observing
+night. TNS identifies the object independently of its AT/SN prefix; the prefix
+can change with classification. Preserve non-SN and survey designations as
+recorded, rather than inventing a supernova name. The official
+[TNS naming guidance](https://www.wis-tns.org/node/20752) and
+[newsfeed](https://www.wis-tns.org/content/tns-newsfeed) were checked through their
+indexed official text on 25 November 2026. Direct WISeREP documentation access
+returned HTTP 403; no claim is made that a new server API/template was verified.
+
+`build` now automatically:
+
+- Validates calibrated four-band FITS and masks, physical flux units,
+  air/topocentric Angstrom WCS, finite valid samples and positive uncertainty.
+  Rejects raw `EFOSC.*`, non-`_f.fits` inputs, count units, explicit failed/absent
+  calibration, and implausible EFOSC wavelength grids outside 1000–30000 Å.
+  This broad sanity range catches pixel axes; it is not a wavelength-accuracy test.
+- Rebuilds ASCII from validated FITS wavelengths/flux; ignores any stale input
+  ASCII. It does not calibrate counts simply by renaming them.
+- Applies the reviewed identity to delivery `OBJECT`, existing `TARGET` and
+  `ESO OBS TARG NAME`; retains `ORIGOBJ`, previous identity, reviewer and evidence.
+  Updates FITS/ASCII filenames, table and access/audit records together. Filename
+  punctuation is sanitized; the full survey designation remains in OBJECT/table.
+- Preserves arrays, masks, status and original products; recalculates checksums.
+  Matching calibrated 2D attachment copies receive the correction too. For an
+  identity change, omit plot attachments and regenerate/review their visible
+  labels separately: a filename change cannot repair text drawn in an image.
+- Refuses filename collisions and atomically validates each generated TGZ with
+  strict identity, naming and calibration checks before exposing the delivery.
+
+Before sending, run `validate --strict` on the **actual tarball**. Inspect source
+association, arc/sky residuals, response coverage and the spectrum itself. Raw
+frames, `_ex.fits` counts and native PypeIt `spec1d/spec2d` are not substitute
+upload products. Negative valid flux and low S/N are not automatic rejection
+criteria. Public/private status is an explicit decision, never inferred from SN/AT.
+Make corrections by rebuilding into a new delivery revision; do not fix only an
+external TXT and leave a stale table inside the archive.
+
+`validate` without `--strict` retains historical-format compatibility for supplied
+legacy tarballs and **does not certify consistent identities**. Strict mode is for
+the EFOSpec delivery contract, not certification of arbitrary legacy FITS.
+Newly built nightly logs share calibrated-input and canonical-filename checks;
+identity corrections use the CLI manifest. Older standalone HTML logs retain
+their embedded code and must be rebuilt to receive new checks.

@@ -6,6 +6,7 @@ import tarfile
 import numpy as np
 from astropy import units as u
 from astropy.io import fits
+from .delivery_identity import delivery_filename
 
 
 # Preserve even the legacy trailing space and the short (21-field) defaults row.
@@ -67,10 +68,10 @@ def write_tar(source, staging, archive, table, metadata_name, timestamp):
             info.mtime = int(timestamp)
             with path.open('rb') as stream:
                 tar.addfile(info, stream)
-    return validate_tar(archive)
+    return validate_tar(archive, strict=True)
 
 
-def validate_tar(path):
+def validate_tar(path, *, strict=False):
     """Read without extraction; check layout, file references and ASCII/FITS agreement.
 
     Accept the source examples' macOS AppleDouble files but never create them.
@@ -120,6 +121,19 @@ def validate_tar(path):
                     raise ValueError('Unexpected FITS flux units')
                 if h.get('WAT1_001') != 'wtype=linear label=Wavelength units=angstroms':
                     raise ValueError('Missing legacy Angstrom wavelength descriptor')
+                if strict:
+                    if h.get('OBJECT') != row[0] or (row[22] != 'NULL' and row[22] != row[0]):
+                        raise ValueError('Upload table/FITS identity mismatch')
+                    if row[2] != delivery_filename(Path(row[2]), h, row[0]) or row[1] != row[2][:-5] + '.asci':
+                        raise ValueError('Noncanonical or inconsistent delivery filenames')
+                    if (h.get('FILETYPE') != 22208 or h.get('CUNIT1') != 'Angstrom'
+                            or h.get('WAVEMED') != 'air' or h.get('SPECSYS') != 'TOPOCENT'
+                            or h.get('WAVEVAL') is False or h.get('FLXVALID') is False
+                            or str(h.get('FLUXCAL', '')).upper() in {'NONE', 'COUNTS', 'UNCALIBRATED'}
+                            or h.get('EPSTATUS') == 'PROVISIONAL' or h.get('QUALITY') == 'Provisional'):
+                        raise ValueError('Not a calibrated release-ready EFOSpec product')
+                    if samples[:, 0].min() < 1000 or samples[:, 0].max() > 30000:
+                        raise ValueError('Implausible EFOSC Angstrom wavelengths')
                 for hdu in hdus:
                     if ('CHECKSUM' in hdu.header and hdu.verify_checksum() != 1
                             or 'DATASUM' in hdu.header and hdu.verify_datasum() != 1):
@@ -128,10 +142,13 @@ def validate_tar(path):
                 index = np.rint(pixel).astype(int)
                 if not ((index >= 0) & (index < data.shape[-1])).all():
                     raise ValueError('ASCII wavelengths outside FITS grid')
+                if strict and (not np.isfinite(data[3, 0, index]).all()
+                               or not (data[3, 0, index] > 0).all()):
+                    raise ValueError('Invalid uncertainty for delivered ASCII samples')
                 if (not np.allclose(pixel, index, rtol=0, atol=1e-5)
                         or not np.allclose(samples[:, 1], data[0, 0, index], rtol=1e-6, atol=0)):
                     raise ValueError('ASCII/FITS spectrum mismatch')
         if set(members) != referenced:
             raise ValueError('Unreferenced files in upload tarball')
         return dict(archive=str(path), spectra=len(spectra), files=len(members),
-                    ignored_appledouble=ignored, format='PESSTOWISE TGZ', valid=True)
+                    ignored_appledouble=ignored, format='PESSTOWISE TGZ', strict=strict, valid=True)

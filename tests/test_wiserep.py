@@ -32,7 +32,7 @@ def reviewed(tmp_path):
         data[0, 0, 2] = -2e-17
         mask = np.ones(data.shape, dtype=np.uint8)
         mask[:, :, 1] = 0
-        product = tmp_path / f'{name}_f.fits'
+        product = tmp_path / f't{name}_20261110_Gr13_Free_slit1.0_1_f.fits'
         fits.HDUList([fits.PrimaryHDU(data, h), fits.ImageHDU(mask, name='VALID')]).writeto(product, checksum=True)
         rows.append(dict(
             product=product.name, sha256=digest(product), object=name,
@@ -344,3 +344,122 @@ def test_tgz_failure_keeps_destination_absent(reviewed, monkeypatch):
         package(manifest, manifest.parent / 'tgz')
     assert not (manifest.parent / 'tgz').exists()
     assert not list(manifest.parent.glob('.wiserep-*'))
+
+
+@pytest.mark.parametrize('new_name', ['SN2026afqt', 'AT2025advo', 'CSS121015:004244+132827'])
+def test_reviewed_identity_revises_delivery_only(reviewed, new_name):
+    import tarfile
+    from efospec.wiserep_tar import validate_tar
+    manifest, rows = reviewed
+    source = manifest.parent / rows[0]['product']
+    rows[0].update(delivery_object=new_name, identity_evidence='Reviewed TNS/OB record; synthetic test')
+    rewrite(manifest, rows[:1])
+    out = package(manifest, manifest.parent / 'out')
+    archive = next(out.glob('*.tgz'))
+    assert validate_tar(archive, strict=True)['strict']
+    with tarfile.open(archive) as tar:
+        table = next(m for m in tar if m.name.endswith('.txt'))
+        row = tar.extractfile(table).read().decode().splitlines()[2].split('\t')
+        assert row[0] == new_name
+        assert row[2].startswith('t' + new_name.replace(':', '_') + '_20261110_')
+        with fits.open(io.BytesIO(tar.extractfile(row[2]).read())) as hdus:
+            assert hdus[0].header['OBJECT'] == new_name
+            assert hdus[0].header['ORIGOBJ'] == rows[0]['object']
+            assert hdus[0].verify_checksum() == 1
+            np.testing.assert_array_equal(hdus[0].data, fits.getdata(source))
+        audit = json.loads((out/'public'/(Path(row[2]).stem+'-metadata.json')).read_text())
+        assert audit['object'] == new_name and audit['source_object'] == rows[0]['object']
+    assert digest(source) == rows[0]['sha256']
+
+
+@pytest.mark.parametrize('changes', [
+    {'delivery_object': 'SN2026afqt'},
+    {'delivery_object': 'SN2026afqt', 'identity_evidence': 'TODO'},
+    {'delivery_object': 'SN2026afqt', 'identity_evidence': 'TNS checked', 'iau_name': 'AT2026afqt'},
+])
+def test_identity_requires_evidence_and_consistency(reviewed, changes):
+    manifest, rows = reviewed
+    rows[0].update(changes)
+    rewrite(manifest, rows)
+    with pytest.raises(ValueError):
+        package(manifest, manifest.parent/'out')
+    assert not (manifest.parent/'out').exists()
+
+
+@pytest.mark.parametrize('key,value', [('CRVAL1', 1.), ('CUNIT1', 'pixel'), ('FLUXCAL', 'NONE'), ('FILETYPE', 22106)])
+def test_initialization_rejects_uncalibrated_products(reviewed, key, value):
+    manifest, rows = reviewed
+    source = manifest.parent/rows[0]['product']
+    with fits.open(source, mode='update', checksum=True) as hdus:
+        hdus[0].header[key] = value
+    with pytest.raises(ValueError):
+        init_manifest('2026-11-10', [source], manifest.parent/'review.json')
+    assert not (manifest.parent/'review.json').exists()
+
+
+def test_raw_filename_rejected_even_if_header_claims_calibration(reviewed):
+    manifest, rows = reviewed
+    source = manifest.parent/rows[0]['product']
+    raw = source.with_name('EFOSC.2026-11-11T02:34:56.789.fits')
+    raw.write_bytes(source.read_bytes())
+    with pytest.raises(ValueError, match='never raw'):
+        init_manifest('2026-11-10', [raw], manifest.parent/'review.json')
+
+
+def test_strict_validation_catches_txt_only_name_fix(reviewed):
+    import tarfile
+    from efospec.wiserep_tar import validate_tar
+    manifest, rows = reviewed
+    out = package(manifest, manifest.parent/'out')
+    broken = manifest.parent/'txt-only.tgz'
+    with tarfile.open(next(out.glob('*public.tgz'))) as src, tarfile.open(broken, 'w:gz') as dst:
+        for member in src:
+            data = src.extractfile(member).read()
+            if member.name.endswith('.txt'):
+                data = data.replace(b'AT2026public\t', b'SN2026public\t')
+            member.size = len(data)
+            dst.addfile(member, io.BytesIO(data))
+    assert validate_tar(broken)['valid']  # historical-format compatibility
+    with pytest.raises(ValueError, match='identity mismatch'):
+        validate_tar(broken, strict=True)
+
+
+def test_identity_correction_updates_matching_2d_copy(reviewed):
+    manifest, rows = reviewed
+    source = manifest.parent/rows[0]['product']
+    image = manifest.parent/'old_2df.fits'
+    h = fits.getheader(source)
+    fits.writeto(image, np.ones((4, 5)), h)
+    before = digest(image)
+    rows[0].update(delivery_object='AT2025advo', identity_evidence='OB typo checked',
+                   related_files=[dict(path=image.name, role='2d', sha256=before)])
+    rewrite(manifest, rows[:1])
+    out = package(manifest, manifest.parent/'out')
+    copied = next((out/'public').glob('*_2df.fits'))
+    assert copied.name.startswith('tAT2025advo_')
+    assert fits.getheader(copied)['OBJECT'] == 'AT2025advo'
+    np.testing.assert_array_equal(fits.getdata(copied), fits.getdata(image))
+    assert digest(image) == before
+
+
+def test_identity_revision_preserves_full_processing_mjd_and_counter(reviewed):
+    manifest, rows = reviewed
+    source = manifest.parent/rows[0]['product']
+    full = source.with_name(source.name.replace('_1_f.fits', '_61369_12_f.fits'))
+    source.rename(full)
+    rows[0].update(product=full.name, delivery_object='SN2026afqt', identity_evidence='TNS reviewed')
+    rewrite(manifest, rows[:1])
+    out = package(manifest, manifest.parent/'out')
+    assert (out/'public'/'tSN2026afqt_20261110_Gr13_Free_slit1.0_61369_12_f.fits').is_file()
+
+
+def test_identity_change_cannot_relabel_plot_contents(reviewed):
+    manifest, rows = reviewed
+    plot = manifest.parent/'old-name.png'
+    plot.write_bytes(b'old visible identity')
+    rows[0].update(delivery_object='SN2026afqt', identity_evidence='TNS reviewed',
+                   related_files=[dict(path=plot.name, role='plot', sha256=digest(plot))])
+    rewrite(manifest, rows[:1])
+    with pytest.raises(ValueError, match='visible labels'):
+        package(manifest, manifest.parent/'out')
+    assert not (manifest.parent/'out').exists()

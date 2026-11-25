@@ -11,6 +11,7 @@ import numpy as np
 from astropy.io import fits
 from astropy import units as u
 from astropy.time import Time
+from .delivery_identity import reviewed_name, apply_identity
 
 
 def digest(path):
@@ -54,7 +55,11 @@ def inspect_product(source, *, object_name=None):
             valid = valid[:, np.newaxis, :]
         if valid.shape != data.shape:
             raise ValueError('Mask shape mismatch')
+        if str(h.get('FLUXCAL', '')).upper() in {'NONE', 'COUNTS', 'UNCALIBRATED'}:
+            raise ValueError('Flux calibration is absent')
         wave = h['CRVAL1'] + (np.arange(data.shape[-1])+1-h['CRPIX1'])*h['CDELT1']
+        if not np.isfinite(wave).all() or wave.min() < 1000 or wave.max() > 30000:
+            raise ValueError('Implausible EFOSC Angstrom wavelength grid; possible pixel coordinates')
         flux, sigma = data[0,0], data[3,0]
         good = (valid[0,0] == 1) & (valid[3,0] == 1) & np.isfinite(wave) & np.isfinite(flux) & np.isfinite(sigma) & (sigma > 0)
         if np.count_nonzero(good) < 2 or not np.all(np.diff(wave[good]) > 0):
@@ -108,6 +113,9 @@ def prepare(manifest, destination):
         copied, wave, flux, sigma, good, metadata = inspect_product(source, object_name=row['object'])
         if digest(source) != row['sha256']:
             raise ValueError('Source changed while packaging')
+        name = reviewed_name(row, copied[0].header)
+        apply_identity(copied[0].header, name, row)
+        metadata['OBJECT'] = name
         prepared.append((row, source, copied, wave, flux, sigma, good, metadata))
     destination.parent.mkdir(parents=True, exist_ok=True)
     temp = Path(tempfile.mkdtemp(prefix='.delivery-',dir=destination.parent))
@@ -126,7 +134,8 @@ def prepare(manifest, destination):
             np.savetxt(folder/'spectrum.ascii', np.column_stack((wave[good],flux[good])),fmt='%.17e')
             np.savetxt(folder/'spectrum-with-errors.txt',np.column_stack((wave[good],flux[good],sigma[good])),fmt='%.17e',header='air_A flux_erg_s-1_cm-2_A-1 sigma_same_units; topocentric; statistical errors only')
             record = {k:v for k,v in row.items() if k not in {'product'}}
-            record.update(metadata=metadata, original_filename=source.name,
+            record.update(object=hdus[0].header['OBJECT'], source_object=row['object'],
+                metadata=metadata, original_filename=source.name,
                 omitted_samples=int(np.count_nonzero(~good)), retained_samples=int(good.sum()),
                 archive_ingestion='NOT VALIDATED: enter metadata and access settings in current service form',
                 files={p.name:digest(p) for p in folder.iterdir()})

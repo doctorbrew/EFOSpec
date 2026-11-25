@@ -21,7 +21,8 @@ from astropy import units as u
 from astropy.io import fits
 from astropy.time import Time
 
-from .delivery import digest, prepare
+from .delivery import digest, prepare, inspect_product
+from .delivery_identity import reviewed_name, delivery_filename, apply_identity
 from .wiserep_tar import write_tar, validate_tar
 
 
@@ -80,12 +81,15 @@ def init_manifest(night, products, output):
     rows = []
     for product in products:
         product = Path(product).resolve()
-        h = fits.getheader(product)
+        hdus, *_ = inspect_product(product)
+        h = hdus[0].header
+        delivery_filename(product, h, h['OBJECT'])
+        hdus.close()
         if h.get('FILETYPE') != 22208:
             raise ValueError('Select flux-calibrated _f.fits products: ' + product.name)
         rows.append(dict(
             product=os.path.relpath(product, output.parent), sha256=digest(product),
-            object=h.get('OBJECT', ''), observers='', reducers='', reviewer='',
+            object=h.get('OBJECT', ''), delivery_object=None, identity_evidence='', observers='', reducers='', reviewer='',
             review_notes='', source_group=DEFAULT_SOURCE_GROUP, reduction_date='', spectrum_type='Object',
             **{key: False for key in REVIEW_FIELDS}, visibility=None,
             associated_groups=[], proprietary_until=None,
@@ -114,7 +118,7 @@ def _legacy_row(row, header, names, related, *, tgz=False):
     # TGZ reproduces the examples' FILTER-in-Grating convention. ZIP keeps the
     # literal grating field unknown and records FILTER separately in JSON/FITS.
     values = [
-        row['object'], names['ascii'], names['fits'], day, ut, 31,
+        header['OBJECT'], names['ascii'], names['fits'], day, ut, 31,
         row['observers'], int(header['EXPTIME']) if tgz else header['EXPTIME'], slit, row['reducers'],
         row['reduction_date'][:10] if tgz else row['reduction_date'], row['quality'], row['spectrum_type'],
         row['review_notes'], row.get('publish'), row.get('contrib'),
@@ -198,10 +202,13 @@ def package(manifest, destination, *, archive_format='tgz', timestamp=None):
         for key in ('CRVAL1', 'CRPIX1', 'CDELT1', 'MJD-OBS'):
             if not math.isfinite(h[key]):
                 raise ValueError('Nonfinite FITS metadata: ' + key)
-        names = dict(fits=source.name, ascii=source.stem + '.asci',
-                     errors=source.stem + '-errors.txt', metadata=source.stem + '-metadata.json')
-        for name in names.values():
-            reserve(name)
+        name = reviewed_name(row, h)
+        filename = delivery_filename(source, h, name)
+        stem = Path(filename).stem
+        names = dict(fits=filename, ascii=stem + '.asci',
+                     errors=stem + '-errors.txt', metadata=stem + '-metadata.json')
+        for member_name in names.values():
+            reserve(member_name)
         related = row.pop('related_files', [])
         if not isinstance(related, list) or len(related) > 2:
             raise ValueError('related_files permits at most two reviewed plot/2D files')
@@ -223,9 +230,16 @@ def package(manifest, destination, *, archive_format='tgz', timestamp=None):
                         raise ValueError('TGZ needs a calibrated primary 2D image, not native PypeIt spec2d')
             if item['role'] == 'plot' and path.suffix.lower() not in {'.png', '.jpg', '.jpeg', '.pdf', '.ps'}:
                 raise ValueError('Related plot must be PNG, JPG, PDF or PS')
+            if name != h['OBJECT'] and item['role'] == 'plot':
+                raise ValueError('Identity correction: omit plots and regenerate/review their visible labels separately')
+            if name != h['OBJECT'] and item['role'] == '2d':
+                ah = fits.getheader(path)
+                if ah.get('OBJECT') != h['OBJECT'] or ah.get('DATE-OBS') != h['DATE-OBS']:
+                    raise ValueError('2D attachment identity/exposure mismatch')
             register(path, item['sha256'], row.get('visibility'))
-            reserve(path.name)
-            files.append((path, item['role']))
+            target = filename.replace('_f.fits', '_2df.fits') if name != h['OBJECT'] and item['role'] == '2d' else path.name
+            reserve(target)
+            files.append((path, item['role'], target))
         selected.append(row)
         attachments.append((names, files))
 
@@ -265,10 +279,16 @@ def package(manifest, destination, *, archive_format='tgz', timestamp=None):
                 header = h.copy()
             related_names = []
             related_records = []
-            for path, role in related:
-                shutil.copyfile(path, folder / path.name)
-                related_names.append(path.name)
-                related_records.append(dict(filename=path.name, role=role, sha256=digest(path)))
+            for path, role, target in related:
+                copied = folder / target
+                shutil.copyfile(path, copied)
+                if role == '2d' and header['OBJECT'] != row['object']:
+                    with fits.open(copied, mode='update') as attached:
+                        apply_identity(attached[0].header, header['OBJECT'], row)
+                        for hdu in attached:
+                            hdu.add_checksum()
+                related_names.append(target)
+                related_records.append(dict(filename=target, role=role, source_sha256=digest(path), sha256=digest(copied)))
             record = json.loads((original / 'metadata.json').read_text())
             record.update(observing_night=night.isoformat(), related_files=related_records,
                           archive_ingestion=(
@@ -278,12 +298,12 @@ def package(manifest, destination, *, archive_format='tgz', timestamp=None):
                           files={name: digest(folder / name) for key, name in names.items() if key != 'metadata'})
             (folder / names['metadata']).write_text(json.dumps(record, indent=2) + '\n')
             if tgz:
-                by_role = {role: path.name for path, role in related}
+                by_role = {role: target for path, role, target in related}
                 related_names = [by_role.get('plot'), by_role.get('2d')]
             tables.setdefault(visibility, []).append(_legacy_row(
                 row, header, names, related_names + [None] * (2 - len(related_names)), tgz=tgz))
             access.setdefault(visibility, []).append(dict(
-                fits=names['fits'], object=row['object'], source_group=row['source_group'],
+                fits=names['fits'], object=header['OBJECT'], source_group=row['source_group'],
                 associated_groups=row['associated_groups'], proprietary_until=row.get('proprietary_until')))
         for visibility, table in tables.items():
             folder = exported / visibility
@@ -347,12 +367,13 @@ def main(argv=None):
     build.add_argument('--format', choices=('tgz', 'zip'), default='tgz')
     build.add_argument('--timestamp', help='UTC packaging time for reproducible filenames (ISO format)')
     validate = commands.add_parser('validate', help='Check existing PESSTOWISE TGZ layout and spectra')
+    validate.add_argument('--strict', action='store_true', help='Require consistent delivery identities and calibrated product names')
     validate.add_argument('archives', type=Path, nargs='+')
     args = parser.parse_args(argv)
     try:
         if args.command == 'validate':
             for archive in args.archives:
-                print(json.dumps(validate_tar(archive)))
+                print(json.dumps(validate_tar(archive, strict=args.strict)))
             return
         output = (init_manifest(args.night, args.products, args.output) if args.command == 'init'
                   else package(args.manifest, args.destination,

@@ -10,6 +10,7 @@ import numpy as np
 
 from .delivery import digest, inspect_product
 from .naming import source_order
+from .delivery_identity import delivery_filename
 from .wiserep import _legacy_row, _safe_name, DEFAULT_SOURCE_GROUP, DEFAULT_PRIVATE_GROUPS
 from .wiserep_tar import HEADER, DEFAULTS, primary_copy
 
@@ -24,8 +25,9 @@ def product_payload(path, result, night):
         raise ValueError('Product belongs to another observing night')
     if header.get('QUALITY') not in {'Rapid', 'Final', 'Low', 'Med', 'High'}:
         raise ValueError('Spectrum quality has not been recorded')
-    _safe_name(path.name)
-    if len(path.name) > 100:
+    filename = delivery_filename(path, header, header['OBJECT'])
+    _safe_name(filename)
+    if len(filename) > 100:
         raise ValueError('Filename exceeds the upload tar format limit')
     binary = BytesIO()
     primary_copy(path, binary)
@@ -34,11 +36,11 @@ def product_payload(path, result, night):
     record = dict(object=header['OBJECT'], observers='', reducers='', reduction_date='',
                   quality=header['QUALITY'], spectrum_type='Object',
                   review_notes='EFOSpec/PypeIt; ' + str(header.get('EPSTATUS', '')))
-    names = dict(fits=path.name, ascii=path.stem + '.asci')
+    names = dict(fits=filename, ascii=Path(filename).stem + '.asci')
     row = _legacy_row(record, header, names, [None, None], tgz=True)
     if digest(path) != before:
         raise ValueError('Science product changed while building the report')
-    return dict(filename=path.name, ascii_name=names['ascii'], source_sha256=before,
+    return dict(filename=filename, ascii_name=names['ascii'], source_sha256=before,
                 fits_base64=base64.b64encode(binary.getvalue()).decode('ascii'),
                 ascii=text.getvalue(), row=row, quality=header['QUALITY'],
                 setup=' / '.join(str(header[k]) for k in ('GRISM', 'FILTER', 'SLIT')),
