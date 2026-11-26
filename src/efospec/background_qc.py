@@ -2,6 +2,21 @@
 import numpy as np
 from .figure_style import COLORS,style,plain_tex,save_qc,house_style
 from .trace_geometry import TRACE_STYLES
+from .profile_limits import _profile_limit_samples, _profile_limits
+from .profile_plot import _observed_profile_limits
+
+
+def profile_view_limits(ax,x,signal,protected,*,model=None,background=None,visible=None):
+    """Use the nightly profile display rules without changing plotted samples."""
+    retained,excluded=_profile_limit_samples(signal,protected,spatial_pixel=x,edge_margin=3)
+    if visible is not None:retained=np.where(visible,retained,np.nan)
+    if model is None:
+        limits=_profile_limits([retained],background_subtracted=True)
+    else:
+        fitted=np.where(np.isfinite(retained),model,np.nan)
+        limits=_observed_profile_limits([retained,fitted],background=background)
+    if limits is not None:ax.set_ylim(*limits)
+    return dict(display_only=True,excluded_spatial_pixels=x[excluded].tolist())
 
 
 @house_style
@@ -9,10 +24,14 @@ def draw_candidates(fig,exposure):
     fig.clear();ax=fig.subplots()
     x=np.arange(exposure.window.shape[1])+exposure.window.origin[1]
     profile=np.nanmedian(exposure.images['data']-exposure.images['sky'],axis=0)
-    ax.plot(x,profile,color=COLORS[0],label='Saved sky-subtracted spatial profile')
+    ax.plot(x,profile,color='0.3',label='Saved sky-subtracted spatial profile')
+    protected=np.zeros(x.shape,bool)
     for i,trace in enumerate(exposure.images['found_traces']):
-        ax.axvline(trace[len(trace)//2]+exposure.window.origin[1],color=COLORS[0],ls=TRACE_STYLES[i%4],lw=3.5,label=f'C{i+1} (unverified)')
-    ax.set_xlim(x[2],x[-3]);ax.set_ylim(np.min(profile[2:-2])*1.1,np.max(profile[2:-2])*1.1)
+        raw_trace=trace+exposure.window.origin[1]
+        protected|=(x>=raw_trace.min()-3)&(x<=raw_trace.max()+3)
+        ax.axvline(raw_trace[len(trace)//2],color='0.3',ls=TRACE_STYLES[i%4],lw=2,label=f'C{i+1} (unverified)')
+    ax.set_xlim(x[2],x[-3])
+    fig.profile_display=profile_view_limits(ax,x,profile,protected)
     ax.set_xlabel('Raw spatial pixel x (zero based)');ax.set_ylabel('Median residual electrons')
     ax.set_title(plain_tex(exposure.result['object']+' -- select source and background bands'))
     style.set_plotparams(ax,xticks=(20,5),yticks=None,grid=False)
@@ -36,21 +55,27 @@ def draw_background(fig, exposure, recipe, result, *, panel=None):
     low=min(lo for lo,hi in recipe['sky']['include'])-12
     high=max(hi for lo,hi in recipe['sky']['include'])+12
     visible=(x>=low)&(x<=high)
+    protected=(x>=obj['spat']-obj['radius'])&(x<=obj['spat']+obj['radius'])
+    for trace in exposure.images['found_traces']:
+        protected|=(x>=np.min(trace)+exposure.window.origin[1]-3)&(x<=np.max(trace)+exposure.window.origin[1]+3)
+    support=(x>=min(lo for lo,hi in recipe['sky']['include']))&(x<max(hi for lo,hi in recipe['sky']['include']))
+    model=np.where(support,model,np.nan)
+    fig.profile_display=[]
     for ax,index in zip(axes,selected):
         if index==0:
-            ax.plot(x,profile,color=COLORS[0],label='Raw spatial profile (median of rows)')
-            ax.plot(x,model,color=COLORS[1],label=f"Background: degree {recipe['sky']['degree']} (median of row fits)")
-            values=np.r_[profile[visible],model[visible]]
+            ax.plot(x,profile,color='0.3',label='Observed data (median of rows)')
+            ax.plot(x,model,color='xkcd:dodger blue',ls='--',label=f"Background: degree {recipe['sky']['degree']}")
         else:
-            ax.plot(x,residual,color=COLORS[2],label='After local sky + host interpolation')
-            ax.axhline(0,color='0.4',lw=1.);values=residual[visible]
+            ax.plot(x,residual,color='0.3',label='After local sky + host interpolation')
+            ax.axhline(0,color='0.4',lw=1.)
         for i,(lo,hi) in enumerate(recipe['sky']['include']):
-            ax.axvspan(lo,hi,color=COLORS[0],alpha=.14,label='Requested background bands' if i==0 else None)
-        ax.axvspan(obj['spat']-obj['radius'],obj['spat']+obj['radius'],color=COLORS[2],alpha=.14,label='Boxcar aperture')
-        ax.axvline(obj['spat'],color=COLORS[2],ls='--')
+            patch=ax.axvspan(lo,hi,color='xkcd:dodger blue',alpha=.14,label='Background sampling' if i==0 else None)
+            patch._efospec_background=True
+        ax.axvspan(obj['spat']-obj['radius'],obj['spat']+obj['radius'],color='xkcd:red',alpha=.14,label='Boxcar aperture')
+        ax.axvline(obj['spat'],color='xkcd:red',ls='--')
         ax.set_xlim(low,high)
-        span=max(float(np.ptp(values)),1.)
-        ax.set_ylim(float(np.min(values))-.1*span,float(np.max(values))+.1*span)
+        fig.profile_display.append(profile_view_limits(ax,x,residual,protected,visible=visible) if index else
+            profile_view_limits(ax,x,profile,protected,model=model,background=profile[support&~protected],visible=visible))
         ax.set_xlabel('Raw spatial pixel x (zero based)');ax.set_ylabel('Electrons per pixel')
         style.set_plotparams(ax,xticks=(10,2),yticks=None,grid=False)
         style.styled_legend(ax,ncol=2,loc='upper center',bbox_to_anchor=(.5,-.24),fontsize=18)

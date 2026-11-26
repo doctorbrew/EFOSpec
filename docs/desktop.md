@@ -52,6 +52,12 @@ review controls, the CLI, revision history and HTML refresh.
 - The second tab lists QC packets bound to the opened reduction.
 - Open `review.json` directly for a failed exposure, including nights with no completed spectra.
 - Select the trace explicitly; the application never chooses a target by brightness.
+- Nightly-log **Open in EFOSpec GUI** links select that exact failed exposure. The recovery editor shows its raw filename; restart an already-open app after updating its code.
+- **Extraction requirements**, above Extract, lists missing selections and recipe errors. Choose a candidate or use **Click aperture centre** on the plot, then enter or drag two background bands. Grey example text is not an entered band. Native recovery requires 15–50 pixels per side.
+- Extract enables when the selected geometry is valid; the fit is checked before starting a worker. **Cancel extraction** is disabled until a worker starts. The editor distinguishes review counts from explicitly requested checked flux recovery.
+- The plot toolbar exposes **Click trace**, **Drag background**, **Clear bands**, and **Save PDF + JPG**. Export uses 300-dpi JPG; Qt draws at native screen density. Deferred redraws retain the report's LaTeX/serif typography and 23.4-point tick labels. Spatial limits reuse the report's spike/edge exclusion rules, protect source apertures, and leave plotted samples and science arrays unchanged.
+- Native review counts can **refit the trace with PypeIt** (degree 1–3) or explicitly **keep the saved trace for polynomial boxcar counts** (degree 0–3). The latter is an unvalidated experiment, not a repair of a rejected trace. Checked flux recovery retains wavelength/response gates; the GUI shows worker failure details and blocks known failed-parent three-line requests before launch.
+- For saved-trace review counts: leave checked flux recovery off, choose **Review counts: keep saved trace (polynomial boxcar)**, select the candidate, drag one background band on each side, preview, then **Extract new revision** and choose a dated output parent. A successful fit does not clear a failed wavelength mask.
 - Edit aperture/background bands, preview the polynomial fit, then save or extract a new revision.
 - Choose a fresh output parent under that observing date.
 - Current recovery output: count-level boxcar spectrum; no flux-calibration or host-subtraction claim.

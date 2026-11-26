@@ -143,3 +143,14 @@ def test_failed_link_opens_extraction_panel_in_spectra(window,monkeypatch):
     assert w.review_editor.isVisible()
     assert w.review_editor.packet['raw_name']==raw
     assert w.exposure is None  # never edit a stale successful spectrum
+
+
+def test_background_correction_enables_extract_without_leaving_field(window,qtbot):
+    w=window
+    w.sky_auto.setChecked(False)
+    w.include.setText('bad');w.edited()
+    assert not w.run_button.isEnabled()
+    w.include.setFocus()
+    w.include.selectAll()
+    qtbot.keyClicks(w.include,'301:326, 420:437')
+    assert w.run_button.isEnabled(),w.notice.text()

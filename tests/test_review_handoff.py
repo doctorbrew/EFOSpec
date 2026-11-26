@@ -94,7 +94,7 @@ def test_old_pypeit_product_cannot_crash_exposure_handoff(qtbot,tmp_path,monkeyp
     w.open_run(review_url(tmp_path,'failed.fits'))
     assert w.reviews.currentData()=={'raw':'failed.fits'}
     assert not w.run_button.isEnabled()
-    assert 'Old product data model version' in w.notice.text()
+    assert w.exposure is None  # unrelated old products are not loaded first
     w.close()
 
 
@@ -126,3 +126,40 @@ def test_native_url_event_selects_failed_exposure_after_startup(qtbot,tmp_path):
     qtbot.waitUntil(lambda:w.reviews.currentData()=={'raw':'native-event.fits'})
     assert handler.received and w.tabs.currentIndex()==1
     app.removeEventFilter(handler);w.close()
+
+
+def test_requested_failure_does_not_load_an_unrelated_success(qtbot,tmp_path,monkeypatch):
+    from efospec import desktop
+    class Backend:
+        exposures=[dict(object='Other target',grism='Gr13',exptime=60,id='other.fits')]
+        def __init__(self,*args):pass
+        def exposure(self,*args):raise AssertionError('Unrequested successful exposure loaded')
+        def history(self):return []
+        def job_status(self):return None
+        def close(self):pass
+    monkeypatch.setattr(desktop,'Workbench',Backend)
+    (tmp_path/'run.json').write_text(json.dumps(dict(results=[{}],errors=[
+        dict(object='Requested target',path='/raw/failed.fits',code='unsupported_setup')])))
+    w=desktop.ExtractionWindow();qtbot.addWidget(w)
+    w.open_run(review_url(tmp_path,'failed.fits'))
+    assert w.reviews.currentData()=={'raw':'failed.fits'}
+    assert w.exposure is None and not w.run_button.isEnabled()
+    w.close()
+
+
+def test_native_url_during_window_construction_is_delivered_after_attach(qtbot,tmp_path):
+    from efospec.desktop import ExtractionWindow,ReviewOpenEvents
+    from PySide6 import QtCore,QtWidgets
+    (tmp_path/'run.json').write_text(json.dumps(dict(results=[],errors=[
+        dict(object='Requested',path='/raw/startup.fits',code='unsupported_setup')])))
+    class OpenEvent(QtCore.QEvent):
+        def __init__(self):super().__init__(QtCore.QEvent.Type.FileOpen)
+        def url(self):return QtCore.QUrl(review_url(tmp_path,'startup.fits'))
+    app=QtWidgets.QApplication.instance();handler=ReviewOpenEvents();app.installEventFilter(handler)
+    try:
+        QtCore.QCoreApplication.sendEvent(app,OpenEvent());app.processEvents()
+        w=ExtractionWindow();qtbot.addWidget(w);handler.attach(w)
+        qtbot.waitUntil(lambda:w.reviews.currentData()=={'raw':'startup.fits'})
+        assert w.exposure is None and not handler.pending
+        w.close()
+    finally:app.removeEventFilter(handler)

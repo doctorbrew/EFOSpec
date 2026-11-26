@@ -5,7 +5,8 @@ from pathlib import Path
 import sys
 os.environ['QT_API']='pyside6'
 from PySide6 import QtCore, QtGui, QtWidgets as Q
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolbar2QT
+from matplotlib.backends.backend_qtagg import NavigationToolbar2QT
+from .desktop_canvas import ScientificCanvas as FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from matplotlib.widgets import SpanSelector
 from matplotlib.ticker import AutoMinorLocator
@@ -17,6 +18,7 @@ from .recipes import sky_mask
 from .desktop_ui import STYLE, SourceEditor, card, label
 from .desktop_session import resolve_session
 from .review_handoff import failures, failure_log, parse_review_url
+from .figure_style import house_style,style,plain_tex,COLORS
 
 RED='#f47777';BLUE='#9fc6d1';NAVY='#24384b'
 
@@ -93,7 +95,7 @@ class ExtractionWindow(Q.QMainWindow):
         sky_layout.addWidget(label('Exclude · optional'));sky_layout.addWidget(self.exclude);self.exclude.setPlaceholderText('No excluded bands')
         self.background_hint=label('',wrap=True);sky_layout.addWidget(self.background_hint)
         self.sky_auto.toggled.connect(self.background_changed)
-        self.include.editingFinished.connect(self.edited);self.exclude.editingFinished.connect(self.edited)
+        self.include.textChanged.connect(self.edited);self.exclude.textChanged.connect(self.edited)
         engine,engine_layout=card('03  Extraction');form.addWidget(engine)
         self.engine=Q.QComboBox();self.engine.addItems(['PypeIt · bounded background','Joint profiles · experimental','Legacy PypeIt · recipe replay']);engine_layout.addWidget(self.engine)
         self.manual=Q.QCheckBox('Use selected source anchors');self.manual.setChecked(True);engine_layout.addWidget(self.manual)
@@ -119,6 +121,7 @@ class ExtractionWindow(Q.QMainWindow):
             button.clicked.connect(lambda checked,n=name:self.set_view_mode(n));tools.addWidget(button);self.view_buttons[name]=button
         self.view_buttons['Inspect'].setChecked(True)
         reset=Q.QPushButton('Reset view');reset.clicked.connect(lambda:self.toolbar.home());tools.addWidget(reset);tools.addStretch()
+        export=Q.QPushButton('Save PDF + JPG');export.clicked.connect(self.export_plot);tools.addWidget(export)
         self.profile_mode=Q.QComboBox();self.profile_mode.addItems(['Summed spatial profiles','Excess spatial scatter']);self.profile_mode.currentIndexChanged.connect(self.redraw);tools.addWidget(self.profile_mode)
         figure_layout.addLayout(tools)
         self.figure=Figure(figsize=(11,8),dpi=100,layout='constrained',facecolor='white')
@@ -175,6 +178,18 @@ class ExtractionWindow(Q.QMainWindow):
         for key,button in self.view_buttons.items():button.setChecked(key==name)
         if self.selector:self.selector.set_active(name=='Inspect')
 
+    def export_plot(self):
+        if not self.exposure:return
+        from .figure_style import save_qc
+        from datetime import datetime
+        import uuid
+        folder=Q.QFileDialog.getExistingDirectory(self,'Save PDF and 300-dpi JPG',str(self.session.run))
+        if not folder:return
+        try:
+            stem=save_qc(self.figure,folder,'gui-'+datetime.now().strftime('%Y%m%dT%H%M%S')+'-'+uuid.uuid4().hex[:6],self.exposure.result['object'])
+            self.statusBar().showMessage('Saved PDF and 300-dpi JPG: '+str(stem))
+        except (OSError,ValueError) as exc:self.error(exc)
+
     def background_changed(self,*_):
         automatic=self.sky_auto.isChecked()
         self.include.setReadOnly(automatic);self.exclude.setReadOnly(automatic)
@@ -224,7 +239,10 @@ class ExtractionWindow(Q.QMainWindow):
                 name=Path(item.get('path','')).name
                 if name and self.exposures.findData({'raw':name})<0:self.exposures.addItem(f'{item.get("object",name)} · recovery',{'raw':name})
             self.spectra_stack.setCurrentIndex(0)
-            self.exposures.blockSignals(False);self.change_exposure();self.refresh_history()
+            self.exposures.blockSignals(False)
+            if not raw:self.change_exposure()
+            else:self.editor.setEnabled(False);self.run_button.setEnabled(False)
+            self.refresh_history()
             self.clear_review()
             self.reviews.blockSignals(True);self.reviews.clear();self.reviews.addItem('Select a source-review exposure…',None)
             for packet in session.reviews:
@@ -264,6 +282,9 @@ class ExtractionWindow(Q.QMainWindow):
             data=self.reviews.itemData(index)
             name=data['raw'] if isinstance(data,dict) else json.loads(Path(data).read_text())['raw_name']
             if name==raw:
+                self.exposures.blockSignals(True)
+                self.exposures.setCurrentIndex(self.exposures.findData({'raw':raw}))
+                self.exposures.blockSignals(False)
                 self.reviews.setCurrentIndex(index)
                 self.open_failed_spectrum(data,raw)
                 return
@@ -457,6 +478,7 @@ class ExtractionWindow(Q.QMainWindow):
         job=self.backend.job_status() if self.backend else None
         return bool(job and job['status']=='running')
 
+    @house_style
     def redraw(self,*_):
         if self.loading or not self.exposure:return
         e=self.exposure;images=e.images
@@ -470,16 +492,17 @@ class ExtractionWindow(Q.QMainWindow):
             label=r'Conditional $\pm1\sigma$' if e.result.get('joint') else r'Propagated $\pm1\sigma$')
         ax.set(xlabel='Observed air wavelength [Å]',ylabel=r'$F_\lambda$ [$10^{-16}$ cgs / Å]',
                title='Extracted spectrum')
-        ax.legend(fontsize=9,loc='upper right',frameon=False,ncol=2)
-        ax.text(.5,.035,f'Median SNR = {e.result["median_native_snr_4000_8500"]:.1f} per pixel',ha='center',transform=ax.transAxes,fontsize=9,color='#718097')
+        style.styled_legend(ax,loc='upper right',ncol=2)
+        ax.text(.5,.035,f'Median SNR = {e.result["median_native_snr_4000_8500"]:.1f} per pixel',ha='center',transform=ax.transAxes,fontsize=18,color='0.4')
         onslit=images.get('onslit',np.ones(images['data'].shape,dtype=bool)).astype(bool).copy()
         onslit[:,[0,-1]]=False
         residual=np.where(onslit,images['data']-images['sky'],np.nan);finite=residual[np.isfinite(residual)]
         low,high=np.percentile(finite,[5,99.5]);ny,nx=residual.shape;y0,x0=e.window.origin
-        self.image_ax.imshow(residual.T,origin='lower',aspect='auto',cmap='gray',vmin=low,vmax=high,
+        self.image_ax.imshow(residual.T,origin='lower',aspect='auto',cmap='gray_r',vmin=low,vmax=high,
             extent=[y0-.5,y0+ny-.5,x0-.5,x0+nx-.5],interpolation='nearest')
         self.image_ax.set(xlabel='Spectral detector pixel',ylabel='Spatial detector pixel',title='Sky-subtracted 2D Spectra')
         spatial=np.arange(nx)+x0;edges=np.linspace(np.nanmin(images['waveair']),np.nanmax(images['waveair']),4)
+        profiles=[]
         for i,(lo,hi) in enumerate(zip(edges[:-1],edges[1:])):
             selected=(images['waveair']>=lo)&(images['waveair']<hi)&np.isfinite(residual)
             if self.profile_mode.currentIndex()==0:
@@ -488,9 +511,13 @@ class ExtractionWindow(Q.QMainWindow):
                 variance=(np.maximum(images['data'],0)+e.frame['metadata']['ESO DET OUT1 RON']**2 if not e.context.processed
                     else np.divide(1,e.context.processed['ivar'],out=np.full(residual.shape,np.nan),where=e.context.processed['ivar']>0))
                 profile=np.sqrt(np.maximum(0,np.nanvar(np.where(selected,residual,np.nan),axis=0)-np.nanmean(np.where(selected,variance,np.nan),axis=0)))
-            self.profile_ax.plot(spatial,profile,lw=1,label=f'{lo:.0f}–{hi:.0f} Å',color=['#577590','#a59471',RED][i])
+            profiles.append(profile)
+            self.profile_ax.plot(spatial,profile,lw=1.3,label=f'{lo:.0f}--{hi:.0f} Å',color=COLORS[i])
         self.profile_ax.set(xlabel='Spatial detector pixel',ylabel='Summed electrons' if self.profile_mode.currentIndex()==0 else 'Excess scatter [electrons]',title='Spatial profiles')
-        self.profile_ax.legend(fontsize=8,frameon=False)
+        style.styled_legend(self.profile_ax)
+        protected=np.zeros(nx,bool)
+        for trace in images.get('found_traces',[images['trace']]):
+            protected|=(spatial>=np.min(trace)+x0-3)&(spatial<=np.max(trace)+x0+3)
         try:
             recipe=self.recipe();mask=sky_mask(recipe,e.window)
             if recipe['sky']['mode']=='pypeit_local':
@@ -511,16 +538,20 @@ class ExtractionWindow(Q.QMainWindow):
                 self.image_ax.fill_between(np.arange(ny)+y0,trace-obj['radius'],trace+obj['radius'],color=color,alpha=.2)
                 self.profile_ax.axvline(obj['spat'],color=color,lw=1)
                 self.profile_ax.axvspan(obj['spat']-obj['radius'],obj['spat']+obj['radius'],color=color,alpha=.16)
+                protected|=(spatial>=np.min(trace)-obj['radius'])&(spatial<=np.max(trace)+obj['radius'])
         except (ValueError,TypeError,KeyError,AttributeError):pass  # Invalid edits remain visible in the controls.
+        from .profile_limits import _profile_limit_samples,_profile_limits
+        limits=_profile_limits([_profile_limit_samples(p,protected,edge_margin=3)[0] for p in profiles],background_subtracted=True)
+        if limits:self.profile_ax.set_ylim(*limits)
+        from matplotlib.ticker import MaxNLocator
+        from matplotlib.text import Text
         for ax in (self.spectrum_ax,self.image_ax,self.profile_ax):
-            ax.tick_params(which='both',direction='in',top=True,right=True,labelsize=9,colors='#63718a')
-            ax.xaxis.label.set(fontsize=10,color=NAVY,fontfamily=self.font_family,fontweight='normal')
-            ax.yaxis.label.set(fontsize=10,color=NAVY,fontfamily=self.font_family,fontweight='normal')
-            ax.set_title(ax.get_title(),fontsize=12,color=NAVY,fontfamily=self.font_family,fontweight='medium',pad=14)
-            for tick in ax.get_xticklabels()+ax.get_yticklabels():tick.set_fontfamily(self.font_family);tick.set_fontweight('normal')
-            for spine in ax.spines.values():spine.set_color('#d6deea')
-            if ax is not self.image_ax:ax.grid(axis='y',color='#edf1f6',lw=.6,zorder=0)
-            ax.xaxis.set_minor_locator(AutoMinorLocator());ax.yaxis.set_minor_locator(AutoMinorLocator())
+            ticks=MaxNLocator(nbins=5).tick_values(*ax.get_xlim());step=ticks[1]-ticks[0]
+            style.set_plotparams(ax,xticks=(step,step/4),yticks=None,fs=18)
+            ax.set_title(ax.get_title(),fontsize=20)
+        for text in self.figure.findobj(Text):
+            text.set_fontfamily('serif');text.set_usetex(True)
+            if text.get_text():text.set_text(plain_tex(text.get_text()))
         if self.selector:self.selector.disconnect_events()
         self.selector=SpanSelector(self.profile_ax,self.select_background,'horizontal',useblit=True,
                                    props={'facecolor':BLUE,'alpha':.3},button=1,minspan=.5)
@@ -607,17 +638,27 @@ class ExtractionWindow(Q.QMainWindow):
 
 
 class ReviewOpenEvents(QtCore.QObject):
-    def __init__(self,window):
-        super().__init__(window);self.window=window;self.received=False
+    def __init__(self,window=None):
+        super().__init__(window);self.window=window;self.received=False;self.pending=[];self.opening=False
+
+    def attach(self,window):
+        self.window=window;self.setParent(window)
+        QtCore.QTimer.singleShot(0,self.deliver)
+
+    def deliver(self):
+        if self.window is None or self.opening:return
+        self.opening=True
+        try:
+            while self.pending:
+                self.window.open_run(self.pending.pop(0))
+                self.window.show();self.window.raise_();self.window.activateWindow()
+        finally:self.opening=False
 
     def eventFilter(self,watched,event):
         if event.type()==QtCore.QEvent.Type.FileOpen and event.url().scheme()=='efospec':
             self.received=True
-            url=event.url().toString()
-            def open_requested():
-                self.window.open_run(url)
-                self.window.show();self.window.raise_();self.window.activateWindow()
-            QtCore.QTimer.singleShot(0,open_requested)
+            self.pending.append(event.url().toString())
+            QtCore.QTimer.singleShot(0,self.deliver)
             return True
         return False
 
@@ -626,14 +667,17 @@ def launch(run=None,reference_root=None,*,smoke_test=False,raw=None):
     app=Q.QApplication.instance() or Q.QApplication(sys.argv[:1]);app.setApplicationName('EFOSpec')
     settings=None if smoke_test else QtCore.QSettings('EFOSpec','Desktop')
     if not smoke_test:run=initial_run(run,settings)
+    if raw and run:
+        from .review_handoff import review_url
+        run=review_url(resolve_session(run).run,raw)
     # Install the URL receiver before loading remembered products. Loading can
     # process native events, and an incompatible old product must not lose the URL.
+    handler=ReviewOpenEvents();app.installEventFilter(handler)
     window=ExtractionWindow(None,reference_root,settings=settings)
-    handler=ReviewOpenEvents(window);app.installEventFilter(handler)
     window.show()
     def open_initial():
         if not handler.received and run:window.open_run(run)
-        if raw:window.select_raw(raw)
+        handler.attach(window)
     QtCore.QTimer.singleShot(0,open_initial)
     # Dispose Qt children while its event dispatcher is still alive. Python
     # callback cycles can otherwise keep them past QApplication destruction.
