@@ -55,12 +55,11 @@ review controls, the CLI, revision history and HTML refresh.
 - Nightly-log **Open in EFOSpec GUI** links select that exact failed exposure. The recovery editor shows its raw filename; restart an already-open app after updating its code.
 - **Extraction requirements**, above Extract, lists missing selections and recipe errors. Choose a candidate or use **Click aperture centre** on the plot, then enter or drag two background bands. Grey example text is not an entered band. Native recovery requires 15–50 pixels per side.
 - Extract enables when the selected geometry is valid; the fit is checked before starting a worker. **Cancel extraction** is disabled until a worker starts. The editor distinguishes review counts from explicitly requested checked flux recovery.
-- The plot toolbar exposes **Click trace**, **Drag background**, **Clear bands**, and **Save PDF + JPG**. Export uses 300-dpi JPG; Qt draws at native screen density. Deferred redraws retain the report's LaTeX/serif typography and 23.4-point tick labels. Spatial limits reuse the report's spike/edge exclusion rules, protect source apertures, and leave plotted samples and science arrays unchanged.
-- Native review counts can **refit the trace with PypeIt** (degree 1–3) or explicitly **keep the saved trace for polynomial boxcar counts** (degree 0–3). The latter is an unvalidated experiment, not a repair of a rejected trace. Checked flux recovery retains wavelength/response gates; the GUI shows worker failure details and blocks known failed-parent three-line requests before launch.
-- For saved-trace review counts: leave checked flux recovery off, choose **Review counts: keep saved trace (polynomial boxcar)**, select the candidate, drag one background band on each side, preview, then **Extract new revision** and choose a dated output parent. A successful fit does not clear a failed wavelength mask.
+- The plot toolbar exposes **Click trace**, **Drag background**, **Clear bands**, and **Save PDF + JPG**. Export uses 300-dpi JPG; Qt draws at native screen density. Deferred redraws retain LaTeX/serif typography and the user-requested compact tick labels. Spatial limits reuse the report's spike/edge exclusion rules, protect source apertures, and leave plotted samples and science arrays unchanged.
+- Native review counts can **refit the trace with PypeIt** (degree 1–3) or explicitly **keep the saved trace for polynomial boxcar counts** (degree 0–3). The latter is an unvalidated experiment, not a repair of a rejected trace. Flux recovery reruns wavelength checks, retains failed checks in provisional outputs and requires a usable response; worker errors remain in Log.
+- For saved-trace review counts: turn **Apply flux calibration** off, choose **Saved-trace boxcar counts**, select the candidate, drag one background band on each side, preview, then **Extract counts in new revision**. Output goes into a new dated manual revision automatically. A successful fit does not clear a failed wavelength mask.
 - Edit aperture/background bands, preview the polynomial fit, then save or extract a new revision.
-- Choose a fresh output parent under that observing date.
-- Current recovery output: count-level boxcar spectrum; no flux-calibration or host-subtraction claim.
+- Counts-only results remain uncalibrated. Native flux recovery may deliver a provisional flux spectrum with wavelength warnings; neither establishes host subtraction.
 - `background-gui review.json` remains an alias into this same application.
 - [Polynomial background controls and limits](polynomial-background.md).
 
@@ -88,3 +87,27 @@ review controls, the CLI, revision history and HTML refresh.
 - Historical browser prototype: `efospec browser-prototype runs/2024-11-14/efospec`.
 
 [Current acceptance results](validation-desktop-2026-11.md) · [Engine validation](native-desktop-validation.md) · [Desktop guide](desktop.md)
+
+
+## Failed-exposure extraction workflow
+
+- The header has one main tab row and one source/filename line. **Exposures** returns to the list; **Log** opens retained status, warnings and worker errors. Calibration stages and plot tools are in the sidebar so the detector panel can use the full window height.
+- The recovery editor opens **2D aperture and extracted counts** by default. Preview shows the processed detector, saved trace, aperture and two background bands above provisional saved-trace boxcar counts. Detector-row coordinates remain explicit when wavelengths are unvalidated. This preview is not the PypeIt-refitted extraction result.
+- **Wavelength calibration → Extraction → Flux calibration → Final spectrum** show short step statuses. Native recovery defaults to flux calibration. A persistent next-action button gently pulses three times when the next action changes. **Continue without trace cutoff** proceeds with trace warnings retained. Arc refitting is not implemented in these panels; failed sky checks are retained in explicitly provisional recovery products.
+- Fresh extraction needs no recipe file or folder selection. The editor saves its recipe, worker logs and new output automatically under the selected reduction's `manual-revisions/`. Optional recipe import/export remains available.
+- **Log** holds wavelength measurements, standard-star/calibration-file details and worker errors; these are hidden from the normal step panels. The wavelength-policy selector is under **Advanced wavelength checks**. Changing policy does not itself validate a spectrum. Same-night response availability does not establish absolute-flux accuracy.
+- **Wavelength calibration** plots the saved arc lamp, identified lines, wavelength solution, fit/held-out residuals and separate science-sky checks. **Flux calibration** plots the selected standard's sensitivity zeropoints, physical sensitivity function and fit residuals, keeping excluded samples and unsupported gaps distinct. These read-only plots use the current saved spectrum's calibration associations and offer PDF + 300-dpi JPG export; missing or changed calibration files are reported instead of substituting another fit.
+- A successful flux extraction automatically opens **Final spectrum**. Reopening the same exposure offers **View final spectrum** for the latest completed revision bound to the same raw input and parent. The plot reads the exported FITS, preserves masked gaps, labels provisional wavelengths and offers the output folder plus PDF/JPG export. Wavelength-check acceptance and flux-calibration application are reported separately.
+- Verified on native macOS Cocoa; these new panels have not been verified on Linux.
+
+
+## Trace and calibration warnings
+
+- A fitted trace's departure from a degree ≤4 comparison polynomial is recorded, not rejected at 0.5 pixel. QA retains maximum/RMS departure, affected extraction-window rows and a warning. FITS keywords `TRCDEV`, `TRCWARN` and `TRCPOL=WARNING` carry the measurement and flag; extraction preserves the actual fitted trace.
+- A failed parent wavelength check no longer disables a new calibrated-extraction attempt. The worker reruns wavelength validation and records the new outcome; a trace warning does not imply a failed wavelength solution or force one to pass.
+
+- Manual native flux recovery retains a failed sky quality check as a warning and continues with the supported unshifted arc solution. The flux-calibrated output is explicitly **PROVISIONAL**, with `WAVEVAL=False` and the failed measurements preserved. It is not promoted to a wavelength-validated or accepted nightly product. Missing/invalid calibration inputs, unsupported geometry and absent flux response still produce errors.
+
+- Recovery layout: tall vertical 2D detector at left, spatial profile at upper right, counts at lower right. Trace clicks and background drags work in either spatial panel and update both immediately. Candidate, centre, radius, anchor-row and band-field edits share the same overlays; clearing bands clears both panels. Changing geometry clears stale counts until **Preview** is run again. The profile shows the saved sky-subtracted row median; its aperture marker refers to the selected anchor row.
+
+- Recovery GUI uses the requested compact typography: 17 pt axis labels, 16 pt panel titles, 14 pt legends and 18.2 pt ticks (14 pt base × 1.3). Smaller gaps enlarge the aligned plot panels; the GUI PDF/JPG export uses those same sizes.

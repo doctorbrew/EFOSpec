@@ -21,6 +21,7 @@ def profile_view_limits(ax,x,signal,protected,*,model=None,background=None,visib
 
 @house_style
 def draw_candidates(fig,exposure):
+    fig.extraction_axes=None
     fig.clear();ax=fig.subplots()
     x=np.arange(exposure.window.shape[1])+exposure.window.origin[1]
     profile=np.nanmedian(exposure.images['data']-exposure.images['sky'],axis=0)
@@ -42,6 +43,7 @@ def draw_candidates(fig,exposure):
 
 @house_style
 def draw_background(fig, exposure, recipe, result, *, panel=None):
+    fig.extraction_axes=None
     fig.clear()
     selected=[0,1] if panel is None else [panel]
     axes=np.atleast_1d(fig.subplots(len(selected),1))
@@ -91,3 +93,91 @@ def save_background_plot(exposure,recipe,result,output):
     draw_background(fig,exposure,recipe,result)
     save_qc(fig,output,'polynomial-background',exposure.result['object'])
     plt.close(fig)
+
+
+@house_style
+def update_extraction_selection(fig, exposure, obj=None, bands=()):
+    """Update display geometry in both spatial panels, including partial recipes."""
+    axes=getattr(fig,'extraction_axes',None)
+    if axes is None:return
+    image_ax,profile_ax,_=axes
+    for ax in (image_ax,profile_ax):
+        for artist in list(ax.get_children()):
+            if getattr(artist,'_efospec_selection',False):artist.remove()
+    def mark(artist,background=False):
+        artist._efospec_selection=True
+        artist._efospec_background=background
+        return artist
+    y0,x0=exposure.window.origin
+    rows=np.arange(exposure.window.shape[0])+y0
+    if obj is not None:
+        anchor=int(np.clip(round(obj['spec']-y0),0,len(rows)-1))
+        traces=exposure.images['found_traces']+x0
+        trace=traces[np.argmin(abs(traces[:,anchor]-obj['spat']))].copy()
+        trace+=obj['spat']-trace[anchor]
+        radius=obj['radius']
+        mark(image_ax.plot(trace,rows,color='xkcd:red',lw=2)[0])
+        mark(image_ax.fill_betweenx(rows,trace-radius,trace+radius,color='xkcd:red',alpha=.18))
+        mark(image_ax.plot(obj['spat'],obj['spec'],marker='+',color='xkcd:red',ms=12)[0])
+        mark(profile_ax.axvline(obj['spat'],color='xkcd:red',ls='--'))
+        mark(profile_ax.axvspan(obj['spat']-radius,obj['spat']+radius,color='xkcd:red',alpha=.18))
+    for lo,hi in bands:
+        for ax in (image_ax,profile_ax):
+            mark(ax.axvspan(lo,hi,color='xkcd:dodger blue',alpha=.2),True)
+
+
+@house_style
+def draw_extraction(fig, exposure, recipe=None, result=None):
+    """Tall detector beside spatial profile and counts; shared raw spatial axis."""
+    from .image_display import image_normalization
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Patch
+    fig.clear()
+    grid=fig.add_gridspec(2,2,width_ratios=(.85,1.4))
+    image_ax=fig.add_subplot(grid[:,0])
+    profile_ax=fig.add_subplot(grid[0,1],sharex=image_ax)
+    counts_ax=fig.add_subplot(grid[1,1])
+    fig.extraction_axes=(image_ax,profile_ax,counts_ax)
+    data=exposure.images['data'];y0,x0=exposure.window.origin
+    ny,nx=data.shape;rows=np.arange(ny)+y0;x=np.arange(nx)+x0
+    norm,display=image_normalization(data,bright_percentile=99.5)
+    image_ax.imshow(data,origin='lower',aspect='auto',cmap='gray_r',norm=norm,
+        extent=(x0-.5,x0+nx-.5,y0-.5,y0+ny-.5),interpolation='nearest')
+    profile=np.nanmedian(data-exposure.images['sky'],axis=0)
+    profile_ax.plot(x,profile,color='0.3')
+    protected=np.zeros(nx,bool)
+    for i,trace in enumerate(exposure.images['found_traces']):
+        raw_trace=trace+x0
+        image_ax.plot(raw_trace,rows,color='0.4',ls=TRACE_STYLES[i%4],lw=1)
+        profile_ax.axvline(raw_trace[ny//2],color='0.4',ls=TRACE_STYLES[i%4],lw=1)
+        protected|=(x>=raw_trace.min()-7)&(x<=raw_trace.max()+7)
+    profile_view_limits(profile_ax,x,profile,protected)
+    profile_ax.set_title('Spatial profile (row median)')
+    profile_ax.set_xlabel('Raw spatial pixel x');profile_ax.set_ylabel('Residual electrons')
+    image_ax.set_xlim(x0-.5,x0+nx-.5);image_ax.set_ylim(y0-.5,y0+ny-.5)
+    image_ax.set_xlabel('Raw spatial pixel x');image_ax.set_ylabel('Raw spectral row')
+    image_ax.set_title('2D detector (electrons)')
+    counts_ax.set_xlabel('Raw spectral row');counts_ax.set_ylabel('Electrons')
+    counts_ax.set_title('Uncalibrated count preview')
+    counts_ax.set_xlim(rows[0],rows[-1])
+    if recipe is not None and result is not None:
+        counts=np.where(result['valid'],result['counts'],np.nan);sigma=np.sqrt(result['variance'])
+        counts_ax.plot(rows,counts,color='xkcd:red')
+        counts_ax.fill_between(rows,counts-sigma,counts+sigma,color='xkcd:red',alpha=.14)
+        counts_ax.axhline(0,color='0.5',lw=1)
+        update_extraction_selection(fig,exposure,recipe['objects'][0],recipe['sky']['include'])
+    else:
+        counts_ax.text(.5,.5,'Select trace and bands,\nthen preview counts',ha='center',va='center',transform=counts_ax.transAxes)
+    for ax in fig.axes:
+        width=ax.get_xlim()[1]-ax.get_xlim()[0]
+        step=max(1.,float(10**np.floor(np.log10(width/5)))*round(width/5/10**np.floor(np.log10(width/5))))
+        style.set_plotparams(ax,xticks=(step,step/4),yticks=None,grid=False)
+    style.styled_legend(fig,handles=[Line2D([],[],color='xkcd:red',label='Selected trace'),
+        Patch(color='xkcd:red',alpha=.18,label='Aperture'),
+        Patch(color='xkcd:dodger blue',alpha=.2,label='Background bands')],
+        ncol=3,loc='lower center',bbox_to_anchor=(.5,.005))
+    fig.suptitle(plain_tex(exposure.result['object']+' -- extraction preview'))
+    fig.profile_display={'image':display,'counts':'provisional saved-trace boxcar; no flux or wavelength acceptance',
+                         'spatial_profile':'median saved sky-subtracted rows; aperture marker at selected anchor row'}
+    fig.subplots_adjust(left=.09,right=.97,top=.88,bottom=.22,wspace=.5,hspace=.75)
+    return fig

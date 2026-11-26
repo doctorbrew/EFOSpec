@@ -132,7 +132,8 @@ def test_failed_link_opens_extraction_panel_in_spectra(window,monkeypatch):
     import efospec.background_gui as gui
     class Panel(QtWidgets.QWidget):
         runningChanged=QtCore.Signal(bool)
-        def __init__(self,packet,*a,parent=None):super().__init__(parent);self.packet=packet
+        def __init__(self,packet,*a,parent=None):
+            super().__init__(parent);self.packet=packet;self.header_layout=QtWidgets.QHBoxLayout(self)
         def is_running(self):return False
     monkeypatch.setattr(gui,'BackgroundEditor',Panel)
     w=window;raw='failed.fits'

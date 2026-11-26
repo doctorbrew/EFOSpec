@@ -31,17 +31,6 @@ def test_native_saved_window_verification_and_raw_tampering(tmp_path,monkeypatch
     with pytest.raises(ValueError,match='raw input changed'):load_failed(e,raw.name)
 
 
-def test_native_flux_cannot_promote_failed_wavelength(tmp_path,monkeypatch):
-    from efospec.native_recovery import extract_native
-    import efospec.revisions as revisions
-    from efospec.recipes import DetectorWindow
-    e=SimpleNamespace(context=SimpleNamespace(calibration={'mode':'native'},sky_qa={'held_out_6363_pass':False}),window=DetectorWindow((100,201),(0,448)),hashes={k:'a'*64 for k in ('raw','images','manifest')})
-    monkeypatch.setattr(revisions,'FailedExposure',lambda *a:e)
-    recipe=dict(schema_version=1,engine_version='3.0.0',coordinates='raw_detector_pixels_zero_based',input_sha256=e.hashes,source_mode='manual',objects=[dict(id='primary',label='test',kind='point',spec=50.,spat=548.,radius=7.,fwhm=4.)],sky=dict(mode='polynomial',include=[[500,530],[575,605]],exclude=[],degree=2,sigma_clip=4.))
-    with pytest.raises(ValueError,match='wavelength check failed'):extract_native(tmp_path,'raw.fits',recipe,tmp_path/'output')
-    assert not (tmp_path/'output').exists()
-
-
 def test_manual_recovery_selection_rejects_changed_manifest(tmp_path):
     from efospec.manual_recovery_report import selected_manual_recoveries
     parent=tmp_path/'reduction';parent.mkdir();(parent/'run.json').write_text('{}')
@@ -76,8 +65,8 @@ def test_manual_recovery_report_accepts_only_bound_supported_products(tmp_path,c
         assert selected[0][0]==trial and selected[0][1]['results']==[result]
 
 
-@pytest.mark.parametrize('valid_fraction',[0.,.9])
-def test_native_flux_export_requires_supported_response_and_records_failures(tmp_path,monkeypatch,valid_fraction):
+@pytest.mark.parametrize('valid_fraction,parent_accepted,new_accepted,sky_error',[(0.,True,True,False),(.9,True,True,False),(.9,False,True,False),(.9,False,False,False),(.9,False,False,True)])
+def test_native_flux_export_requires_supported_response_and_records_failures(tmp_path,monkeypatch,valid_fraction,parent_accepted,new_accepted,sky_error):
     from efospec.native_recovery import extract_native
     from efospec.recipes import DetectorWindow
     import efospec.revisions as revisions
@@ -85,24 +74,37 @@ def test_native_flux_export_requires_supported_response_and_records_failures(tmp
     frame={'path':'/raw/test.fits','sha256':'a'*64};associations={'arc':{},'flat':{},'bias':{}}
     (run/'setup-checks.json').write_text(json.dumps({'exposures':[{'path':frame['path'],'raw_calibrations':associations}]}))
     hashes={k:'a'*64 for k in ('raw','images','manifest')};hashes['calibration']=sha256(group)
-    e=SimpleNamespace(run=run,frame=frame,result={'object':'test'},window=DetectorWindow((100,201),(0,448)),images={'found_traces':np.full((1,100),100.)},hashes=hashes,context=SimpleNamespace(calibration={'mode':'native'},sky_qa={'held_out_6363_pass':True}),manifest={'night':'2026-10-28','input_dir':'/raw','standards':[]})
+    e=SimpleNamespace(run=run,frame=frame,result={'object':'test'},window=DetectorWindow((100,201),(0,448)),images={'found_traces':np.full((1,100),100.)},hashes=hashes,context=SimpleNamespace(calibration={'mode':'native'},sky_qa={'held_out_6363_pass':parent_accepted}),manifest={'night':'2026-10-28','input_dir':'/raw','standards':[]})
     monkeypatch.setattr(revisions,'FailedExposure',lambda *a:e)
     response={'path':'response.fits','extinction':{}}
     monkeypatch.setattr('efospec.daily_reduction.select_response',lambda *a:dict(fit={'response':response},calibration={'raw_inputs':{}},counts={'calibration_directory':str(run)}))
     def prepare(frame,assoc,output,position,**kw):
+        if sky_error and not kw.get('arc_only_review'):
+            from efospec.native_sky import SkyValidationError
+            raise SkyValidationError('measured sky SNR below reference',[{'peak_snr':5.6}])
         assert kw['reviewed_source']['identity']['method']=='operator_background'
         assert kw['spatial_half_width']==100 and position==548.
-        return dict(bundle={'record':{'raw_inputs':{}}},detector={},data=np.ones((100,201)),waveair=np.ones((100,201)),xlo=448,ylo=0,engine={'source_selection':{}},arc={},shift=0.,sky={'held_out_6363_pass':True},processed={},basename='test')
+        return dict(bundle={'record':{'raw_inputs':{}}},detector={},data=np.ones((100,201)),waveair=np.ones((100,201)),xlo=448,ylo=0,engine={'source_selection':{}},arc={},shift=0.,sky={'held_out_6363_pass':new_accepted},processed={},basename='test')
     monkeypatch.setattr('efospec.native_reduction.prepare',prepare)
     def export(context,*args,**kwargs):
         assert context.hint_info['association']=='UNVERIFIED_manual_background_recovery'
         assert context.calibration['mode']=='native_raw_only'
+        if sky_error:
+            assert context.calibration['wavelength_policy']=='provisional_arc_only'
+            assert context.shift==0. and context.sky_qa['held_out_6363_pass'] is False
+            assert context.sky_qa['failed_validation']['lines'][0]['peak_snr']==5.6
         return {'valid_flux_fraction':valid_fraction}
     monkeypatch.setattr('efospec.products.export_spectrum',export)
     monkeypatch.setattr('efospec.run_record.snapshot_sources',lambda p:{})
     recipe=dict(schema_version=1,engine_version='3.0.0',coordinates='raw_detector_pixels_zero_based',input_sha256=hashes,source_mode='manual',objects=[dict(id='primary',label='test',kind='point',spec=50.,spat=548.,radius=7.,fwhm=4.)],sky=dict(mode='polynomial',include=[[500,530],[575,605]],exclude=[],degree=2,sigma_clip=4.))
-    if valid_fraction:
+    if not new_accepted and not sky_error:
+        with pytest.raises(ValueError,match='New wavelength check failed'):extract_native(run,'test.fits',recipe,tmp_path/'output')
+        saved=json.loads((tmp_path/'output/run.json').read_text());assert saved['execution_status']=='failed' and not saved['results']
+    elif valid_fraction:
         result=extract_native(run,'test.fits',recipe,tmp_path/'output');assert result['results'][0]['role']=='science'
+        if sky_error:
+            assert result['status']=='PROVISIONAL' and not result['wavelength_validated']
+            assert result['warnings'][0]['diagnostics']['lines'][0]['peak_snr']==5.6
     else:
         with pytest.raises(ValueError,match='supported calibrated flux'):extract_native(run,'test.fits',recipe,tmp_path/'output')
         saved=json.loads((tmp_path/'output/run.json').read_text());assert saved['execution_status']=='failed' and not saved['results']

@@ -67,7 +67,7 @@ def extract_native(run, raw_name, recipe, output, *, validation_policy="three-li
     from .native_calibration import save_json
     from .products import export_spectrum
     from .run_record import snapshot_sources
-    from .native_sky import wavelength_accepted
+    from .native_sky import wavelength_accepted, SkyValidationError
     if validation_policy not in {'three-line','two-anchor','full-spectrum'}:raise ValueError('unknown sky validation policy')
     e=FailedExposure(run,raw_name)
     if not e.context.calibration:raise ValueError('Native recovery requires native raw calibration')
@@ -76,7 +76,6 @@ def extract_native(run, raw_name, recipe, output, *, validation_policy="three-li
         raise ValueError('Select one source and explicit polynomial background bands')
     if len(recipe['sky']['include'])!=2 or any(not 15<=hi-lo<=50 for lo,hi in recipe['sky']['include']):
         raise ValueError('Select two finite 15–50 pixel background bands')
-    if not counts_only and validation_policy=='three-line' and not wavelength_accepted(e.context.sky_qa):raise ValueError('Parent wavelength check failed; flux recovery withheld')
     output=Path(output).resolve();output.mkdir(parents=True,exist_ok=False)
     recipe['sky']['mode']='pypeit_local';save_json(output/'recipe.json',recipe)
     frame=e.frame;assoc=next(x['raw_calibrations'] for x in json.loads((e.run/'setup-checks.json').read_text())['exposures'] if x['path']==frame['path'])
@@ -92,7 +91,27 @@ def extract_native(run, raw_name, recipe, output, *, validation_policy="three-li
         standards=e.manifest['standards'],held_out=e.manifest.get('held_out',[]),source_sha256=snapshot_sources(output),
         limitations=['Explicit manual background trial; not accepted automatically.','Absolute flux and host deblending remain unvalidated.'])
     try:
-        p=prepare(frame,assoc,output,position,cached=groups[0].parent,arc_supported_only=True,spatial_half_width=(e.window.shape[1]-1)//2,reviewed_source=selection,validation_policy=validation_policy,arc_only_review=counts_only)
+        options=dict(cached=groups[0].parent,arc_supported_only=True,
+                     spatial_half_width=(e.window.shape[1]-1)//2,reviewed_source=selection,
+                     validation_policy=validation_policy)
+        provisional=False
+        try:
+            p=prepare(frame,assoc,output,position,arc_only_review=counts_only,**options)
+        except SkyValidationError as exc:
+            if counts_only:raise
+            # A failed sky quality check is retained as evidence; it must not
+            # erase the arc solution or prevent an explicitly flagged export.
+            warning=dict(code='wavelength_unvalidated',message=str(exc),diagnostics=exc.diagnostics)
+            manifest.setdefault('warnings',[]).append(warning)
+            (output/'arc-review').mkdir(exist_ok=False)
+            p=prepare(frame,assoc,output/'arc-review',position,arc_only_review=True,**options)
+            p['sky'].update(validation_error=str(exc),failed_validation=exc.diagnostics,
+                            warnings=[warning],policy='provisional unshifted arc wavelengths; sky validation failed')
+            save_json(output/'arc-review/sky-check.json',dict(raw=frame['path'],raw_sha256=frame['sha256'],**p['sky']))
+            for sub in ('products','native','qa'):(output/sub).mkdir(exist_ok=True)
+            provisional=True
+            manifest.update(status='PROVISIONAL',wavelength_validated=False)
+
         if counts_only:
             from .filtered_reduction import export_counts
             counts,_=export_counts(p,output)
@@ -100,8 +119,10 @@ def extract_native(run, raw_name, recipe, output, *, validation_policy="three-li
             if FailedExposure(run,raw_name).hashes!=e.hashes:raise ValueError('Recovery inputs changed')
             manifest['execution_status']='complete'
             return manifest
+        if not provisional and not wavelength_accepted(p['sky']):raise ValueError('New wavelength check failed; validated flux recovery withheld')
         chosen=select_response(frame,e.manifest['standards']);response=chosen['fit']['response']
         calibration=dict(mode='native_raw_only',sensitivity=response,extinction=response['extinction'],raw_inputs={**chosen['calibration']['raw_inputs'],**p['bundle']['record']['raw_inputs']},groups=[chosen['counts']['calibration_directory'],str(groups[0].parent)])
+        if provisional:calibration['wavelength_policy']='provisional_arc_only'
         context=PreparedExposure(frame,e.run,p['detector'],p['data'],p['waveair'],p['xlo']-99,p['ylo'],position-99.,dict(association='UNVERIFIED_manual_background_recovery',**p['engine']['source_selection']),p['arc'],Path(response['path']),p['shift'],p['sky'],calibration,p['processed'])
         result=export_spectrum(context,p['engine'],'primary',output,p['basename'],label=e.result['object'])
         if result['valid_flux_fraction']<=0:raise ValueError('No supported calibrated flux samples')

@@ -147,3 +147,30 @@ def test_source_failure_keeps_positions_and_diagnostic_images(tmp_path):
         np.testing.assert_array_equal(saved['waveair'], wave)
         assert len(saved['found_traces']) == 2
     assert not list(tmp_path.glob('products/*.fits'))
+
+
+def test_nonpolynomial_trace_is_flagged_without_stopping_extraction(tmp_path,monkeypatch):
+    from pypeit.extraction import Extract
+    raw=write_raw(tmp_path,'raw.fits')
+    with fits.open(raw) as hdus:
+        detector=EFOSpecEFOSC2Spectrograph().get_detector_par(1,hdus)
+    (tmp_path/'QA/PNGs').mkdir(parents=True)
+    original=Extract.run
+    retained={}
+    def traced(self,*args,**kwargs):
+        arrays=original(self,*args,**kwargs)
+        for obj in arrays[5]:
+            obj.TRACE_SPAT += .8*np.sin(np.linspace(0,8*np.pi,len(obj.TRACE_SPAT)))
+            retained[obj.NAME]=obj.TRACE_SPAT.copy()
+        return arrays
+    monkeypatch.setattr(Extract,'run',traced)
+    data,wave,_=synthetic_image()
+    result=extract_spectra(data,wave,detector,exposure_time=600.,read_noise=7.8,
+                          output=tmp_path,basename='flagged-trace',target_position=48.)
+    obj=result['objects']['primary'][0]
+    np.testing.assert_array_equal(obj.TRACE_SPAT,retained[obj.NAME])
+    geometry=result['trace_geometry']
+    assert geometry['maximum_nonpolynomial_departure_pixels']>.5
+    assert geometry['departure_policy']=='warning_only'
+    assert geometry['warnings'][0]['code']=='nonpolynomial_trace'
+    assert geometry['trace_checks'][0]['rows_above_reference']

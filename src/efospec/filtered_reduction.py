@@ -77,6 +77,10 @@ def export_counts(prepared, directory):
                   FLUXCAL='NONE', FLEXURE=('VALIDATED' if prepared['sky'].get('held_out_6363_pass')
                                           else 'UNMEASURED'), BUNIT='electron',
                   GRISM=setup['grism'], FILTER=setup['filter'], SLIT=setup['slit'])
+    trace_qa=engine.get('trace_geometry',{})
+    if trace_qa.get('departure_policy')=='warning_only':
+        header.update(TRCDEV=trace_qa['maximum_nonpolynomial_departure_pixels'],
+                      TRCWARN=bool(trace_qa['warnings']),TRCPOL='WARNING')
     native = directory/'native'/('spec1d_'+stem+'.fits')
     objects.write_to_fits(header, str(native), overwrite=False)
     loaded = SpecObjs.from_fitsfile(str(native))[0]
@@ -119,6 +123,7 @@ def export_counts(prepared, directory):
         'counts_unit': 'electrons per spectral pixel', 'flux_calibrated': False,
         'science_validated': False, 'sky_flexure': prepared['sky'],
         'selection': engine['source_selection'], 'background': engine['background_fit'],
+        'trace_geometry': trace_qa,
         'valid_samples': int(spectrum.OPT_MASK.sum()),
         'calibration_directory': str(prepared['bundle']['directory']),
         'calibration_manifest_sha256': sha256(prepared['bundle']['directory']/'calibration.json'),

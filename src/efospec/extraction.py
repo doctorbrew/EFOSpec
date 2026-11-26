@@ -423,18 +423,31 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
                     unsupported_rows=np.flatnonzero((~supported|overlap)&fitted_background['valid_rows']).tolist())
                 save_detection_failure(exc,found,sky,selection)
                 raise exc
-    # The profile fitter can adjust a low-order seed with splines. Reject
-    # large non-polynomial corrections rather than cosmetically smoothing a
-    # trace after extracting flux along a different path.
+    # Profile-fit spline departures are diagnostic, not an extraction veto.
+    # Preserve the actual fitted trace and extracted counts without smoothing.
+    trace_checks=[];trace_warnings=[]
     for obj in arrays[4]:
         if obj.NAME not in names.values():
             continue
-        y = np.linspace(-1., 1., ny)
-        low_order = np.polynomial.legendre.legval(y, np.polynomial.legendre.legfit(y, obj.TRACE_SPAT, 4))
-        if np.max(abs(obj.TRACE_SPAT-low_order)) > .5:
-            exc = SourceSelectionError('Extracted trace departs from degree <=4 by more than half a pixel; review required.', found, target_position)
-            save_detection_failure(exc, found, sky, selection)
-            raise exc
+        trace=np.asarray(obj.TRACE_SPAT,dtype=float)
+        if trace.shape!=(ny,) or not np.isfinite(trace).all():
+            raise ValueError('Extracted trace must contain one finite position per detector row')
+        y=np.linspace(-1.,1.,ny)
+        degree=min(4,ny-1)
+        low_order=np.polynomial.legendre.legval(y,np.polynomial.legendre.legfit(y,trace,degree))
+        departure=abs(trace-low_order)
+        check=dict(name=str(obj.NAME),comparison_polynomial_degree=degree,
+                   maximum_departure_pixels=float(departure.max()),
+                   rms_departure_pixels=float(np.sqrt(np.mean(departure**2))),
+                   warning_reference_pixels=.5,
+                   rows_above_reference=np.flatnonzero(departure>.5).tolist())
+        trace_checks.append(check)
+        if check['rows_above_reference']:
+            message=(f"{obj.NAME}: trace departure {departure.max():.3f} spatial pixel "
+                     'from degree <=4; flagged for review, extraction continues.')
+            trace_warnings.append(dict(code='nonpolynomial_trace',message=message,**check))
+            import logging
+            logging.getLogger(__name__).warning(message)
     extracted = arrays[4]
     objects = {}
     for identity, name in names.items():
@@ -454,7 +467,9 @@ def extract_spectra(data, waveair, detector, *, exposure_time, read_noise,
                            'snr':float(s.smash_snr) if s.smash_snr is not None else None,
                            'trace_evidence':evidence.get(str(s.NAME))} for s in accepted]}
     result['trace_geometry'] = dict(trace_polynomial_degree=TRACE_DEGREE, candidate_evidence=evidence,
-                                    aperture=aperture_info, maximum_nonpolynomial_departure_pixels=.5)
+                                    aperture=aperture_info, departure_policy='warning_only',
+                                    maximum_nonpolynomial_departure_pixels=max(c['maximum_departure_pixels'] for c in trace_checks),
+                                    warning_reference_pixels=.5, trace_checks=trace_checks, warnings=trace_warnings)
     if fitted_background is not None:
         result.update(sky_policy='bounded_two_sided_pypeit', background_fit=fitted_background['summary'])
     return result

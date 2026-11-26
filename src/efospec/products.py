@@ -77,6 +77,12 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None, 
     subheader.update({'TARGET':h['OBJECT'],'PYP_SPEC':inst.name,'PYPELINE':'MultiSlit',
                      'WAVEMED':'vacuum','SPECSYS':'TOPOCENT','EPSTATUS':'EXPERIMENTAL',
                      'EXTRACT':'JOINTFIX' if joint else 'PYPEIT'})
+    trace_qa=engine.get('trace_geometry',{})
+    trace_header={}
+    if trace_qa.get('departure_policy')=='warning_only':
+        trace_header=dict(TRCDEV=trace_qa['maximum_nonpolynomial_departure_pixels'],
+                          TRCWARN=bool(trace_qa['warnings']),TRCPOL='WARNING')
+    subheader.update(trace_header)
     if sky_qa.get('validation_policy') in {'two-anchor','full-spectrum'}:
         from .native_sky import wavelength_accepted
         subheader.update(WAVEPOL=sky_qa['validation_policy'], WAVEVAL=wavelength_accepted(sky_qa),
@@ -137,6 +143,7 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None, 
     header['PROV1']=h['ARCFILE'];header['TRACE1']=native.name
     header['QUALITY']='Rapid';header['PYPEITV']=pypeit.__version__
     header['SENSFUN']=sensitivity.name;header['ARCREF']=Path(arc_qa['arc']).name
+    header.update(trace_header)
     header['WAVSHIFT']=shift;header['FLUXCAL']='NATIVE' if native_calibration else 'ARCHIVE';header['TELLURIC']='NONE'
     other='boxcar' if primary==0 else 'optimal'
     header['EXTRPRI']=primary_extraction.upper()

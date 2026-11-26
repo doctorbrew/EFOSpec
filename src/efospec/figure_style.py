@@ -36,7 +36,7 @@ def plain_tex(text):
 
 
 @house_style
-def save_qc(fig, directory, kind, object_name, *, tick_fontsize=18, legend_fontsize=18, title_fontsize=20, label_fontsize=None):
+def save_qc(fig, directory, kind, object_name, *, tick_fontsize=18, legend_fontsize=18, title_fontsize=20, label_fontsize=None, preserve_legends=False):
     """Export house-style figures; tick_fontsize is the base before the 1.3 factor."""
     from matplotlib.ticker import MaxNLocator,FixedLocator,NullLocator
     from matplotlib.text import Text
@@ -64,7 +64,7 @@ def save_qc(fig, directory, kind, object_name, *, tick_fontsize=18, legend_fonts
             ax.xaxis.label.set_fontsize(label_fontsize)
             ax.yaxis.label.set_fontsize(label_fontsize)
         handles,labels=ax.get_legend_handles_labels()
-        if handles:
+        if handles and not preserve_legends:
             style.styled_legend(ax,ncol=min(3,len(handles)),loc='upper center',
                                 bbox_to_anchor=(.5,-.2),fontsize=legend_fontsize)
     # QC labels are plain metadata strings, not arbitrary TeX input.
