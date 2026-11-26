@@ -45,7 +45,7 @@ python scripts/03_report_epoch.py 2026-10-28
 
 ## Dated outputs
 
-Open **`runs/2026-10-28/efosc/index.html`**.
+Open **`runs/2026-10-28/efospec/index.html`**.
 
 Use this main nightly HTML for status and issues. Do not generate separate
 diagnostic HTML pages unless explicitly requested. Show diagnostic plots directly
@@ -123,7 +123,7 @@ Per-date `report-assets/sky-model-arcsinh-verification.json` records unchanged
 inputs; prior plots are retained under each run's `archive/before-sky-model-arcsinh/`.
 
 ```text
-runs/2026-10-28/efosc/nightly/<processing-UTC>-<unique-id>/
+runs/2026-10-28/efospec/nightly/<processing-UTC>-<unique-id>/
   observing-log.csv
   observing-log.json
   night.json
@@ -148,7 +148,7 @@ NED cross-match into a fresh QC revision:
 
 ```sh
 python scripts/measure_host_redshifts.py 2026-10-28 \
-  --output runs/2026-10-28/efosc/nightly/REVISION/QC/redshifts-NEW --update-report
+  --output runs/2026-10-28/efospec/nightly/REVISION/QC/redshifts-NEW --update-report
 ```
 
 The current accepted and rescue products are selected and hash-checked. The
@@ -206,7 +206,7 @@ Latest-only cleanup, 16 November 2026:
 - Cleanup inventory and before/after verification:
   `outputs/housekeeping-20261116/{cleanup,verification}.json`.
 
-| Folder under `runs/DATE/efosc/` | Contents |
+| Folder under `runs/DATE/efospec/` | Contents |
 | --- | --- |
 | `nightly/` | Current workflow and processing revisions |
 | `QC/` | Retained manual source/background experiments |
@@ -374,11 +374,45 @@ hash checks. Raw data and the preserved legacy checkout were outside deletion sc
 
 ## Output layout
 
-New EFOSpec results and HTML live below `runs/DATE/efosc/`; IRAF attempts live
+New EFOSpec results and HTML live below `runs/DATE/efospec/`; IRAF attempts live
 below `runs/DATE/pessto/iraf-full-NN/`. Raw archives remain in `data/DATE/`.
-The EFOSpec current pointer is `runs/DATE/efosc/nightly/current.json`, and the
-main report is `runs/DATE/efosc/index.html`. Start a new `log`/`all` invocation
-to use this layout. Existing historical directories and their absolute-path
-manifests remain unchanged; the GUI can still open those saved runs directly.
-Historical validation notes describe the paths used at the time. Do not move
-saved files by hand: their hashes and paths may be referenced by recipes.
+The EFOSpec current pointer is `runs/DATE/efospec/nightly/current.json`, and the
+main report is `runs/DATE/efospec/index.html`. Start a new `log`/`all` invocation
+to use this layout. The former `efosc/` output folders were renamed to
+`efospec/`; read-only compatibility links at `efosc/` preserve saved absolute
+paths and historical links. New work must use `efospec/`. Product files,
+manifests and aperture databases are unchanged. Keep those compatibility
+links while saved revisions reference them; do not move individual products.
+
+
+## Clean restart after a corrupt reduction
+
+From the EFOSpec project directory, close desktop reduction workers and stop any
+running pipeline jobs. Preview one date, then archive its PypeIt outputs:
+
+```bash
+conda activate efospec
+# Show which PypeIt outputs would be moved, without changing any files.
+python scripts/cleanup_epoch.py 2024-11-14
+# Move all PypeIt outputs for this date into a recovery folder, preserving raw data and IRAF reductions.
+python scripts/cleanup_epoch.py 2024-11-14 --apply
+# Start a fresh reduction for this date using the original raw data.
+python scripts/reduce_epoch.py 2024-11-14
+```
+
+- Equivalent command: `efospec cleanup-night 2024-11-14 [--apply]`.
+- Scope: **all** of `runs/DATE/efospec/`, including revisions, calibrations,
+  QC, reports and delivery copies. Raw `data/DATE/`, IRAF `pessto/`, earlier
+  archives and other dates remain unchanged. Historical outputs outside
+  `efospec/` are not included.
+- Default is a read-only preview. `--apply` moves the folder to the printed
+  `runs/DATE/archive/cleanup-TIMESTAMP-ID/efospec/` path; it does not delete it
+  or reclaim disk space. `cleanup.json` records the original and recovery paths.
+- An existing nightly lock blocks cleanup. After a crashed job, add
+  `--clear-stale-lock` only when its recorded PID no longer exists. Malformed
+  locks require manual inspection; live processes are never overridden.
+- Recovery copies retain their original absolute-path references. To restore,
+  stop workers, archive any replacement run with this command, then move the
+  saved `efospec/` folder back to the original location printed in `cleanup.json`.
+  Do not open archived manifests against a replacement run at the old location.
+- Use `--project-root /path/to/EFOSpec` when invoking cleanup from elsewhere.

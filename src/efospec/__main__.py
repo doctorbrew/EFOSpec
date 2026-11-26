@@ -8,6 +8,9 @@ from .inventory import inventory
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="efospec", description="EFOSpec: EFOSC2 spectroscopy with PypeIt")
     commands = parser.add_subparsers(dest="command", required=True)
+    cleanup = commands.add_parser('cleanup-night', help='Preview or archive one night’s PypeIt outputs for a clean restart')
+    from .cleanup import add_arguments as cleanup_arguments
+    cleanup_arguments(cleanup)
     telluric_off = commands.add_parser('telluric-off', help='Restore original spectra in reports; retain telluric trials')
     telluric_off.add_argument('run', help='Reduction directory containing run.json')
     telluric = commands.add_parser('telluric', help='Opt-in experimental atmospheric fits; disabled in the nightly pipeline')
@@ -88,7 +91,7 @@ def main(argv=None):
     red.add_argument('--calibration-group', action='append', default=[])
     catalogues = commands.add_parser('acquisition-catalogues', help='Solve acquisition images locally and overlay NED/SDSS/AllWISE catalogues')
     catalogues.add_argument('night', help='One observing date YYYY-MM-DD')
-    catalogues.add_argument('--output', required=True, help='Fresh directory inside runs/DATE/efosc/QC/')
+    catalogues.add_argument('--output', required=True, help='Fresh directory inside runs/DATE/efospec/QC/')
     catalogues.add_argument('--project-root', default='.')
     catalogues.add_argument('--target', action='append', default=[], help='Exact transient name; repeatable')
     catalogues.add_argument('--catalogue', action='append', choices=['NED','SDSS','AllWISE'], help='Default: all three')
@@ -113,7 +116,7 @@ def main(argv=None):
     qc_source = qc.add_mutually_exclusive_group(required=True)
     qc_source.add_argument('--raw',help='Failed raw exposure')
     qc_source.add_argument('--product',help='Successful product with a recorded visual source identification')
-    qc.add_argument('--output', required=True, help='Fresh subfolder inside runs/YYYY-MM-DD/efosc/QC')
+    qc.add_argument('--output', required=True, help='Fresh subfolder inside runs/YYYY-MM-DD/efospec/QC')
     qc.add_argument('--reference-root')
     qc.add_argument('--test-recipes', action='store_true')
     background = commands.add_parser('background-extract', help='Experimental polynomial sky+host background and boxcar counts')
@@ -198,6 +201,9 @@ def main(argv=None):
         if args.command == 'telluric':
             from .telluric_night import execute
             return execute(args)
+        if args.command == 'cleanup-night':
+            from .cleanup import run
+            return run(args)
         if args.command == 'night':
             from .nightly import run_epoch,exit_code
             return exit_code(run_epoch(args.night,stage=args.stage,project_root=args.project_root,plot_python=args.plot_python,

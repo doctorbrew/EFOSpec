@@ -10,7 +10,7 @@ from test_epoch_report import epoch_page
 
 @pytest.fixture
 def typing_run(tmp_path):
-    run = tmp_path/'runs/2026-10-28/efosc/nightly/revision-1/reduction'
+    run = tmp_path/'runs/2026-10-28/efospec/nightly/revision-1/reduction'
     (run/'products').mkdir(parents=True)
     source = run/'products/ATtest.asci'; source.write_text('4000 1\n5000 2\n')
     product = source.with_suffix('.fits'); product.write_bytes(b'original spectrum')

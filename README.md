@@ -47,7 +47,7 @@ efospec download 2024-11-14 --with-calibrations
 python scripts/01_log_epoch.py 2024-11-14
 python scripts/02_reduce_epoch.py 2024-11-14
 python scripts/03_report_epoch.py 2024-11-14
-efospec gui runs/2024-11-14/efosc
+efospec gui runs/2024-11-14/efospec
 ```
 
 Skip downloading if inputs are already present. ESO access uses `ESO_USERNAME`
@@ -55,9 +55,29 @@ and `ESO_PASSWORD`, or `ESO_TOKEN`. Inspect the inventory before reducing.
 Run the report after a partial reduction (exit 1); resolve input/operational errors
 (exit 2). New reductions use same-night raw calibrations and standards.
 
-Open `runs/2024-11-14/efosc/index.html`; share `index-portable.html` from the same
+Open `runs/2024-11-14/efospec/index.html`; share `index-portable.html` from the same
 folder as a standalone report. GUI edits create new revisions; publishing them
 to the nightly report requires the [reviewed-geometry workflow](docs/epoch-workflow.md#gui-revisions-and-nightly-publication).
+
+## Restart a corrupt PypeIt reduction
+
+From the EFOSpec directory with `conda activate efospec`, stop pipeline jobs and
+close desktop reduction workers, then run:
+
+```sh
+# Show which PypeIt outputs would be moved, without changing any files.
+python scripts/cleanup_epoch.py 2024-11-14
+# Move all PypeIt outputs for this date into a recovery folder, preserving raw data and IRAF reductions.
+python scripts/cleanup_epoch.py 2024-11-14 --apply
+# Start a fresh reduction for this date using the original raw data.
+python scripts/reduce_epoch.py 2024-11-14
+```
+
+The recovery copy is saved under
+`runs/DATE/archive/cleanup-TIMESTAMP-ID/efospec/`; no products are deleted and
+no disk space is reclaimed. Other observing dates are unchanged.
+Equivalent command: `efospec cleanup-night DATE` (add `--apply` to move files).
+See [lock handling and recovery instructions](docs/epoch-workflow.md#clean-restart-after-a-corrupt-reduction).
 
 ## Files and outputs
 
@@ -70,7 +90,7 @@ ASCII, metadata and optional related files. Packaging does not upload data.
 | Location | Contents |
 | --- | --- |
 | `data/DATE/` | Original inputs |
-| `runs/DATE/efosc/` | PypeIt reductions, calibrations, QA, logs and HTML |
+| `runs/DATE/efospec/` | PypeIt reductions, calibrations, QA, logs and HTML |
 | `runs/DATE/pessto/` | IRAF working copies, products, lists and logs |
 
 Original inputs and previous revisions are preserved. Local observing data and
@@ -80,7 +100,7 @@ legacy engine and reference calibrations.
 ## Create the public and private upload tarballs
 
 Open the [2026-11-10 observing log](https://doctorbrew.github.io/EFOSpec/2026-11-10/#delivery),
-or a newly generated local `runs/YYYY-MM-DD/efosc/index.html`. **Science delivery**
+or a newly generated local `runs/YYYY-MM-DD/efospec/index.html`. **Science delivery**
 is directly below the observing log:
 
 1. Choose **Public**, **Private**, or **Do not export** for each target, and check
@@ -102,9 +122,9 @@ products from one revision; replace the paths below with your selected files:
 
 ```sh
 python scripts/package_wiserep.py init 2026-11-10 \
-  runs/2026-11-10/efosc/nightly/REVISION/reduction/products/TARGET1_f.fits \
-  runs/2026-11-10/efosc/nightly/REVISION/reduction/products/TARGET2_f.fits \
-  --output runs/2026-11-10/efosc/delivery-review.json
+  runs/2026-11-10/efospec/nightly/REVISION/reduction/products/TARGET1_f.fits \
+  runs/2026-11-10/efospec/nightly/REVISION/reduction/products/TARGET2_f.fits \
+  --output runs/2026-11-10/efospec/delivery-review.json
 ```
 
 Edit the JSON: set each spectrum's `visibility` to `public` or `private`, fill
@@ -116,11 +136,11 @@ Then one command builds both tarballs and checks their contents:
 
 ```sh
 python scripts/package_wiserep.py build \
-  runs/2026-11-10/efosc/delivery-review.json \
-  runs/2026-11-10/efosc/delivery/review-001
+  runs/2026-11-10/efospec/delivery-review.json \
+  runs/2026-11-10/efospec/delivery/review-001
 
 python scripts/package_wiserep.py validate \
-  runs/2026-11-10/efosc/delivery/review-001/*.tgz
+  runs/2026-11-10/efospec/delivery/review-001/*.tgz
 ```
 
 Share `pessto_YYYYMMDD_HH_MM_Rapid_upload_public.tgz` and

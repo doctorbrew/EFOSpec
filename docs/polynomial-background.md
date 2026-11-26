@@ -7,7 +7,7 @@ Delivered 2026-11-01: house-style QC for the four ambiguous October exposures, a
 From the EFOSpec checkout and the existing `efospec` environment:
 
 ```sh
-efospec background-gui 'runs/2026-10-28/efosc/QC/EFOSC.2026-10-29T05:12:40.988/review.json'
+efospec background-gui 'runs/2026-10-28/efospec/QC/EFOSC.2026-10-29T05:12:40.988/review.json'
 ```
 
 - Choose a candidate, or load `C3-background-degree2.json` from this QC folder.
@@ -23,15 +23,15 @@ efospec background-gui 'runs/2026-10-28/efosc/QC/EFOSC.2026-10-29T05:12:40.988/r
 - Failed links and recovery entries in the Spectra exposure list open the native aperture/background editor in **Spectra**. Select a candidate, edit aperture and two finite 15–50 pixel background bands, preview, then Extract new revision.
 - Same-night native failures no longer require archive calibration packets. The loader verifies the raw hash, calibration masters, exact processed detector crop and saved wavelength map before editing; recipes bind those inputs.
 - Native previews use the processing inverse variance and bad-pixel mask. Wavelength failures remain masked in exported counts. The default remains experimental polynomial boxcar counts. The optional Checked native PypeIt + flux recovery control reruns native extraction with the explicit bands and a verified same-night response; it refuses wavelength-failed inputs and saves a separate revision. Neither route establishes validated host subtraction.
-- macOS Cocoa interactions for all four failed science exposures, a real extraction, exact saved-recipe replay, cancellation and unchanged parent products are recorded in `runs/2026-10-28/efosc/nightly/20261113T141208Z-6fee4b/QC/gui-recovery/verification.json`. Linux native interaction verification has not been repeated for this change.
+- macOS Cocoa interactions for all four failed science exposures, a real extraction, exact saved-recipe replay, cancellation and unchanged parent products are recorded in `runs/2026-10-28/efospec/nightly/20261113T141208Z-6fee4b/QC/gui-recovery/verification.json`. Linux native interaction verification has not been repeated for this change.
 
 ## Reproducible science contract
 
 ```sh
 efospec background-extract runs/native-debug-20261101/recovery-run \
   --failed-raw EFOSC.2026-10-29T05:12:40.988.fits \
-  --recipe runs/2026-10-28/efosc/QC/EFOSC.2026-10-29T05:12:40.988/C3-background-degree2.json \
-  --output runs/2026-10-28/efosc/QC/C3-background-new-revision
+  --recipe runs/2026-10-28/efospec/QC/EFOSC.2026-10-29T05:12:40.988/C3-background-degree2.json \
+  --output runs/2026-10-28/efospec/QC/C3-background-new-revision
 ```
 
 The historical `native-debug-20261101/recovery-run` path is the retained failed-exposure evidence used by these recipes. Recipes bind the raw file, saved arrays and calibration manifest by SHA-256. Output directories must be new.
@@ -57,7 +57,7 @@ The user explicitly confirmed that C3 and these background bands apply to **SN20
 
 These medians are per spectral row, not integrated/calibrated flux. Degree 2 is 25.2% below degree 1; degree 3 is 6.5% below degree 2. Lower chi² alone does not validate host removal. Fit-order sensitivity remains a material uncertainty beyond the formal errors.
 
-See `runs/2026-10-28/efosc/QC/EFOSC.2026-10-29T05:12:40.988/C3-background-review.html`. The `C3-polynomial-degree{1,2,3}-v2` directories are the compared experiments; the initial degree-2 directory is retained as superseded processing history. All new/regenerated scientific figures use the house helper, LaTeX, Hiroshige, inward ticks, PDF and 300-dpi JPG, with PNG report previews. Plot configuration is scoped so it cannot leak into PypeIt's own diagnostic rendering.
+See `runs/2026-10-28/efospec/QC/EFOSC.2026-10-29T05:12:40.988/C3-background-review.html`. The `C3-polynomial-degree{1,2,3}-v2` directories are the compared experiments; the initial degree-2 directory is retained as superseded processing history. All new/regenerated scientific figures use the house helper, LaTeX, Hiroshige, inward ticks, PDF and 300-dpi JPG, with PNG report previews. Plot configuration is scoped so it cannot leak into PypeIt's own diagnostic rendering.
 
 ## Method references
 
@@ -67,7 +67,7 @@ See `runs/2026-10-28/efosc/QC/EFOSC.2026-10-29T05:12:40.988/C3-background-review
 
 These references motivate local fitting; they do not validate this exposure's source identity or prove that a polynomial adequately describes its host.
 
-Native-flux follow-up evidence: `runs/2026-10-28/efosc/nightly/20261113T141208Z-6fee4b/QC/recovery-followup-20261113/`. SN2026ayt passes bounded native extraction and wavelength checks. SN2026abgb's nearby-band trial completes but samples the broad neighbour's wing; it remains an unselected diagnostic trial. AT2026agvs/AT2026agzp remain wavelength-blocked. The report retains the original outcomes beside the checked manual recovery. Telluric extrapolation remains review-only.
+Native-flux follow-up evidence: `runs/2026-10-28/efospec/nightly/20261113T141208Z-6fee4b/QC/recovery-followup-20261113/`. SN2026ayt passes bounded native extraction and wavelength checks. SN2026abgb's nearby-band trial completes but samples the broad neighbour's wing; it remains an unselected diagnostic trial. AT2026agvs/AT2026agzp remain wavelength-blocked. The report retains the original outcomes beside the checked manual recovery. Telluric extrapolation remains review-only.
 
 ## Nearby-band search (implemented)
 

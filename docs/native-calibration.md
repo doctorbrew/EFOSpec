@@ -1,6 +1,6 @@
 # Native calibration: inputs and status
 
-New processing outputs belong in `runs/DATE/efosc/`; IRAF attempts belong in
+New processing outputs belong in `runs/DATE/efospec/`; IRAF attempts belong in
 `runs/DATE/pessto/`. Concrete historical paths below are retained evidence,
 not relocated products. See [current output layout](epoch-workflow.md#output-layout).
 

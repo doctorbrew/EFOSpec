@@ -18,7 +18,7 @@ def save(path, value):
 
 @pytest.fixture
 def epoch_page(tmp_path):
-    root = tmp_path/'runs/2026-10-28/efosc'
+    root = tmp_path/'runs/2026-10-28/efospec'
     revision = root/'nightly/revision-1'
     run = revision/'reduction'
     save(root/'nightly/current.json', {'night':'2026-10-28', 'revision':'revision-1'})
@@ -79,7 +79,7 @@ def test_review_report_keeps_selected_page_and_pointer_unchanged(epoch_page):
     assert 'The selected nightly reduction is unchanged' in (revision/'index.html').read_text()
     assert all(sha256(p)==h for p,h in before.items())
     with pytest.raises(ValueError,match='belong to this observing night'):
-        build_epoch_page('2026-10-28',project,revision_dir=project/'runs/2026-10-29/efosc/QC/other')
+        build_epoch_page('2026-10-28',project,revision_dir=project/'runs/2026-10-29/efospec/QC/other')
 
 
 class Assets(HTMLParser):

@@ -102,7 +102,7 @@ def test_comparison_discovers_pessto_folder_and_deduplicates_legacy_copy(tmp_pat
     product=write_product(iraf/'iraf.fits');(raw/'old-copy.fits').write_bytes(product.read_bytes())
     f=frame(header(),str(raw/'raw.fits'));f.update(role='science',sha256='rawhash')
     monkeypatch.setattr(module,'inventory',lambda roots:dict(frames=[f],errors=[],identity_conflicts={}))
-    run=tmp_path/'runs/2024-11-14/efosc/nightly/revision/reduction';run.mkdir(parents=True)
+    run=tmp_path/'runs/2024-11-14/efospec/nightly/revision/reduction';run.mkdir(parents=True)
     (run/'run.json').write_text(json.dumps(dict(night='2024-11-14',pypeit_version='3.0.0',execution_status='partial',results=[])))
     record=compare_run(run,raw,run.parent/'iraf-comparison')
     assert len(record['candidates'])==1

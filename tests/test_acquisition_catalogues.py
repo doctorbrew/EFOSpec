@@ -171,7 +171,7 @@ def test_acquisition_qc_to_offline_report_preserves_raw_data_and_rejects_tamperi
     from efospec.inventory import sha256
     from PIL import Image
     from types import SimpleNamespace
-    night='2026-10-29';root=tmp_path/'runs'/night/'efosc';revision=root/'nightly/revision'
+    night='2026-10-29';root=tmp_path/'runs'/night/'efospec';revision=root/'nightly/revision'
     rawdir=tmp_path/'data'/night;rawdir.mkdir(parents=True)
     revision.mkdir(parents=True);(revision/'reduction').mkdir()
     def save(p,value):p.write_text(json.dumps(value))

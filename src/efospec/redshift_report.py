@@ -4,6 +4,7 @@ from pathlib import Path
 import math
 from .inventory import sha256
 from .field_catalogues import redshift_label
+from .paths import file_hashes_match
 
 
 def evidence_inside_night(path, root):
@@ -26,7 +27,7 @@ def load_redshifts(page, parent, rescue=None, *, manuals=()):
     expected={str(parent/'run.json'):sha256(parent/'run.json')}
     if rescue:expected[str(rescue/'run.json')]=sha256(rescue/'run.json')
     for manual in manuals:expected[str(manual/'run.json')]=sha256(manual/'run.json')
-    if manifest['night']!=page.night or manifest['parent_run_sha256']!=expected:
+    if manifest['night']!=page.night or not file_hashes_match(manifest['parent_run_sha256'], expected):
         page.redshift_status='previous_revision'
         page.previous_redshift_raws={Path(item['raw']).name for item in manifest.get('results',[]) if item.get('raw')}
         return {}

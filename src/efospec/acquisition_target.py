@@ -64,7 +64,7 @@ def saved_astrometry(raw):
     raw = Path(raw).resolve()
     if raw.parent.parent.name != 'data':
         return None
-    root = raw.parent.parent.parent/'runs'/raw.parent.name/'efosc'
+    root = raw.parent.parent.parent/'runs'/raw.parent.name/'efospec'
     pointer = root/'QC/target-astrometry-current.json'
     if pointer.is_file():
         current = json.loads(pointer.read_text())

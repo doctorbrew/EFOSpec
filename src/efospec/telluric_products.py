@@ -1,7 +1,7 @@
 """Explicit, hash-bound before/after telluric products for read-only reports."""
 import json
 from pathlib import Path
-from .paths import saved_efosc_root, dated_root
+from .paths import saved_efospec_root, dated_root
 
 from .inventory import sha256
 
@@ -15,7 +15,7 @@ def _pairs(run, manifest, expected_digest=None):
             record.get('source_run_sha256')!=sha256(run/'run.json') or
             Path(record['source_run']).resolve()!=(run/'run.json').resolve()):
         raise ValueError('telluric products belong to a different reduction revision')
-    dated=saved_efosc_root(run)
+    dated=saved_efospec_root(run)
     if dated_root(run).name != source['night'] or not manifest.is_relative_to(dated):
         raise ValueError('telluric products must belong to this dated run directory')
     results={Path(r['product']).name:r for r in source['results'] if r.get('role')=='science'}
@@ -73,7 +73,7 @@ def disable_for_report(run):
         archive=run/'telluric-selections';archive.mkdir(exist_ok=True)
         saved=archive/(previous+'.json')
         if not saved.exists():saved.write_bytes(selection.read_bytes())
-        dated=saved_efosc_root(run)
+        dated=saved_efospec_root(run)
         for page in (run/'index.html',dated/'index.html',dated/'index-portable.html'):
             if page.is_file():
                 saved=archive/(sha256(page)+'.html')
@@ -136,7 +136,7 @@ def render_selected(run, *, render_plots=True):
     import sys
     run=Path(run).resolve();pairs=selected_pairs(run)
     source=json.loads((run/'run.json').read_text())
-    dated=saved_efosc_root(run)
+    dated=saved_efospec_root(run)
     if not pairs and render_plots:
         # Earlier paired-only rendering may never have written original figures.
         # Generate only missing target figures; accepted scientific inputs stay fixed.
@@ -171,4 +171,4 @@ def render_selected(run, *, render_plots=True):
     pointer=json.loads((dated/'nightly/current.json').read_text())
     current=(dated/'nightly'/pointer['revision']).resolve()
     return build_epoch_page(source['night'],dated_root(run).parent.parent,
-        revision_dir=None if current==run.parent and dated.name=='efosc' else run.parent)
+        revision_dir=None if current==run.parent and dated.name=='efospec' else run.parent)

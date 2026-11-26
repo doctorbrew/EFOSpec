@@ -16,8 +16,8 @@ Use the EFOSpec environment and a fresh directory inside that night's QC revisio
 
 ```sh
 python -m efospec sky-diagnose \
-  runs/2026-10-28/efosc/nightly/REV/reduction/wavelength-review/exposures/RAW/sky-diagnostics/packet.json \
-  --output runs/2026-10-28/efosc/nightly/REV/QC/sky-diagnosis-NEW \
+  runs/2026-10-28/efospec/nightly/REV/reduction/wavelength-review/exposures/RAW/sky-diagnostics/packet.json \
+  --output runs/2026-10-28/efospec/nightly/REV/QC/sky-diagnosis-NEW \
   --trial-correction
 ```
 

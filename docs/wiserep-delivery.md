@@ -8,7 +8,7 @@ target names.
 
 ## Export from the observing log
 
-Open `runs/YYYY-MM-DD/efosc/index.html` or its portable HTML copy. Newly generated
+Open `runs/YYYY-MM-DD/efospec/index.html` or its portable HTML copy. Newly generated
 reports include **Science delivery** immediately below the observing log. The
 [2026-11-10 published log](https://doctorbrew.github.io/EFOSpec/2026-11-10/#delivery)
 also includes these controls.
@@ -57,13 +57,13 @@ recursive glob over older reductions, failed extractions and standard stars.
 
 ```sh
 python scripts/package_wiserep.py init 2026-11-10 \
-  runs/2026-11-10/efosc/nightly/REVISION/reduction/products/SELECTED_f.fits \
-  --output runs/2026-11-10/efosc/delivery-review.json
+  runs/2026-11-10/efospec/nightly/REVISION/reduction/products/SELECTED_f.fits \
+  --output runs/2026-11-10/efospec/delivery-review.json
 
 # Edit delivery-review.json and complete the review below, then:
 python scripts/package_wiserep.py build \
-  runs/2026-11-10/efosc/delivery-review.json \
-  runs/2026-11-10/efosc/delivery/review-001
+  runs/2026-11-10/efospec/delivery-review.json \
+  runs/2026-11-10/efospec/delivery/review-001
 ```
 
 Both commands also work as `python -m efospec.wiserep init …` / `build …`.
@@ -170,7 +170,7 @@ there is exactly one `.txt` metadata file. macOS `._*` files are not generated.
 
 ```sh
 python scripts/package_wiserep.py validate --strict \
-  runs/2026-11-10/efosc/delivery/review-001/*.tgz
+  runs/2026-11-10/efospec/delivery/review-001/*.tgz
 
 # Optional: verify the supplied reference examples locally
 python scripts/package_wiserep.py validate wiserep_tns_upload/*.tgz

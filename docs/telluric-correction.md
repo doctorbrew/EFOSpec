@@ -8,7 +8,7 @@ and `efospec telluric` command remain available; science copies require
 To return an already attached report to its original spectra:
 
 ```sh
-efospec telluric-off runs/2026-10-28/efosc/nightly/REV/reduction
+efospec telluric-off runs/2026-10-28/efospec/nightly/REV/reduction
 ```
 
 This archives the previous presentation selection, preserves both versions and
@@ -23,7 +23,7 @@ Those checks do not establish the absolute flux scale or correct slit losses.
 Switching telluric correction off leaves atmospheric absorption in the original
 spectrum and does not change the separate flux-calibration limitations.
 
-New processing outputs belong in `runs/DATE/efosc/`; IRAF attempts belong in
+New processing outputs belong in `runs/DATE/efospec/`; IRAF attempts belong in
 `runs/DATE/pessto/`. Concrete historical paths below are retained evidence,
 not relocated products. See [current output layout](epoch-workflow.md#output-layout).
 
@@ -166,11 +166,11 @@ Outputs must be fresh directories. The run's night must match the requested date
 ```sh
 python -m efospec telluric 2026-10-28 \
   --run runs/2026-10-28/QC/nightly-integration-20261112/reduction/run.json \
-  --output runs/2026-10-28/efosc/QC/telluric-NEW \
+  --output runs/2026-10-28/efospec/QC/telluric-NEW \
   --config configs/telluric_efosc.par --apply-science
 
 # Add --review-extrapolation only to produce explicitly unvalidated review copies.
-python scripts/plot_telluric_validation.py runs/2026-10-28/efosc/QC/telluric-NEW/run.json
+python scripts/plot_telluric_validation.py runs/2026-10-28/efospec/QC/telluric-NEW/run.json
 python -m pytest -q tests/test_telluric.py tests/test_native_acceptance.py \
   tests/test_flux_validation.py tests/test_daily_reduction.py
 ```
@@ -181,7 +181,7 @@ then regenerate its final spectrum plots and dated log in one command:
 ```sh
 python -m efospec telluric 2026-10-28 \
   --run runs/2026-10-28/nightly/20261110T170405Z-b97078/reduction/run.json \
-  --output runs/2026-10-28/efosc/QC/telluric-NEW \
+  --output runs/2026-10-28/efospec/QC/telluric-NEW \
   --config configs/telluric_efosc.par --apply-science \
   --review-extrapolation --attach-to-report
 ```

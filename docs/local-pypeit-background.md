@@ -108,7 +108,7 @@ python scripts/build_epoch_fieldnotes.py 2026-10-28
 
 This checks 30, 40 and 50 **spatial pixels** as alternatives without selecting
 a default or extracting new spectra. Outputs live under
-`runs/2026-10-28/efosc/QC/local-background-<revision>/`.
+`runs/2026-10-28/efospec/QC/local-background-<revision>/`.
 
 An explicit `--width-pixels N` runs linear
 and quadratic PypeIt candidate trials in fresh revisions; `--degrees 1 2 3`

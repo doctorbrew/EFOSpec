@@ -7,7 +7,7 @@ from html import escape
 import json
 import os
 from pathlib import Path
-from .paths import efosc_root, dated_root
+from .paths import efospec_root, dated_root
 import re
 import shutil
 import subprocess
@@ -185,7 +185,7 @@ def _report(state, output):
         else:qc_code=0
         review=packet/'review.json'
         q=json.loads(review.read_text()) if review.exists() else {}
-        if qc_code or q.get('status')!='complete' or q.get('raw_name')!=raw or q.get('parent_run')!=str(run_dir):
+        if qc_code or q.get('status')!='complete' or q.get('raw_name')!=raw or Path(q.get('parent_run') or '').resolve()!=run_dir.resolve():
             failures.append(raw)
         else:packets.append(str(packet/'index.html'))
     for result in json.loads(manifest.read_text())['results']:
@@ -196,7 +196,7 @@ def _report(state, output):
             output,state['night']+'-QC-'+Path(raw).stem+'.log')
         review=packet/'review.json'
         q=json.loads(review.read_text()) if review.exists() else {}
-        if qc_code or q.get('status')!='complete' or q.get('raw_name')!=raw or q.get('parent_run')!=str(run_dir):
+        if qc_code or q.get('status')!='complete' or q.get('raw_name')!=raw or Path(q.get('parent_run') or '').resolve()!=run_dir.resolve():
             failures.append(raw)
         else:packets.append(str(packet/'index.html'))
     return {'status':'complete' if code==0 and rendered.get('status')=='complete' and not failures and not native_plot_error and not counts_plot_error and not comparison_error else 'partial',
@@ -253,7 +253,7 @@ def run_epoch(night, *, stage='all', project_root='.', plot_python=None, native_
     if stage not in {'all','log','reduce','report'}:raise ValueError('unknown epoch stage')
     project=Path(project_root).resolve();input_dir=project/'data'/night
     if not input_dir.is_dir():raise ValueError(f'{night}: raw directory missing: {input_dir}')
-    root=efosc_root(project, night)/'nightly';root.mkdir(parents=True,exist_ok=True)
+    root=efospec_root(project, night)/'nightly';root.mkdir(parents=True,exist_ok=True)
     lock=root/'.running'
     try:handle=lock.open('x')
     except FileExistsError:raise ValueError(f'{night}: a nightly stage is already running; inspect {lock}') from None

@@ -24,8 +24,8 @@ def test_archive_lists_prior_runs_but_omits_legacy_and_dependency_only_layouts(t
     from efospec.epoch_report import EpochPage
     old=tmp_path/'2026-10-28/nightly/previous/reduction';old.mkdir(parents=True)
     (old/'run.json').write_text(json.dumps({'results':[{}], 'errors':[], 'skipped':[]}))
-    current=tmp_path/'2026-10-28/efosc/nightly/current';current.mkdir(parents=True)
-    content=EpochPage(tmp_path/'2026-10-28/efosc').archive(current)
+    current=tmp_path/'2026-10-28/efospec/nightly/current';current.mkdir(parents=True)
+    content=EpochPage(tmp_path/'2026-10-28/efospec').archive(current)
     assert 'Retained legacy layout:' not in content
     assert (old/'run.json').is_file()
     prior=current.parent/'previous/reduction';(prior/'products').mkdir(parents=True)

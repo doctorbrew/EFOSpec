@@ -11,8 +11,8 @@ def test_gui_command_is_native_and_allows_file_picker(monkeypatch):
     monkeypatch.setattr(desktop,'launch',lambda *args:calls.append(args) or 0)
     assert main(['gui'])==0
     assert calls==[(None,None)]
-    assert main(['gui','runs/2024-11-14/efosc','--reference-root','ref'])==0
-    assert calls[-1]==('runs/2024-11-14/efosc','ref')
+    assert main(['gui','runs/2024-11-14/efospec','--reference-root','ref'])==0
+    assert calls[-1]==('runs/2024-11-14/efospec','ref')
 
 
 def test_raw_cli_passes_explicit_positions_and_cache(monkeypatch,capsys):

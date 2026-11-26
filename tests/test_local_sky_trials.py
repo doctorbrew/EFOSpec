@@ -8,7 +8,7 @@ from efospec import local_sky_trials
 
 @pytest.mark.parametrize('code', ['source_selection_required', 'background_support_required'])
 def test_recoverable_failure_reaches_hash_verified_exposure(tmp_path, monkeypatch, code):
-    nightly = tmp_path/'runs/2026-10-28/efosc/nightly'
+    nightly = tmp_path/'runs/2026-10-28/efospec/nightly'
     run = nightly/'revision/reduction'
     run.mkdir(parents=True)
     (nightly/'current.json').write_text(json.dumps({'revision': 'revision'}))

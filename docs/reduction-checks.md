@@ -1,6 +1,6 @@
 # Integrated reduction checks
 
-New processing outputs belong in `runs/DATE/efosc/`; IRAF attempts belong in
+New processing outputs belong in `runs/DATE/efospec/`; IRAF attempts belong in
 `runs/DATE/pessto/`. Concrete historical paths below are retained evidence,
 not relocated products. See [current output layout](epoch-workflow.md#output-layout).
 
@@ -141,7 +141,7 @@ extraction do not independently validate host subtraction.
 
 ## Verified 5 November 2026 — both complete observing nights
 
-- Both final `runs/YYYY-MM-DD/efosc/index.html` pages retain the approved 29 October
+- Both final `runs/YYYY-MM-DD/efospec/index.html` pages retain the approved 29 October
   layout, with the **ePESSTO+ / EFOSpec** masthead. Calibration checks are ordered
   AT, SN, then other sources; failed or unvalidated checks are red. Selected
   calibration manifests are included even when stored outside `calibrations/`.

@@ -77,6 +77,30 @@ def test_dated_revision_redshift_paths_are_confined(tmp_path):
     assert not evidence_inside_night(root/'QC/../../outside.json',root)
 
 
+def test_redshift_provenance_survives_folder_rename_but_rejects_changed_run(tmp_path):
+    from efospec.epoch_report import EpochPage
+    from efospec.redshift_report import load_redshifts
+    from efospec.inventory import sha256
+    old = tmp_path/'runs/2026-10-28/efosc'
+    run = old/'nightly/revision/reduction'
+    run.mkdir(parents=True)
+    (run/'run.json').write_text('{}')
+    qc = old/'QC';qc.mkdir()
+    manifest = qc/'redshifts.json'
+    manifest.write_text(json.dumps(dict(night='2026-10-28', results=[],
+        parent_run_sha256={str(run/'run.json'): sha256(run/'run.json')})))
+    (qc/'redshift-current.json').write_text(json.dumps(dict(night='2026-10-28',
+        path='QC/redshifts.json', sha256=sha256(manifest))))
+    new = old.with_name('efospec')
+    old.rename(new);old.symlink_to('efospec', target_is_directory=True)
+    page = EpochPage(new)
+    load_redshifts(page, run.resolve())
+    assert page.redshift_status == 'current'
+    (run/'run.json').write_text('{"changed": true}')
+    load_redshifts(page, run.resolve())
+    assert page.redshift_status == 'previous_revision'
+
+
 def test_redshift_uses_selected_manual_once_instead_of_main_and_rescue(tmp_path):
     from efospec.redshift_run import selected_science
     row=dict(raw=str(tmp_path/'science.fits'),raw_sha256='unchanged',role='science')

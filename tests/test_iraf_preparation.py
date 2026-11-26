@@ -12,7 +12,7 @@ def test_prepare_defaults_preserve_raw_and_efosc_outputs(tmp_path):
         shutil.copy2(source/name,manual/name)
     raw=project/'data/2024-11-14';raw.mkdir(parents=True)
     frame=raw/'EFOSC.test.fits';frame.write_bytes(b'raw bytes are copied without rewriting')
-    efosc=project/'runs/2024-11-14/efosc';efosc.mkdir(parents=True)
+    efosc=project/'runs/2024-11-14/efospec';efosc.mkdir(parents=True)
     report=efosc/'index.html';report.write_text('existing EFOSpec report')
     for number in (1,2):
         subprocess.run([sys.executable,str(manual/'prepare_iraf.py'),'2024-11-14'],check=True,capture_output=True)

@@ -50,14 +50,34 @@ def test_missing_or_non_reduction_record_is_rejected(tmp_path):
         resolve_session(tmp_path)
 
 
-def test_date_container_prefers_new_efosc_namespace(tmp_path):
+def test_date_container_prefers_new_efospec_namespace(tmp_path):
     night=tmp_path/'runs/2026-10-28'
-    for folder in (night,night/'efosc'):
+    for folder in (night,night/'efosc',night/'efospec'):
         revision=folder/'nightly/revision'
         save(folder/'nightly/current.json',{'night':'2026-10-28','revision':'revision'})
         save(revision/'night.json',{'night':'2026-10-28'})
         save(revision/'reduction/run.json',{'input_dir':'/data/2026-10-28','results':[],'errors':[]})
-    assert resolve_session(night).run==night/'efosc/nightly/revision/reduction'
-    assert resolve_session(night/'efosc').run==resolve_session(night).run
+    assert resolve_session(night).run==night/'efospec/nightly/revision/reduction'
+    assert resolve_session(night/'efospec').run==resolve_session(night).run
     # Explicitly opening a historical run continues to work without migration.
     assert resolve_session(night/'nightly/revision/reduction').run==night/'nightly/revision/reduction'
+
+
+def test_renamed_run_keeps_saved_review_associations(tmp_path):
+    night = tmp_path/'runs/2026-10-28'
+    old = night/'efosc'
+    revision = old/'nightly/revision'
+    run = revision/'reduction'
+    save(old/'nightly/current.json', {'night': night.name, 'revision': 'revision'})
+    save(revision/'night.json', {'night': night.name})
+    save(run/'run.json', {'input_dir': '/data/2026-10-28', 'results': [], 'errors': []})
+    packet = revision/'QC/science/review.json'
+    save(packet, {'parent_run': str(run), 'raw_name': 'science.fits'})
+    assert resolve_session(night).run == run
+    old.rename(night/'efospec')
+    old.symlink_to('efospec', target_is_directory=True)
+    for selected in (night, old, night/'efospec', run, packet):
+        session = resolve_session(selected)
+        assert session.run == night/'efospec/nightly/revision/reduction'
+        assert session.reviews == (packet.resolve(),)
+        assert session.warnings == ()

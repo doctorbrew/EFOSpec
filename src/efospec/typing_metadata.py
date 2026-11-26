@@ -300,4 +300,4 @@ def refresh_report(path):
     from .paths import dated_root
     dated = dated_root(run)
     return build_epoch_page(dated.name, dated.parent.parent,
-                            revision_dir=None if root.name == "efosc" else run.parent)
+                            revision_dir=None if root.name == "efospec" else run.parent)

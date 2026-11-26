@@ -14,7 +14,7 @@ from efospec.telluric_products import select_for_report,selected_pairs,read_over
 
 @pytest.fixture
 def paired_run(tmp_path):
-    root=tmp_path/'runs/2026-10-28/efosc';run=root/'nightly/v1/reduction';revision=root/'QC/telluric-v1'
+    root=tmp_path/'runs/2026-10-28/efospec';run=root/'nightly/v1/reduction';revision=root/'QC/telluric-v1'
     (run/'products').mkdir(parents=True);(revision/'products').mkdir(parents=True);(revision/'uncorrected').mkdir()
     source=run/'products/transient.fits';after=revision/'products'/source.name;before=revision/'uncorrected'/source.name
     data=np.ones((4,1,5))*1e-16;mask=np.ones((1,5),np.uint8)

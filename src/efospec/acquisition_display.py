@@ -14,7 +14,7 @@ def saved_candidates(raw):
     from .inventory import sha256
     raw=Path(raw).resolve()
     if raw.parent.parent.name!='data':return []
-    root=raw.parent.parent.parent/'runs'/raw.parent.name/'efosc'
+    root=raw.parent.parent.parent/'runs'/raw.parent.name/'efospec'
     pointer=root/'QC/catalogue-current.json'
     if not pointer.exists():return []
     current=json.loads(pointer.read_text())

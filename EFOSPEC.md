@@ -50,12 +50,12 @@ python -m efospec download 2026-10-29 --programme 117.29T8.002 --with-calibratio
 ```sh
 conda activate efospec
 PYTHONPATH=src MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
-  python -m efospec reduce-rapid ../pessto/2024-11-14 --output runs/2024-11-14/efosc
+  python -m efospec reduce-rapid ../pessto/2024-11-14 --output runs/2024-11-14/efospec
 ```
 
 - Use a **fresh output directory**; existing runs are refused.
 - One target: `--target SN2023xxj`; repeat the option for more targets.
-- Automatic report: open `runs/2024-11-14/efosc/index.html`.
+- Automatic report: open `runs/2024-11-14/efospec/index.html`.
 - Each exposure: spectrum, 2D trace, spatial profiles, PDF/JPG downloads.
 - Repeated targets receive separate entries.
 - Failures and skipped exposures remain recorded.
@@ -78,8 +78,8 @@ PYTHONPATH=src MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
 - Plotting failure: spectra survive; CLI returns nonzero; inspect `report-generation.log`.
 
 ```sh
-PYTHONPATH=src python -m efospec report runs/2024-11-14/efosc
-PYTHONPATH=src python -m efospec report runs/2024-11-14/efosc --existing-plots
+PYTHONPATH=src python -m efospec report runs/2024-11-14/efospec
+PYTHONPATH=src python -m efospec report runs/2024-11-14/efospec --existing-plots
 ```
 
 ## Outputs
@@ -104,7 +104,7 @@ PYTHONPATH=src python -m efospec report runs/2024-11-14/efosc --existing-plots
 ## Legacy comparisons and individual plots
 
 ```sh
-python scripts/preview_spectrum_style.py --run runs/2024-11-14/efosc --target SN2023xxj
+python scripts/preview_spectrum_style.py --run runs/2024-11-14/efospec --target SN2023xxj
 ```
 
 - Omit `--target` to render every exposure.
@@ -115,7 +115,7 @@ python scripts/preview_spectrum_style.py --run runs/2024-11-14/efosc --target SN
 - The older `qa` command remains a demonstration-specific comparison report.
 
 ```sh
-PYTHONPATH=src python -m efospec qa runs/2024-11-14/efosc --legacy ../pessto/2024-11-14
+PYTHONPATH=src python -m efospec qa runs/2024-11-14/efospec --legacy ../pessto/2024-11-14
 ```
 
 - Standard checks: reduce separately with `--include-standards --target Feige110 --target L745a`.
@@ -123,7 +123,7 @@ PYTHONPATH=src python -m efospec qa runs/2024-11-14/efosc --legacy ../pessto/202
 - Older runs without sky masks: recover once in the original PypeIt environment.
 
 ```sh
-PYTHONPATH=src MPLBACKEND=Agg python -m efospec.sky_regions runs/2024-11-14/efosc
+PYTHONPATH=src MPLBACKEND=Agg python -m efospec.sky_regions runs/2024-11-14/efospec
 ```
 
 - Recovery must reproduce all recorded candidate positions before saving.
@@ -165,7 +165,7 @@ PYTHONPATH=src python -m unittest discover -s tests -v
 
 ## Typing metadata
 
-Use `efospec typing-metadata show|init|edit|report runs/2026-10-28/efosc` for
+Use `efospec typing-metadata show|init|edit|report runs/2026-10-28/efospec` for
 revision-bound host/adopted-redshift annotations and saved-data HTML refresh.
 The desktop **Host & redshift** tab uses the same validation and revision store.
 See [host and redshift workflow](docs/typing-metadata.md).

@@ -17,7 +17,7 @@ def verify(night,project_root='.'):
     from datetime import date
     from playwright.sync_api import sync_playwright
     if date.fromisoformat(night).isoformat()!=night:raise ValueError('invalid observing date')
-    root=Path(project_root).resolve()/'runs'/night/'efosc'
+    root=Path(project_root).resolve()/'runs'/night/'efospec'
     page_path=root/'index.html';portable=root/'index-portable.html'
     manifest=json.loads((root/'report-assets/index-manifest.json').read_text())
     assert sha256(portable)==manifest['portable_sha256']

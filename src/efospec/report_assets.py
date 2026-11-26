@@ -8,7 +8,7 @@ import hashlib
 import json
 from io import BytesIO
 from pathlib import Path
-from .paths import efosc_root
+from .paths import efospec_root
 import re
 
 DATA_URL=re.compile(r'data:([a-zA-Z0-9.+/-]+);base64,([A-Za-z0-9+/]*={0,2})')
@@ -131,7 +131,7 @@ def compact_existing_report(night, *, project_root='.'):
     from datetime import date,datetime,timezone
     from shutil import copy2
     if date.fromisoformat(night).isoformat()!=night:raise ValueError('invalid observing night')
-    root=efosc_root(project_root, night);path=root/'index.html'
+    root=efospec_root(project_root, night);path=root/'index.html'
     html=path.read_text()
     if 'data-report-assets="local"' in html:raise ValueError('report is already compact')
     archive=root/'archive/reports';archive.mkdir(parents=True,exist_ok=True)

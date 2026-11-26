@@ -1,6 +1,6 @@
 # Experimental raw-only reduction
 
-New processing outputs belong in `runs/DATE/efosc/`; IRAF attempts belong in
+New processing outputs belong in `runs/DATE/efospec/`; IRAF attempts belong in
 `runs/DATE/pessto/`. Concrete historical paths below are retained evidence,
 not relocated products. See [current output layout](epoch-workflow.md#output-layout).
 
@@ -61,7 +61,7 @@ efospec reduce-native data/YYYY-MM-DD \
 python scripts/validate_native_delivery.py data/YYYY-MM-DD \
   --science SCIENCE.fits --standard STANDARD.fits \
   --science-position 548 --standard-position 548 \
-  --output runs/YYYY-MM-DD/efosc/validation/native-check
+  --output runs/YYYY-MM-DD/efospec/validation/native-check
 ```
 
 - Replace filenames and positions after inspecting the exposures; positions are not target identifications.

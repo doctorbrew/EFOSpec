@@ -3,10 +3,10 @@ from datetime import date
 from pathlib import Path
 
 
-def efosc_root(project, night):
+def efospec_root(project, night):
     if date.fromisoformat(night).isoformat() != night:
         raise ValueError('observing date must be YYYY-MM-DD')
-    return Path(project).resolve() / 'runs' / night / 'efosc'
+    return Path(project).resolve() / 'runs' / night / 'efospec'
 
 
 def dated_root(path):
@@ -22,12 +22,24 @@ def dated_root(path):
     raise ValueError(f'Not inside a dated runs directory: {path}')
 
 
-def saved_efosc_root(path):
+def saved_efospec_root(path):
     """Resolve new EFOSpec runs and explicitly opened historical runs."""
     path = Path(path).resolve()
     dated = dated_root(path)
-    if path.is_relative_to(dated / 'efosc'):
-        return dated / 'efosc'
+    for name in ('efospec', 'efosc'):
+        if path.is_relative_to(dated / name):
+            return dated / name
     if path.is_relative_to(dated / 'pessto'):
         raise ValueError('An IRAF output directory is not an EFOSpec run')
     return dated
+
+
+# Retain imports used by older observer scripts; new output uses efospec.
+efosc_root = efospec_root
+saved_efosc_root = saved_efospec_root
+
+
+def file_hashes_match(saved, expected):
+    """Compare provenance through compatibility links without rewriting records."""
+    return {(Path(p).resolve(), h) for p, h in saved.items()} == {
+        (Path(p).resolve(), h) for p, h in expected.items()}

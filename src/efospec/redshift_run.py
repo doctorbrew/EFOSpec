@@ -1,6 +1,6 @@
 """One-night redshift evidence with independent NED and spectral measurements."""
 from pathlib import Path
-from .paths import efosc_root
+from .paths import efospec_root, file_hashes_match
 from .native_sky import wavelength_accepted
 import json
 import warnings
@@ -80,7 +80,7 @@ def selected_science(runs, manual_paths):
 
 def measure_night(night,output,*,project_root='.',rescue=None):
     from .run_record import snapshot_sources
-    root=efosc_root(project_root, night)
+    root=efospec_root(project_root, night)
     pointer=json.loads((root/'nightly/current.json').read_text())
     if pointer['night']!=night:raise ValueError('night mismatch')
     parent=root/'nightly'/pointer['revision']/'reduction';run=json.loads((parent/'run.json').read_text())
@@ -169,7 +169,7 @@ def activate_measurements(directory, *, project_root='.'):
     from .epoch_report import EpochPage,build_epoch_page
     from .redshift_report import load_redshifts
     directory=Path(directory).resolve();path=directory/'redshifts.json'
-    manifest=json.loads(path.read_text());root=efosc_root(project_root, manifest['night'])
+    manifest=json.loads(path.read_text());root=efospec_root(project_root, manifest['night'])
     from .redshift_report import evidence_inside_night
     if not evidence_inside_night(directory,root):raise ValueError('redshift evidence outside dated QC')
     if manifest['status']!='complete':raise ValueError('redshift run must complete before promotion')
@@ -183,7 +183,7 @@ def activate_measurements(directory, *, project_root='.'):
     from .manual_recovery_report import selected_manual_recoveries
     manuals=[p for p,_ in selected_manual_recoveries(parent)]
     expected={str(p/'run.json'):sha256(p/'run.json') for p in [parent,rescue]+manuals if p is not None}
-    if manifest['parent_run_sha256']!=expected:raise ValueError('measurements do not match current accepted/rescue reductions')
+    if not file_hashes_match(manifest['parent_run_sha256'], expected):raise ValueError('measurements do not match current accepted/rescue reductions')
     pointer=root/'QC/redshift-current.json';previous=pointer.read_bytes() if pointer.exists() else None
     archive=directory/'previous-report'/datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S-redshift-update')
     archive.mkdir(parents=True,exist_ok=False)
