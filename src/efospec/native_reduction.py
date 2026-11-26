@@ -59,6 +59,12 @@ def prepare(frame, associations, directory, position, cached=None, *, arc_suppor
                 raise
             if cached is None and (destination/'calibration/calibration.json').is_file():
                 cached = destination/'calibration'
+        except Exception as exc:
+            preview=destination/'native/pre-extraction.npz'
+            if preview.exists():
+                exc.diagnostics=dict(getattr(exc,'diagnostics',{}))
+                exc.diagnostics.setdefault('diagnostic_file',str(preview.resolve()))
+            raise
 
 
 def _prepare_window(frame, associations, directory, position, cached=None, *, arc_supported_only=False,
@@ -103,6 +109,12 @@ def _prepare_window(frame, associations, directory, position, cached=None, *, ar
             for k in ('ivar','rn2img','base_var','img_scale')}
     planes['bad_pixels']=image.fullmask.flagged()[cut].copy()
     data=image.image[cut].copy()
+    # Retain calibrated pixels even if wavelength validation stops before
+    # source finding. No zero sky image is presented as a fitted background.
+    (directory/'native').mkdir(parents=True,exist_ok=True)
+    np.savez_compressed(directory/'native/pre-extraction.npz',data=data,waveair=waveair,
+        raw_x_origin=xlo,raw_y_origin=ylo,
+        sky_mask_stage='source_finding_only_no_accepted_background_fit')
     qa=bundle['record']['wavelength']
     arc=dict(qa,arc=associations['arc']['files'][0],
              reference_lines=vactoair(np.array(qa['reference_lines_vacuum'])*u.AA).value.tolist())

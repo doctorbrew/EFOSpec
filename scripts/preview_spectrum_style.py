@@ -32,6 +32,7 @@ from matplotlib.patches import Patch
 from efospec.inventory import sha256
 from efospec.qa import compare_legacy, read_flux
 from efospec.profile_plot import draw_spatial_profiles
+from efospec.trace_plot import mark_sky_lines, rectify_display, draw_trace
 from efospec.run_paths import resolve_result_paths
 from efospec.image_display import image_normalization
 from efospec.telluric_products import selected_pairs, read_overlay
@@ -46,11 +47,6 @@ SKY_LINES = (5577.338, 6300.304, 6363.776)
 TICK_LABEL_PT = 18
 
 
-def mark_sky_lines(ax):
-    for wavelength in SKY_LINES:
-        if ax.get_xlim()[0] < wavelength < ax.get_xlim()[1]:
-            ax.axvline(wavelength, color='0.4', linestyle=':', linewidth=0.9,
-                       alpha=0.65, zorder=0.5)
 
 
 def draw_spectrum(ax, result, wave, bands, comparison=None, legacy_data=None, telluric=None):
@@ -170,31 +166,6 @@ def load_trace_data(result):
     return data, paths, stage
 
 
-def rectify_display(data, output_wave):
-    """Interpolate the 2-D display column by column on its air-wavelength map.
-
-    The spectrum stays unchanged. The categorical sky mask uses nearest pixels,
-    and is never interpolated into a fabricated partially-selected region.
-    """
-    residual = data['data']-data['sky']
-    observed = np.asarray(data['data'], float)
-    ny, nx = residual.shape
-    image = np.full((len(output_wave), nx), np.nan)
-    raw = np.full((len(output_wave), nx), np.nan)
-    background = np.zeros(image.shape, dtype=bool)
-    for x in range(nx):
-        w = data['waveair'][:, x]
-        if not np.all(np.diff(w) > 0):
-            raise ValueError('nonmonotonic wavelength image')
-        image[:, x] = np.interp(output_wave, w, residual[:, x], left=np.nan, right=np.nan)
-        raw[:, x] = np.interp(output_wave, w, observed[:, x], left=np.nan, right=np.nan)
-        upper = np.clip(np.searchsorted(w, output_wave), 1, ny-1)
-        nearest = np.where(abs(w[upper]-output_wave) < abs(w[upper-1]-output_wave), upper, upper-1)
-        inside = (output_wave >= w[0]) & (output_wave <= w[-1])
-        background[:, x] = data['sky_input_mask'][nearest, x] & inside
-    trace_wave = np.array([np.interp(t, np.arange(nx), data['waveair'][row])
-                           for row, t in enumerate(data['trace'])])
-    return image, raw, background, trace_wave
 
 
 # A sky-subtracted trace sits hundreds of background sigma above zero. Clamping
@@ -207,50 +178,6 @@ TRACE_STAGES = {
 }
 
 
-def draw_trace(ax, result, wave, data, *, stage='after', rectified=None, legend=True):
-    """Draw one sky-subtraction stage of the rectified 2-D detector image."""
-    if stage not in TRACE_STAGES:
-        raise ValueError('2-D display stage must be "before" or "after" sky subtraction')
-    display_label = result['object'].replace('_', r'\_')
-    image, raw, background, trace_wave = rectified or rectify_display(data, wave)
-    title, subtracted = TRACE_STAGES[stage]
-    shown = image if subtracted else raw
-    nx = shown.shape[1]
-    origin = int(data['spatial_origin'])
-    step = float(np.median(np.diff(wave)))
-    extent = (wave[0]-step/2, wave[-1]+step/2, origin-0.5, origin+nx-0.5)
-    finite = np.isfinite(shown)
-    # Both stages take their noise scale from the sky-sampling bands, and their
-    # upper limit from the data, so the trace keeps structure instead of
-    # saturating. The before-subtraction panel keeps its own sky pedestal.
-    norm, scaling = image_normalization(shown, residual=subtracted,
-        samples=shown[background & finite], bright_percentile=BRIGHT_PERCENTILE)
-    ax.imshow(shown.T, origin='lower', aspect='auto', extent=extent,
-              norm=norm, cmap='gray_r', interpolation='nearest', rasterized=True)
-    overlay = np.zeros((nx, len(wave), 4))
-    overlay[:, :, :3] = to_rgb(BACKGROUND_COLOUR)
-    overlay[:, :, 3] = 0.24 * (background & finite).T
-    ax.imshow(overlay, origin='lower', aspect='auto', extent=extent,
-              interpolation='nearest', rasterized=True)
-    ax.plot(trace_wave, data['trace']+origin, color=PYPEIT_COLOUR, linewidth=1.6, zorder=4)
-    ax.set_ylim(origin-0.5, origin+nx-0.5)
-    ax.set_ylabel('Spatial pixel', labelpad=13)
-    ax.set_xlabel(r'Observed air wavelength [$\AA$]', labelpad=10)
-    ax.set_title(title, pad=16)
-    set_plotparams(ax, xticks=(1000, 200), yticks=(20, 5), fs=TICK_LABEL_PT)
-    mark_sky_lines(ax)
-    if legend:
-        styled_legend(ax, handles=[
-            Line2D([], [], color=PYPEIT_COLOUR, linewidth=1.6, label=display_label+' trace'),
-            Patch(facecolor=BACKGROUND_COLOUR, alpha=0.5, label='Sky background')],
-            loc='upper right', ncol=2, borderpad=0.5)
-    return {'sky_mask_fraction': float(data['sky_input_mask'].mean()),
-            'sky_mask_stage': 'global_sky_input_before_iterative_rejection',
-            'display_resampling': 'linear flux; nearest-neighbour binary sky mask',
-            'spatial_coordinates': 'zero-based legacy-trimmed detector pixels',
-            'sky_subtracted': subtracted, 'stage': stage,
-            'image_display': scaling,
-            'sky_lines_air_angstrom': list(SKY_LINES)}
 
 
 def find_comparison(result, run, legacy_root=None):
@@ -313,6 +240,7 @@ def render_spectrum(result, run, *, no_legacy=False, legacy_root=None, suffix=""
         'profile_limit_helper_sha256':sha256(REPO/'src/efospec/profile_limits.py'),
         'spatial_profile_renderer_sha256':sha256(REPO/'src/efospec/profile_plot.py'),
         'image_display_helper_sha256':sha256(REPO/'src/efospec/image_display.py'),
+        'trace_renderer_sha256':sha256(REPO/'src/efospec/trace_plot.py'),
         'renderer_script_sha256':sha256(Path(__file__)),
         'python_executable': sys.executable,
         'matplotlib_version': matplotlib.__version__,

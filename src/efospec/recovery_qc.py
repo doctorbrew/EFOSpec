@@ -114,26 +114,8 @@ def plot_exposure(exposure, output):
     save_qc(fig,output,'science',exposure.result['object'],tick_fontsize=30,title_fontsize=32,label_fontsize=32)
     plt.close(fig)
 
-    # A zero placeholder from a failed selection is not a fitted sky model.
-    fig, (left, right) = plt.subplots(1, 2, figsize=(20,12), constrained_layout=True)
-    for ax in [left,right]:
-        residual_image = _image(ax,residual,extent,residual=sky_available)
-        ax.set_xlabel('Raw x / spatial pixel');ax.set_ylabel('Raw y / spectral pixel')
-    left.set_title('Sky residual' if sky_available else 'Window (no sky fit)')
-    right.set_title('Residual + traces' if sky_available else 'Traces (no sky fit)')
-    for i, trace in enumerate(traces):
-        right.plot(trace,rows,color=colors[i],ls=TRACE_STYLES[i%4],lw=TRACE_LINEWIDTH)
-    # Keep both residual views on the same detector bounds, including traces
-    # that extend beyond the saved window. No candidate is silently cropped.
-    for ax in [left, right]:
-        ax.set_xlim(*xlimits)
-        ax.set_ylim(extent[2], extent[3])
-    for i, trace in enumerate(traces):
-        _candidate_label(right, trace[label_row], f'C{i+1}', colors[i])
-    subtitle = '' if sky_available else '\nSky subtraction unavailable: no fitted background'
-    fig.suptitle(title+subtitle,fontsize=32)
-    image_displays['residual'] = residual_image._efospec_display
-    save_qc(fig,output,'traces',exposure.result['object'],tick_fontsize=30,title_fontsize=32,label_fontsize=32);plt.close(fig)
+    from .diagnostic_plots import plot_before_after
+    plot_before_after(exposure.images,exposure.result,output,origin=(y0,x0),traces=traces)
 
     plot_review_profile(exposure, output, traces=traces)
 

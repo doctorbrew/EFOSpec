@@ -36,6 +36,11 @@ def reviewed_failure(tmp_path, monkeypatch):
         output.mkdir(parents=True, exist_ok=True)
         Image.new('RGB',(32,32),'red').save(output/'profiles.png')
     monkeypatch.setattr('efospec.profile_plot.save_review_profile',save_figure)
+    def save_images(images,result,output,**kwargs):
+        from PIL import Image
+        Image.new('RGB',(32,32),'blue').save(output/'traces.png')
+        return {'sky_subtracted':False}
+    monkeypatch.setattr('efospec.diagnostic_plots.plot_before_after',save_images)
     return run,raw,diagnostic,review
 
 
@@ -83,3 +88,38 @@ def test_wrong_exposure_cannot_activate_a_review(reviewed_failure):
     with pytest.raises(ValueError,match='saved failed-exposure diagnostic'):
         plot_failure_profiles(run,review=review)
     assert not (run/'failure-profile-selection.json').exists()
+
+
+@pytest.mark.parametrize('group',['errors','skipped'])
+def test_failure_before_calibration_retains_raw_profile_and_fixed_triplet(tmp_path,monkeypatch,group):
+    from astropy.io import fits
+    from PIL import Image
+    from efospec.epoch_report import EpochPage
+    from efospec import diagnostic_plots
+    import matplotlib.pyplot as plt
+    run=tmp_path/'run';run.mkdir();raw=tmp_path/'source.fits'
+    data=np.ones((99,201))*80+np.exp(-.5*((np.arange(201)-100)/3)**2)*400
+    fits.writeto(raw,data)
+    manifest=dict(results=[],errors=[],skipped=[])
+    manifest[group]=[dict(path=str(raw),object='SNtest',code='calibration_failed')]
+    write_json(run/'run.json',manifest)
+    def save(fig,output,*args,**kwargs):
+        output.mkdir(parents=True,exist_ok=True)
+        Image.new('RGB',(32,32),'red').save(output/'profiles.png')
+    monkeypatch.setattr('efospec.profile_plot.save_review_profile',save)
+    captured=[]
+    def save_qc(fig,output,kind,*args,**kwargs):
+        captured.append(fig)
+        Image.new('RGB',(32,32),'blue').save(output/(kind+'.png'))
+    monkeypatch.setattr('efospec.figure_style.save_qc',save_qc)
+    before=sha256(raw)
+    records=plot_failure_profiles(run)
+    assert sha256(raw)==before and len(records)==1
+    assert records[0]['wavelength_available'] is False
+    assert records[0]['detector_display']['after_panel']=='empty'
+    axes=captured[0].axes
+    assert len(axes[0].images)==1 and not axes[1].images and not axes[1].lines
+    html=EpochPage(tmp_path).spectra(run,manifest)
+    assert html.count('<figure')==3 and html.count('<img')==2
+    assert 'No extracted spectrum' in html and 'Raw inspection only' in html
+    plt.close('all')

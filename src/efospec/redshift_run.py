@@ -58,8 +58,18 @@ def selected_science(runs, manual_paths):
     chosen={};superseded=[];stems={}
     for index,(folder,source) in enumerate(runs):
         priority=2 if Path(folder).resolve() in manual_paths else (1 if index==0 else 0)
-        for result in source['results']:
+        products=list(source['results'])
+        delivered={str(Path(r['raw']).resolve()) for r in products}
+        inputs=Path(folder)/'inputs.json'
+        roles={f['path']:f['role'] for f in json.loads(inputs.read_text())['frames']} if inputs.exists() else {}
+        for counts in source.get('review_counts',[]):
+            if str(Path(counts['raw']).resolve()) in delivered or roles.get(counts['raw'])!='science':continue
+            if counts['setup']['grism'] not in {'Gr11','Gr13'}:continue
+            products.append(dict(counts,role='science',grism=counts['setup']['grism'],
+                images_sha256=counts['product_sha256'][counts['images']],evidence_kind='review_counts'))
+        for result in products:
             if result.get('role')!='science':continue
+            result_priority=-1 if result.get('evidence_kind')=='review_counts' else priority
             raw=Path(result['raw']).resolve();stem=raw.stem
             if stem in stems and stems[stem]!=raw:
                 raise ValueError('redshift output collision between different raw paths')
@@ -69,13 +79,32 @@ def selected_science(runs, manual_paths):
                 rank,old_folder,old=previous
                 if old['raw_sha256']!=result['raw_sha256']:
                     raise ValueError('conflicting raw hashes across reduction revisions')
-                if rank==priority:
+                if rank==result_priority:
                     raise ValueError('ambiguous science products at the same selection priority')
-                rejected=old if priority>rank else result
+                rejected=old if result_priority>rank else result
                 superseded.append(dict(raw=str(raw),product=rejected['product']))
-                if priority<rank:continue
-            chosen[raw]=(priority,folder,result)
+                if result_priority<rank:continue
+            chosen[raw]=(result_priority,folder,result)
     return [(folder,result) for _,folder,result in chosen.values()],superseded
+
+
+def catalogue_only_sources(runs, selected):
+    """Failed science exposures absent from the selected spectral products."""
+    delivered={str(Path(r['raw']).resolve()) for _,r in selected}
+    missing={}
+    for folder,run in runs:
+        inputs=Path(folder)/'inputs.json'
+        if not inputs.exists():continue
+        frames={str(Path(f['path']).resolve()):f for f in json.loads(inputs.read_text())['frames']
+                if f['role']=='science' and 'duplicate_of' not in f}
+        for failure in run.get('errors',[])+run.get('skipped',[]):
+            raw=str(Path(failure['path']).resolve())
+            if raw in delivered or raw not in frames:continue
+            entry=missing.setdefault(raw,dict(raw=raw,raw_sha256=frames[raw]['sha256'],
+                object=frames[raw]['metadata']['OBJECT'],reasons=[]))
+            reason=failure.get('error') or failure.get('reason') or failure.get('code','Reduction unavailable')
+            if reason not in entry['reasons']:entry['reasons'].append(reason)
+    return list(missing.values())
 
 
 def measure_night(night,output,*,project_root='.',rescue=None):
@@ -113,9 +142,15 @@ def measure_night(night,output,*,project_root='.',rescue=None):
         directory=output/Path(result['raw']).stem;directory.mkdir()
         try:
             if sha256(Path(result['raw']))!=result['raw_sha256']:raise ValueError('raw exposure changed')
+            if result.get('evidence_kind')=='review_counts' and sha256(Path(result['product']))!=result['product_sha256'][result['product']]:
+                raise ValueError('review-count spectrum changed')
             image=Path(result['images']) if result.get('images') else Path(result['native_spec1d']).parent/(Path(result['product']).name[:-7]+'_images.npz')
             if sha256(image)!=result['images_sha256']:raise ValueError('native images changed')
             with np.load(image) as a:arrays={k:a[k] for k in a.files}
+            if result.get('evidence_kind')=='review_counts':
+                # Counts packets store raw coordinates; the legacy redshift
+                # display uses the trimmed-detector origin (raw minus 99).
+                arrays['spatial_origin']=int(arrays['raw_x_origin'])-99
             extracted=extract_2d_line_spectrum(arrays)
             fwhm={'Gr11':18.,'Gr13':35.}[result['grism']]
             spectral=measure_redshift(extracted['wave_vacuum'],extracted['counts'],extracted['sigma'],fwhm=fwhm)
@@ -128,7 +163,8 @@ def measure_night(night,output,*,project_root='.',rescue=None):
             wavelength_validated=wavelength_accepted(result['sky_flexure'])
             spectral['wavelength_validated']=wavelength_validated
             spectral['wavelength_warnings']=result['sky_flexure'].get('warnings',[])
-            spectral['wavelength_acceptance_policy']=result['sky_flexure'].get('validation_policy','three-line')
+            spectral['wavelength_acceptance_policy']=result['sky_flexure'].get('validation_policy',
+                'raw-arc-only' if result.get('evidence_kind')=='review_counts' else 'three-line')
             spectral['diagnostic_6363_error']=result['sky_flexure'].get('diagnostic_6363_error')
             spectral['method_parameters']=dict(nominal_fwhm_angstrom=fwhm,aperture_radius_pixels=20.,
                 minimum_independent_groups=3,minimum_line_snr=5.,minimum_delta_chi2=30.,
@@ -140,6 +176,7 @@ def measure_night(night,output,*,project_root='.',rescue=None):
                                              spectral['solutions'][0].get('z_error')))
                 spectral['status']='candidate' if wavelength_validated else 'provisional_wavelength'
             record=dict(object=result['object'],raw=result['raw'],raw_sha256=result['raw_sha256'],
+                evidence_kind=result.get('evidence_kind','calibrated_spectrum'),
                 product=result['product'],product_sha256=sha256(Path(result['product'])),
                 images=str(image),images_sha256=sha256(image),spectral=spectral,
                 ned=ned_candidate(header,directory/'catalogue'),reference_frame='heliocentric',
@@ -158,6 +195,20 @@ def measure_night(night,output,*,project_root='.',rescue=None):
             manifest['errors'].append(dict(object=result['object'],raw=result['raw'],error=str(exc)))
             print('ERROR',result['object'],str(exc),flush=True)
         save_json(output/'redshifts.json',manifest)
+    for item in catalogue_only_sources(runs,selected):
+        directory=output/Path(item['raw']).stem;directory.mkdir(exist_ok=True)
+        try:
+            if sha256(Path(item['raw']))!=item['raw_sha256']:raise ValueError('raw exposure changed')
+            record=dict(object=item['object'],raw=item['raw'],raw_sha256=item['raw_sha256'],
+                evidence_kind='catalogue_only',spectral=dict(status='reduction_unavailable',z=None,
+                    wavelength_validated=False,reason='; '.join(item['reasons'])),
+                ned=ned_candidate(fits.getheader(item['raw']),directory/'catalogue'),
+                figures={},host_identified=False,reference_frame='heliocentric')
+            path=directory/'redshift.json';save_json(path,record)
+            manifest['results'].append(dict(object=item['object'],raw=item['raw'],path=str(path),sha256=sha256(path)))
+            print(item['object'],'catalogue only; spectral search blocked:',record['spectral']['reason'],flush=True)
+        except Exception as exc:
+            manifest['errors'].append(dict(object=item['object'],raw=item['raw'],error=str(exc)))
     manifest['status']='partial' if manifest['errors'] else 'complete';save_json(output/'redshifts.json',manifest)
     return manifest
 
@@ -197,6 +248,7 @@ def activate_measurements(directory, *, project_root='.'):
             copy2(portable,archive/'index.html')
         else:copy2(root/'index.html',archive/'index.html')
     try:
+        pointer.parent.mkdir(parents=True,exist_ok=True)
         save_json(pointer,dict(night=manifest['night'],path=str(path.relative_to(root)),sha256=sha256(path)))
         # Fail closed on changed products, plots or provenance before rendering.
         load_redshifts(EpochPage(root),parent,rescue,manuals=manuals)

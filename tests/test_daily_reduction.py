@@ -65,6 +65,7 @@ def test_nightly_extracts_before_response_selection_and_retains_counts_on_failur
     monkeypatch.setattr(daily, 'validate_associations', lambda *a: None)
     attempted=[]
     def prepare(f, associations, directory, position, **kwargs):
+        assert kwargs['validation_policy']=='full-spectrum'  # science and standards use the same default
         attempted.append((f['role'], kwargs['red_counts_only']))
         return dict(frame=f,engine=dict(objects={}),sky={},directory=directory,
                     bundle=dict(directory=directory,record={}))
@@ -97,6 +98,9 @@ from test_native_end_to_end import synthetic_raw_night
 @pytest.mark.parametrize('filter_name', ['Free','GG495'])
 def test_daily_raw_photons_preserve_flux_scale_and_include_unrequested_standard(
         synthetic_raw_night,tmp_path,monkeypatch,filter_name):
+    # This photon/flux fixture contains only the legacy three sky lines, not
+    # a full physical sky template. Replay that explicit validation policy.
+    monkeypatch.setattr('efospec.nightly_review.validation_policy',lambda selection:'three-line')
     import builtins
     import io
     import numpy as np

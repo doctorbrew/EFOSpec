@@ -38,7 +38,10 @@ def load_redshifts(page, parent, rescue=None, *, manuals=()):
         if not path.resolve().is_relative_to(manifest_path.parent):raise ValueError('redshift record outside its evidence revision')
         if sha256(path)!=item['sha256']:raise ValueError('redshift record changed')
         record=page.read(path)
-        for key in ('raw','product','images','diagnostic_arrays'):
+        catalogue_only=record.get('evidence_kind')=='catalogue_only'
+        if catalogue_only and (record['spectral']['status']!='reduction_unavailable' or record['spectral'].get('z') is not None or record['spectral'].get('z_heliocentric') is not None or record['figures']):
+            raise ValueError('catalogue-only evidence cannot claim a spectral measurement')
+        for key in (('raw',) if catalogue_only else ('raw','product','images','diagnostic_arrays')):
             if sha256(Path(record[key]))!=record[key+'_sha256']:raise ValueError('redshift input or evidence changed: '+key)
         for figure,digest in record['figures'].items():
             if sha256(Path(figure))!=digest:raise ValueError('redshift figure changed')
@@ -65,7 +68,7 @@ def redshift_cells(record, *, standard=False, previous_revision=False):
         value=f'{z:.4f}'+(f' ± {z_error:.4f}' if z_error is not None and math.isfinite(z_error) else '')
         text=f'{value} ({detail})'
     else:
-        text={'no_host_lines':'No Host Lines Found',
+        text={'reduction_unavailable':'Not measured: reduction failed','no_host_lines':'No Host Lines Found',
               'no_reliable_line_system':'Insufficient matching lines','insufficient_data':'Insufficient data',
               'spatially_inconsistent':'Spatial check failed','ambiguous':'Ambiguous line system'}.get(spectral['status'],'No estimate')
     anchor='redshift-'+Path(record['raw']).stem
@@ -89,6 +92,8 @@ def redshift_section(page, records, *, include_intro=True):
         links.extend(page.download(Path(p),'Figure PDF') for p in record['figures'] if p.endswith('.pdf'))
         content+=f'<article class="exposure" id="{escape(anchor)}"><h3>{escape(title)}</h3>'
         content+='<p>NED: '+cells[0]+'. Spectral: '+cells[1]+'.</p>'
+        if spectral['status']=='reduction_unavailable':
+            content+='<p class="qc-status-bad">Spectral search blocked: '+escape(spectral['reason'])+'.</p>'
         candidate=record['ned'].get('candidate')
         if candidate and candidate['metadata'].get('z') is not None and spectral.get('z_heliocentric') is not None:
             difference=abs(float(candidate['metadata']['z'])-spectral['z_heliocentric'])

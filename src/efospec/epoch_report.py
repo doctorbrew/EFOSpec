@@ -63,7 +63,7 @@ class EpochPage:
 
     def figure(self, path, title, *, full_width=False, aspect_ratio=None):
         if not path or not path.is_file():
-            return '<p class="note">'+_text(title)+': figure unavailable.</p>'
+            return self.empty_figure(title,'figure unavailable')
         self.images += 1
         # Small web previews retain the existing figure layout and styling.
         # Publication PDF/JPG files are read-only and remain at full resolution.
@@ -81,6 +81,20 @@ class EpochPage:
         return (f'<figure class="{css_class}"><figcaption>{_text(title)}</figcaption>'
                 f'<button class="{button_class}"{sizing} type="button" aria-label="Enlarge {_text(title)}">'
                 f'<img loading="lazy" src="{url}" alt="{_text(title)}"></button></figure>')
+
+    def empty_figure(self, title, reason):
+        return ('<figure class="plot"><figcaption>'+_text(title)+'</figcaption>'
+                '<div class="placeholder">'+_text(reason)+'</div></figure>')
+
+    def failure_cards(self, run_dir, item, title):
+        from .failure_profiles import load_failure_profile
+        saved=load_failure_profile(run_dir,item.get('path',''))
+        folder,preview=saved if saved else (None,{})
+        cards=[self.empty_figure(title+' / Extracted spectrum','No extracted spectrum')]
+        for kind,label in [('traces','2D spectrum before and after sky subtraction'),('profiles','Spatial profile before subtraction')]:
+            cards.append(self.figure(folder/(kind+'.png') if folder else None,title+' / '+label))
+        caption='<p class="caption">'+_text(preview['caption'])+'</p>' if preview.get('caption') else ''
+        return '<div class="plots">'+''.join(cards)+'</div>'+caption
 
     def failure_notice(self, run_dir, item):
         from .review_handoff import issue_updates
@@ -152,10 +166,14 @@ class EpochPage:
                 identity += ' · '+_text(result.get('interpretation',''))
             for warning in result.get('sky_flexure',{}).get('warnings',[]):
                 identity += ' · Wavelength warning: '+_text(warning['message'])
+            if result.get('role')=='science':
+                for warning in result.get('sensitivity',{}).get('standard_wavelength_status',{}).get('warnings',[]):
+                    identity += ' · Response standard wavelength warning: '+_text(warning['message'])
             section_order.append(source_order(result))
             sections.append(f'<article class="exposure" id="{_text(id_prefix)}-{i}"><h3>{_text(title)}</h3>'
                 f'<p class="caption">{_text(result.get("date_obs", ""))} UTC{identity} · {downloads}</p>'
                 +telluric_notice+
+                ''.join(self.failure_notice(run_dir,e) for e in run.get('errors',[]) if e.get('path')==result.get('raw'))+
                 f'<div class="plots">{"".join(cards)}</div></article>')
         for i, result in enumerate(run.get('review_counts',[])):
             for path,digest in result['product_sha256'].items():
@@ -175,31 +193,42 @@ class EpochPage:
                     for kind in ('counts','traces','profiles'))+'</div></article>')
         for group in ('errors', 'skipped'):
             for i, item in sorted(enumerate(run.get(group, [])), key=lambda pair: source_order(pair[1])):
+                if item.get('path') in {r.get('raw') for r in run.get('results',[])+run.get('review_counts',[])}:
+                    continue  # The actual extracted spectrum and its failure notice are already above.
+                if any(previous.get('path')==item.get('path') for previous in run.get(group,[])[:i]):continue
                 setup = item.get('setup', {})
                 title = ' · '.join(filter(None, [item.get('object', 'Unknown'), setup.get('grism'),
                                                 setup.get('filter'), setup.get('slit')]))
                 title += self.exposure_time(item, frames)
                 section_order.append(source_order(item))
-                from .failure_profiles import load_failure_profile
-                saved_profile=load_failure_profile(run_dir,item.get('path',''))
-                profile=''
-                if saved_profile:
-                    folder,preview=saved_profile
-                    profile=self.figure(folder/'profiles.png',title+' / Spatial profile before subtraction')
-                    if preview.get('caption'):
-                        profile+='<p class="caption">'+_text(preview['caption'])+'</p>'
                 sections.append(f'<article class="exposure" id="{_text(id_prefix)}-{group}-{i}">'
                     f'<h3>{_text(title)}</h3>'+self.failure_notice(run_dir, item)
-                    +profile
+                    +self.failure_cards(run_dir,item,title)
                     +'<p class="caption">'+_text(Path(item.get('path', '')).name)+'</p></article>')
         return ''.join(html for _, html in sorted(zip(section_order, sections), key=lambda pair: pair[0])) or '<p>No spectra recorded in this revision.</p>'
 
-    def observations(self, revision, run, provisional=None, redshifts=None, manuals=()):
-        targets = self.read(revision/'night.json').get('targets')
+    def observations(self, revision, run, provisional=None, redshifts=None, manuals=(), retained=()):
         outcomes = {}
+        for j, (_, saved) in enumerate(retained):
+            for group in ('results', 'review_counts', 'errors', 'skipped'):
+                for i, result in enumerate(saved.get(group, [])):
+                    raw = Path(result.get('raw', result.get('path', ''))).name
+                    if raw in outcomes:
+                        continue
+                    kind = 'counts' if group == 'review_counts' else group
+                    suffix = f'-{i}' if group == 'results' else f'-{kind}-{i}'
+                    label = {'results': 'Spectrum', 'errors': 'Failed', 'skipped': 'Unsupported'}.get(group)
+                    if group == 'review_counts':
+                        from .review_handoff import counts_delivery_status
+                        label = counts_delivery_status(result, saved)
+                    if result.get('status') == 'PROVISIONAL':
+                        label = 'Provisional flux; wavelength unvalidated'
+                    css = ' class="qc-status-bad"' if group != 'results' or result.get('status') == 'PROVISIONAL' else ''
+                    outcomes[raw] = f'<a{css} href="#retained-{j}-spectrum{suffix}">{_text(label)} ↓</a>'
         for group, label in [('results', 'Spectrum'), ('errors', 'Failed'), ('skipped', 'Unsupported')]:
             for i, result in enumerate(run.get(group, [])):
                 raw = Path(result.get('raw', result.get('path', ''))).name
+                if group!='results' and raw in outcomes:continue
                 reason = {'sky_flexure_unreliable':'Sky-line check', 'source_selection_required':'Choose source',
                           'background_support_required':'Review background',
                           'native_calibration_not_implemented':'Calibration route unavailable',
@@ -247,7 +276,7 @@ class EpochPage:
                 'Standard' if frame['role'] == 'standard_candidate' else 'Science',
                 _text(setup.get('grism', ''))+' / '+_text(setup.get('filter', '')),
                 _text(setup.get('slit', '')), _text(seconds),
-                outcomes.get(raw, 'Outside selected targets' if targets and h.get('OBJECT') not in targets else 'Not reduced'),*cells])
+                outcomes.get(raw, 'No saved reduction'),*cells])
         note = {
             'not_run':'Host-emission measurements are a separate post-reduction step; no saved run is available for this observing night.',
             'previous_revision':'Saved host-emission measurements belong to an earlier reduction revision and have not been reused. Current NED values may still be available from the saved catalogue associations.'
@@ -712,6 +741,7 @@ def reduction_summary(run, manuals=(), rescue=None):
     if other_review:parts.append(f'{other_review} count spectra need review')
     failed={e.get('path') for e in run.get('errors',[]) if e.get('path') not in products and e.get('path') not in counts}
     if failed:parts.append(f'{len(failed)} failed exposures')
+    provisional.update(k for k,r in products.items() if r.get('status')=='PROVISIONAL')
     if provisional:parts.append(f'{len(provisional)} provisional spectra')
     if run.get('skipped'):parts.append(f"{len(run['skipped'])} unsupported exposures")
     return ' · '.join(parts)
@@ -760,7 +790,8 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
         if parent_manifest.is_file() and candidate.get('parent_sha256')==sha256(parent_manifest):
             if candidate.get('wavelength_policy')!='provisional_arc_only' or candidate.get('night')!=night:
                 raise ValueError('invalid provisional rescue policy')
-            failures={e['path'] for e in run['errors'] if e.get('code')=='wavelength_validation_failed'}
+            from .rescue import rescue_candidates
+            failures=rescue_candidates(run, include_pending_red=candidate.get('include_pending_red',False))
             for result in candidate['results']:
                 if result.get('status')!='PROVISIONAL' or result['raw'] not in failures or result.get('wavelength_validated') is not False:
                     raise ValueError('rescue result cannot replace an accepted product')
@@ -773,6 +804,8 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
     from .redshift_report import load_redshifts,redshift_section
     from .manual_recovery_report import selected_manual_recoveries
     manuals=selected_manual_recoveries(revision/'reduction')
+    from .retained_reductions import retained_reductions, save_report_products
+    retained=retained_reductions(page,revision,run)
     redshifts=load_redshifts(page,revision/'reduction',rescue_path if rescue else None,manuals=[p for p,_ in manuals])
     page.redshift_records=redshifts
     qc, background = page.qc(revision, run)
@@ -829,6 +862,9 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
         spectra+='<h3>Provisional rescue spectra</h3><p class="qc-status-bad">Same-night flux calibration; science wavelengths remain unvalidated. No flexure correction applied. These do not replace accepted products.</p>'
         spectra+=page.spectra(rescue_path,rescue,id_prefix='rescue-spectrum')
         if superseded:spectra+='</details>'
+    for j,(saved_path,saved_run) in enumerate(retained):
+        spectra+='<p class="caption">Unchanged spectra and status from '+_text(str(saved_path.relative_to(root)))+'.</p>'
+        spectra+=page.spectra(saved_path,saved_run,id_prefix=f'retained-{j}-spectrum')
     issues=page.problems(run,revision/'reduction')
     if manuals:
         unresolved=(any(x.get('path') not in recovered for x in run.get('errors',[]))
@@ -836,7 +872,10 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
         if not unresolved:
             issues='<details><summary>Original nightly failures and diagnostic evidence</summary>'+issues+'</details>'
         issues='<p>Checked manual recoveries and any remaining wavelength warnings are listed in Spectra and the observing log.</p>'+issues
-    content = [page.observations(revision, run, rescue, redshifts, manuals), spectra, issues, qc,
+    for saved_path,saved_run in retained:
+        if saved_run.get('errors') or saved_run.get('skipped'):
+            issues+='<h3>Unchanged earlier issues</h3>'+page.problems(saved_run,saved_path)
+    content = [page.observations(revision, run, rescue, redshifts, manuals, retained), spectra, issues, qc,
                background, calibration_content, page.archive(revision)+page.archive_folders_and_logs(revision)]
     from .iraf_report import comparison_section, write_comparison_page
     iraf_page=EpochPage(root if revision_dir is None else revision)
@@ -849,13 +888,15 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
         content.insert(2,iraf_content)
     from .delivery_report import render_delivery
     titles.insert(1, ('delivery', 'Science delivery'))
-    content.insert(1, render_delivery(page, revision, run, manuals))
+    content.insert(1, render_delivery(page, revision, run, [*retained,*manuals]))
     sections = ''.join(f'<section class="target" id="{anchor}"><h2>{title}</h2>{body}</section>'
                        for (anchor, title), body in zip(titles, content))
-    stats = reduction_summary(run, manuals, rescue)
+    summary_run=dict(run, **{key: run.get(key,[])+[row for _,saved in retained for row in saved.get(key,[])]
+                            for key in ('results','review_counts','errors','skipped')})
+    stats = reduction_summary(summary_run, manuals, rescue)
     warning = '<p class="note">'+_text('; '.join(page.warnings))+'</p>' if page.warnings else ''
-    scope = ('<p class="caption">Selected targets: '+_text(', '.join(state['targets']))
-             +'. Other exposures are listed for context; earlier results remain in Reduction Archive.</p>') if state.get('targets') else ''
+    scope = ('<p class="caption">Processed in this revision: '+_text(', '.join(state['targets']))
+             +'. Unchanged earlier spectra remain in this log with their saved plots and downloads.</p>') if state.get('targets') else ''
     if revision_dir is not None:
         scope += '<p class="caption">Review of processing revision '+_text(revision.name)+'. The selected nightly reduction is unchanged.</p>'
     html = f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -868,6 +909,8 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
 <dialog aria-label="Enlarged figure"><button type="button">Close</button><img alt=""></dialog><script>{SCRIPT}</script></body></html>'''
     from .report_assets import write_report_bundle
     bundle=write_report_bundle(destination,html)
+    save_report_products(page,revision,[*reversed(manuals),*([(rescue_path,rescue)] if rescue else []),
+                                      (revision/'reduction',run),*retained])
     return dict(bundle,revision=revision.name,embedded_figures=page.images,warnings=page.warnings)
 
 

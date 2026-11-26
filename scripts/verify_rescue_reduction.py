@@ -27,7 +27,8 @@ def verify(directory):
     assert sha256(parent)==run['parent_sha256']
     old=json.loads(parent.read_text())
     assert old['night']==run['night'] and old['flux_calibration']=='same-night'
-    failures={e['path'] for e in old['errors'] if e.get('code')=='wavelength_validation_failed'}
+    from efospec.rescue import rescue_candidates
+    failures=rescue_candidates(old, include_pending_red=run.get('include_pending_red',False))
     assert len({r['raw'] for r in run['results']})==len(run['results'])
     rows=[];groups={};raws={}
     for result in run['results']:

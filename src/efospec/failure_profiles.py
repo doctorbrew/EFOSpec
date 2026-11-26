@@ -1,4 +1,4 @@
-"""Read-only spatial-profile previews of saved failed-extraction diagnostics."""
+"""Read-only detector/profile previews for failed and unsupported exposures."""
 import json
 from pathlib import Path
 import numpy as np
@@ -45,6 +45,7 @@ def load_failure_profile(run, raw):
 
 def plot_failure_profiles(run, *, review=None):
     from .profile_plot import draw_review_profiles, save_review_profile
+    from .diagnostic_plots import raw_inspection, draw_raw_profiles, plot_before_after
     import matplotlib.pyplot as plt
     run=Path(run).resolve()
     manifest=json.loads((run/'run.json').read_text())
@@ -68,18 +69,24 @@ def plot_failure_profiles(run, *, review=None):
     inputs=json.loads((run/'inputs.json').read_text()) if (run/'inputs.json').exists() else {}
     frames={f['path']:f for f in inputs.get('frames',[])}
     records=[]
-    for error in manifest['errors']:
+    delivered={r.get('raw') for r in manifest.get('results',[])+manifest.get('review_counts',[])}
+    seen=set()
+    for error in manifest['errors']+manifest.get('skipped',[]):
+        if error['path'] in seen or (review is None and error['path'] in delivered):continue
+        seen.add(error['path'])
         if review is not None and error['path'] not in choices: continue
         if review is None and (run/'failure-profile-selection.json').exists():
             selected = load_failure_profile(run, error['path'])
             if selected:
                 records.append(selected[1]); continue
         diagnostic=error.get('diagnostics',{}).get('diagnostic_file')
-        if not diagnostic: continue
-        path=Path(diagnostic).resolve();path.relative_to(run)
+        path=Path(diagnostic or error['path']).resolve()
+        if diagnostic:path.relative_to(run)
         before=sha256(path)
-        with np.load(path,allow_pickle=False) as saved:
-            images={key:saved[key] for key in saved.files}
+        if diagnostic:
+            with np.load(path,allow_pickle=False) as saved:
+                images={key:saved[key] for key in saved.files}
+        else:images=raw_inspection(path)
         frame=frames.get(error['path'],{})
         result=dict(object=error.get('object',Path(error['path']).stem),
             grism=error.get('setup',frame.get('setup',{})).get('grism','Unknown'),
@@ -87,15 +94,25 @@ def plot_failure_profiles(run, *, review=None):
         output=run/'review-plots'/Path(error['path']).stem
         choice = choices.get(error['path'], {})
         if review is not None: output=review.parent/'profiles'/Path(error['path']).stem
-        fig,record=draw_review_profiles(images,result, selection=choice.get('selection'),
-            candidate_notes=choice.get('candidate_notes'), supplemental_traces=choice.get('supplemental_traces', []),
-            hidden_candidates=choice.get('hidden_candidates', []), candidate_labels=choice.get('candidate_labels'),
-            candidate_evidence=choice.get('candidate_evidence'))
+        origin=(int(images.get('raw_y_origin',0)),int(images.get('raw_x_origin',0)))
+        if 'waveair' in images:
+            fig,record=draw_review_profiles(images,result, spatial_origin=origin[1], selection=choice.get('selection'),
+                candidate_notes=choice.get('candidate_notes'), supplemental_traces=choice.get('supplemental_traces', []),
+                hidden_candidates=choice.get('hidden_candidates', []), candidate_labels=choice.get('candidate_labels'),
+                candidate_evidence=choice.get('candidate_evidence'),
+                spatial_label='Spatial pixel (raw detector)' if origin!=(0,0) else 'Spatial pixel (saved window)')
+        else:fig,record=draw_raw_profiles(images,result)
         save_review_profile(fig,output,result['object']);plt.close(fig)
+        hidden=set(record.get('hidden_candidates',[])+record.get('validation_hidden_candidates',[]))
+        visible=[(f'C{i+1}',np.asarray(t)+origin[1]) for i,t in enumerate(images.get('found_traces',[])) if f'C{i+1}' not in hidden]
+        traces=[t for _,t in visible]
+        labels=[record.get('display_label_map',{}).get(name,name) for name,_ in visible]
+        record['detector_display']=plot_before_after(images,result,output,origin=origin,traces=traces,labels=labels)
         assert sha256(path)==before
         record.update(parent_run_sha256=sha256(run/'run.json'),diagnostic_file=str(path),
             diagnostic_sha256=before,raw=error['path'],
-            raw_sha256=choice.get('raw_sha256'),caption=choice.get('caption',''),
+            raw_sha256=choice.get('raw_sha256') or sha256(Path(error['path'])),
+            caption=choice.get('caption','') if diagnostic else 'Raw inspection only: no calibrated wavelength, fitted trace or sky subtraction is available.',
             evidence_sha256={**choice.get('evidence_sha256', {}), **({str(review):sha256(review)} if review else {})},
             figures_sha256={str(p):sha256(p) for p in output.iterdir() if p.suffix in {'.png','.jpg','.pdf'}})
         save_json(output/'profile-display.json',record);records.append(record)

@@ -409,7 +409,7 @@ def test_detailed_failure_is_only_in_source_logs_and_headings_include_seconds(ep
     assert 'native sky anchors disagree' not in observations
     assert 'native sky anchors disagree' in spectra
     assert '<h3>SN &lt;test&gt; · Gr13 · 60 s</h3>' in spectra
-    assert '<h3>SN &lt;test&gt; · 60 s</h3>' in spectra
+    assert spectra.count('<article')==1  # keep the error beside its actual spectrum, not a duplicate empty triplet
     assert '<button type="button" class="review-launch"' in spectra
     assert '<a class="review-launch"' not in spectra
 

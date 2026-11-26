@@ -151,7 +151,7 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None, 
     header['BANDID3']='sky flux in '+primary_extraction+' aperture';header['BANDID4']=primary_extraction+' flux uncertainty'
     if provisional:
         header['QUALITY']='Provisional';header['FLXVALID']=False
-        header['HISTORY']='Science sky-line validation failed. Arc-only wavelengths; no flexure applied.'
+        header['HISTORY']='Science wavelength validation incomplete or failed. Arc-only wavelengths; no flexure applied.'
         header['HISTORY']='Flux calibration applied provisionally; wavelength systematic error unquantified.'
     center = float(np.nanmedian(s.TRACE_SPAT)+xlo)+1  # IRAF one-based aperture coordinates
     header['APNUM1']=f'1 1 {center-float(s.BOX_R_PIX):.3f} {center+float(s.BOX_R_PIX):.3f}'
@@ -169,7 +169,7 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None, 
                   fits.ImageHDU(np.array([masks[primary],masks[secondary],sky_mask,masks[primary]],dtype=np.uint8),name='VALID')]
                  ).writeto(final,checksum=True)
     np.savetxt(final.with_suffix('.asci'),np.column_stack([grid,bands[primary]]),fmt='%.8e',
-        **({'header':'PROVISIONAL: unshifted arc wavelengths; science sky validation failed.\nair_wavelength_A flux_erg_s-1_cm-2_A-1; statistical errors exclude wavelength and response systematics.'} if provisional else
+        **({'header':'PROVISIONAL: unshifted arc wavelengths; science wavelength validation incomplete or failed.\nair_wavelength_A flux_erg_s-1_cm-2_A-1; statistical errors exclude wavelength and response systematics.'} if provisional else
            {'header':'Wavelength acceptance: 5577/6300 anchors; 6363 diagnostic only. Absolute flux unvalidated.\nair_wavelength_A flux_erg_s-1_cm-2_A-1'} if sky_qa.get('validation_policy')=='two-anchor' else
            {'header':f"Wavelength acceptance: {sky_qa.get('quality_policy','full-sky-v1')} correlation quality and regional residual checks; {len(sky_qa.get('warnings',[]))} localized warnings. Absolute flux unvalidated.\nair_wavelength_A flux_erg_s-1_cm-2_A-1"} if sky_qa.get('validation_policy')=='full-spectrum' else {}))
     prefix='OPT' if primary==0 else 'BOX'
@@ -202,7 +202,7 @@ def export_spectrum(context, engine, identity, output, basename, *, label=None, 
           'status':'EXPERIMENTAL','raw_unchanged':sha256(path)==frame['sha256']}
     if provisional:
         qa.update(status='PROVISIONAL',wavelength_validated=False,independent_flux_validation=False,
-            wavelength_warning='Science sky-line validation failed; unshifted arc wavelengths. Wavelength systematic uncertainty is not quantified.')
+            wavelength_warning='Science wavelength validation incomplete or failed; unshifted arc wavelengths. Wavelength systematic uncertainty is not quantified.')
     if diagnostic_path:
         qa['native_spec2d']=diagnostic_path
         qa['native_spec2d_sha256']=sha256(Path(diagnostic_path))

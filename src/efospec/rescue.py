@@ -36,7 +36,25 @@ def validate_counts(record, frame):
         raise ValueError('review-count calibration manifest changed')
 
 
-def rescue_daily(parent, output, *, night, counts_runs=(), targets=None, boxcar_targets=(), replace_review_counts=False):
+def rescue_candidates(run, *, include_pending_red=False):
+    """Recorded failures, optionally including explicitly unvalidated Gr16 counts."""
+    candidates = {e['path']: e for e in run['errors']
+                  if e.get('code') == 'wavelength_validation_failed'}
+    if include_pending_red:
+        for row in run.get('review_counts', []):
+            if (row.get('role') == 'science' and row.get('route') == 'red'
+                    and row.get('setup', {}).get('grism') == 'Gr16'
+                    and row.get('setup', {}).get('filter') == 'OG530'
+                    and row.get('sky_flexure', {}).get('status') == 'unvalidated'
+                    and row.get('selected_response')):
+                candidates.setdefault(row['raw'], dict(path=row['raw'], object=row['object'],
+                    code='wavelength_validation_pending',
+                    error='Gr16 wavelength/flexure validation pending; response available.',
+                    diagnostics=row['sky_flexure']))
+    return candidates
+
+
+def rescue_daily(parent, output, *, night, counts_runs=(), targets=None, boxcar_targets=(), replace_review_counts=False, include_pending_red=False):
     """Rescue only recorded wavelength failures, without modifying their parent."""
     from astropy import units as u
     from pypeit.core.wave import vactoair
@@ -49,7 +67,9 @@ def rescue_daily(parent, output, *, night, counts_runs=(), targets=None, boxcar_
     parent=Path(parent).resolve();old=json.loads((parent/'run.json').read_text())
     if old.get('night')!=night or old.get('flux_calibration')!='same-night' or old.get('execution_status')=='running':
         raise ValueError('rescue requires a completed same-night parent for the explicitly selected night')
-    failures={e['path']:e for e in old['errors'] if e.get('code')=='wavelength_validation_failed'}
+    if include_pending_red and not targets:
+        raise ValueError('pending red rescue requires explicit targets')
+    failures=rescue_candidates(old, include_pending_red=include_pending_red)
     selected={p:e for p,e in failures.items() if not targets or e['object'] in targets}
     if not selected or (targets and set(targets)-{e['object'] for e in selected.values()}):
         raise ValueError('select recorded science wavelength failures from the parent')
@@ -71,12 +91,13 @@ def rescue_daily(parent, output, *, night, counts_runs=(), targets=None, boxcar_
     for directory in ('products','native','qa','errors'):(output/directory).mkdir()
     run=dict(night=night,method='native_raw_calibration_provisional_rescue',
         wavelength_policy='provisional_arc_only',flux_calibration='same-night',
+        include_pending_red=bool(include_pending_red),
         status='PROVISIONAL',execution_status='running',input_dir=old['input_dir'],output_dir=str(output),
         parent_run=str(parent),parent_sha256=sha256(parent/'run.json'),
         replaced_parent_review_counts=bool(replace_review_counts),
         pypeit_version=pypeit.__version__,source_sha256=snapshot_sources(output),
         independent_flux_validation=False,results=[],errors=[],skipped=[],
-        limitations=['Science wavelength validation failed: all products retain unshifted arc wavelengths.',
+        limitations=['Science wavelength validation incomplete or failed: all products retain unshifted arc wavelengths.',
             'These products are provisional, not replacements for wavelength-validated nightly products.',
             'Source identity, slit losses, tellurics, second order, host contamination and absolute flux remain unvalidated.',
             'Statistical errors omit response, wavelength, background-model and resampling covariance uncertainties.'])

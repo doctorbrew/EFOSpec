@@ -47,3 +47,24 @@ def test_wrong_setup_is_rejected(counts):
 def test_missing_required_artifact_hash_is_rejected(counts):
     record,frame=counts;del record['product_sha256'][record['native_spec2d']]
     with pytest.raises(ValueError,match='required product hashes'):validate_counts(record,frame)
+
+
+def test_pending_red_requires_opt_in_and_available_response():
+    from efospec.rescue import rescue_candidates
+    row=dict(raw='red.fits',object='SN-test',role='science',route='red',
+             setup=dict(grism='Gr16',filter='OG530'),
+             sky_flexure=dict(status='unvalidated'),selected_response={'path':'response.fits'})
+    run=dict(errors=[],review_counts=[row])
+    assert rescue_candidates(run)=={}
+    assert rescue_candidates(run,include_pending_red=True)['red.fits']['code']=='wavelength_validation_pending'
+    del row['selected_response']
+    assert rescue_candidates(run,include_pending_red=True)=={}
+
+
+def test_pending_red_cannot_promote_standards_or_other_routes():
+    from efospec.rescue import rescue_candidates
+    for role,route in [('standard_candidate','red'),('science','optical')]:
+        row=dict(raw='other.fits',object='other',role=role,route=route,
+                 setup=dict(grism='Gr16',filter='OG530'),
+                 sky_flexure=dict(status='unvalidated'),selected_response={'path':'response.fits'})
+        assert rescue_candidates(dict(errors=[],review_counts=[row]),include_pending_red=True)=={}

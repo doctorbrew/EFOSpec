@@ -2,7 +2,10 @@
 
 Always name the observing date. One invocation processes one date only. For the next epoch, change the date; there is no automatic multi-night loop.
 
-The user-approved **2026-10-29** page is the final daily-log template for both October nights and future epochs. Keep its approved section structure and use the masthead **ePESSTO+ / EFOSpec**. Calibration checks appear in AT, SN, then other-source order; failed or unvalidated checks are red. The optional `$webpage-spectralatlas` coding-agent skill is installed in the user's agent configuration, outside this repository. The pipeline does not require a skill installation to generate its report.
+For practical extraction, flux-calibration and report-refresh steps, use the
+[reduction cookbook](reduction-cookbook.md).
+
+The user-approved **2026-10-29** page is the final daily-log template for both October nights and future epochs. Keep its approved section structure and use the masthead **Nightly LOG - NTT/EFOSC2 (ePESSTO+)**. Calibration checks appear in AT, SN, then other-source order; failed or unvalidated checks are red. The optional `$webpage-spectralatlas` coding-agent skill is installed in the user's agent configuration, outside this repository. The pipeline does not require a skill installation to generate its report.
 
 Activate the existing EFOSpec Python environment and run from the EFOSpec checkout:
 
@@ -42,6 +45,12 @@ python scripts/03_report_epoch.py 2026-10-28
 - Science/standard exposures from another night stop the workflow.
 - Calibration/acquisition frames retain their actual dates and roles.
 - Complete worker output goes into dated logs.
+- Optical nightly reductions default to full-spectrum sky cross-correlation on
+  the actual wavelength coverage, for science and standards. The correction
+  must pass globally and in the same two of three disjoint sky regions before
+  and after application. Isolated regional/line disagreements warn; broader
+  disagreement retains review counts. Explicit reviewed policies still replay.
+  Weak standard sky retains the arc grid and a warning, never a science shift.
 
 ## Dated outputs
 
@@ -53,7 +62,7 @@ in the conversation for aperture/background review; retain their data and
 provenance in dated QC folders. Later retry notes must be hash-bound to the
 selected parent reduction and raw exposure before appearing in the main report.
 
-The opening page embeds lightweight WebP figure previews, so figures also work
+The opening page embeds lightweight figure previews, so figures also work
 in HTML viewers without access to neighbouring files. Full-resolution figures
 and scientific products remain unchanged. Downloads use the sibling
 `report-assets/` folder: open the report in Chrome or Safari with that folder
@@ -71,6 +80,12 @@ Spatial-profile figures show only the data before subtraction and the saved
 PypeIt sky model in three vertically stacked wavelength bins. Successful and
 failed-review profiles share their renderer, colours, fonts and layout. Failed
 reviews show only validated candidates or an explicitly selected aperture.
+Every failed or unsupported exposure retains three diagnostic slots: extracted
+spectrum, paired before/after detector views, and spatial profile. Unavailable
+spectra and sky subtraction are explicitly empty. If calibration fails before
+a wavelength map exists, profiles use three detector-row intervals in raw ADU,
+with raw-pixel coordinates and no invented trace or sky model. Retained counts
+appear once with their failure notice, rather than as a second empty exposure.
 Visible apertures are numbered consecutively from left to right: a single
 retained aperture is always C1. The original candidate identifiers, selection
 and evidence remain unchanged in provenance, with an explicit display-label map.
@@ -139,6 +154,7 @@ runs/2026-10-28/efospec/nightly/<processing-UTC>-<unique-id>/
 - `current.json` selects the revision used by separate reduction/report steps.
 - Repeating extraction in an existing revision is rejected; start with `log` again.
 - The report can be regenerated without re-extraction.
+- Every new nightly HTML retains unchanged earlier spectra from the same observing night in the main observing log and Spectra section, with FITS/ASCII downloads, saved plots, original warnings and revision provenance. Target-only runs replace only attempted exposures; a newer failure is not hidden by an older success. Reuse checks raw identity and product checksums without modifying the saved products. `report-products.json` records the displayed selection, including adopted manual/provisional products, for subsequent reports.
 - Raw files and accepted products remain unchanged.
 
 ## Independent redshift candidates

@@ -84,7 +84,8 @@ def reduce_daily(input_dir, output, *, night, targets=None, reviewed_sources=Non
         counts=[], exposure_states=[], review_counts=[], review_counts_errors=[],
         independent_flux_validation=False,
         limitations=['Same-night responses are experimental; absolute flux accuracy is unvalidated.',
-            'Optical standards attempt the independent sky check; failed checks retain arc-only wavelengths with measured reasons. No science shift is transferred.',
+            'Optical science and standards use full-spectrum sky validation over native coverage, with three regional checks and isolated-line warnings. Explicit reviewed policies take precedence.',
+            'Failed standard sky checks retain arc-only wavelengths with measured reasons. No science shift is transferred.',
             'Source position is an acquisition hypothesis, not a confirmed astrophysical identity.',
             'No slit-loss, telluric or second-order correction; response uncertainty and resampling covariance are omitted.',
             'Gr11/Gr13 Free/GG495 use exact-setup responses; Gr16/OG530 retains counts and response diagnostics pending red-wavelength validation.'])

@@ -2,11 +2,12 @@
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
-from .figure_style import house_style, save_qc, COLORS
+from .figure_style import house_style, save_qc
 from .image_display import image_normalization
 from .inventory import sha256
 
 EVIDENCE_CMAP = 'RdBu_r'
+COLORS = ('xkcd:red', 'xkcd:dodger blue')
 
 
 def _evidence_norm(image):

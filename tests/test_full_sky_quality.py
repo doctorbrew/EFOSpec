@@ -83,3 +83,40 @@ def test_localized_warning_does_not_hide_bad_wavelength_evidence(defect):
     if defect=='no_dispersion':del before['ranges'][3]['dispersion_angstrom_per_pixel']
     if defect=='different_region':after['ranges'][2]['approximate_shift_angstrom']=4.;after['ranges'][3]['approximate_shift_angstrom']=0.
     assert validation_warnings(before,after) is None
+
+
+def covered_records():
+    before,after=localized_records()
+    for stage,shift in ((before,-4.),(after,0.)):
+        for row in stage['ranges']:
+            row.update(approximate_shift_angstrom=shift,dispersion_angstrom_per_pixel=4.)
+            row['quality']['peak_lag_pixels']=shift/4.
+    return before,after
+
+
+def test_covered_sky_uses_regional_correlations_despite_single_line_estimator_alias():
+    from efospec.sky_comparison import covered_validation_warnings
+    before,after=covered_records()
+    before['ranges'][1]['approximate_shift_angstrom']=16.
+    before['ranges'][1]['quality']['pypeit_peak_disagreement_pixels']=5.
+    warnings=covered_validation_warnings(before,after)
+    assert warnings and warnings[0]['code']=='regional_sky_estimator_disagreement'
+    saved=dict(validation_policy='full-spectrum',quality_policy='full-sky-v3',
+        shift_angstrom=-4.,validation_passed=True,full_sky=before,corrected_full_sky=after)
+    assert wavelength_accepted(saved)
+    saved['quality_policy']='full-sky-v2'
+    assert not wavelength_accepted(saved)
+
+
+@pytest.mark.parametrize('defect',['two_weak','different_weak','residual','full_alias','full_noise'])
+def test_covered_sky_rejects_unsubstantiated_global_correction(defect):
+    from efospec.sky_comparison import covered_validation_warnings
+    before,after=covered_records()
+    before['ranges'][2]['quality']['peak_correlation']=.3
+    assert covered_validation_warnings(before,after) is not None
+    if defect=='two_weak':before['ranges'][1]['quality']['peak_correlation']=.3
+    if defect=='different_weak':after['ranges'][1]['quality']['peak_correlation']=.3
+    if defect=='residual':after['ranges'][3]['quality']['peak_lag_pixels']=1.
+    if defect=='full_alias':after['ranges'][0]['quality']['edge_peak']=True
+    if defect=='full_noise':before['ranges'][0]['quality']['peak_correlation']=.2
+    assert covered_validation_warnings(before,after) is None

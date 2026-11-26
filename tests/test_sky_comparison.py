@@ -74,16 +74,47 @@ def test_invalid_grids_are_rejected(grid):
     with pytest.raises(ValueError, match='increase'): sky.compare(data, wave[::-1], good)
 
 
+def test_pypeit_excess_shift_is_a_retained_sky_failure(grid,template_path,monkeypatch):
+    from pypeit import PypeItError
+    from pypeit.core import flexure
+    def excessive(*args,**kwargs):raise PypeItError('Flexure compensation failed')
+    monkeypatch.setattr(flexure,'spec_flex_shift',excessive)
+    record,_=sky.compare(*grid,coverage_aware=True)
+    assert all(r['status'] in {'failed','insufficient_coverage'} for r in record['ranges'])
+    assert record['ranges'][0]['reason']=='Flexure compensation failed'
+
+
+def test_covered_comparison_preserves_negative_sky_and_shared_resolution(template_path,monkeypatch):
+    from pypeit.core import flexure
+    wave=np.broadcast_to(np.linspace(3900.,7490.,1000)[:,None],(1000,12)).copy()
+    data=np.full_like(wave,-100.)+np.exp(-.5*((wave-5577)/8)**2)*20
+    original=data.copy();calls=[]
+    def measure(spectrum,**kwargs):
+        calls.append((spectrum.wave.copy(),spectrum.flux.copy(),kwargs))
+        return None
+    monkeypatch.setattr(flexure,'spec_flex_shift',measure)
+    record,arrays=sky.compare(data,wave,np.ones_like(data,bool),coverage_aware=True)
+    assert len(calls)==4
+    assert all(np.array_equal(c[0],calls[0][0]) for c in calls)  # resolution measured from full sky
+    assert calls[-1][2]['maxwave']<7500 and calls[1][2]['maxwave']==6000
+    assert record['correlation_pedestal_electron']>100
+    assert all(c[1].min()>0 for c in calls)
+    assert arrays['sky_electron'].max()<0  # original detector signal remains untouched
+    np.testing.assert_array_equal(data,original)
+
+
 def accepted(shift):
     return {'ranges': [{'status': 'measured', 'coverage_fraction': 1.,
-        'approximate_shift_angstrom': shift, 'quality': {'peak_correlation': .9,
+        'range_vacuum_angstrom': [5200+i*500,5700+i*500],
+        'approximate_shift_angstrom': shift, 'dispersion_angstrom_per_pixel':4.,
+        'quality': {'peak_correlation': .9,'peak_lag_pixels':shift/4.,
         'separated_peak_margin': .2, 'pypeit_peak_disagreement_pixels': .1,
-        'concave_peak': True, 'edge_peak': False}} for _ in range(4)]}
+        'concave_peak': True, 'edge_peak': False}} for i in range(4)]}
 
 
 def test_validated_shift_is_remeasured_on_air_grid_without_mutating_inputs(grid, monkeypatch):
     calls = []
-    def compare(data, wave, good):
+    def compare(data, wave, good, **kwargs):
         calls.append(wave.copy())
         return accepted(-2. if len(calls) == 1 else .1), {'sky': data.copy()}
     monkeypatch.setattr(sky, 'compare', compare)
@@ -103,7 +134,7 @@ def test_failed_validation_preserves_diagnostic_evidence(grid, monkeypatch, fail
     else:
         after = accepted(2.)  # consistent, but not close enough to zero after correction
     answers = iter([(before, {'before': np.array([1])}), (after, {'after': np.array([2])})])
-    monkeypatch.setattr(sky, 'compare', lambda *args: next(answers))
+    monkeypatch.setattr(sky, 'compare', lambda *args, **kwargs: next(answers))
     with pytest.raises(SkyValidationError) as caught: sky.measure_validated(*grid)
     assert caught.value.diagnostics['full_sky'] is before
     if failure != 'initial-quality':

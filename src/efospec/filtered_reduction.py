@@ -61,6 +61,7 @@ def free_comparisons(frame, frames):
 
 
 def export_counts(prepared, directory):
+    from .native_sky import wavelength_accepted
     from pypeit.core.wave import airtovac
     from pypeit.specobjs import SpecObjs
     from .pypeit_diagnostics import write_spec2d
@@ -74,7 +75,7 @@ def export_counts(prepared, directory):
     header = {key: h[key] for key in ('RA', 'DEC', 'EXPTIME', 'DATE-OBS', 'INSTRUME', 'MJD-OBS')}
     header.update(TARGET=h['OBJECT'], PYP_SPEC='ntt_efosc2_epessto', PYPELINE='MultiSlit',
                   WAVEMED='vacuum', SPECSYS='TOPOCENT', EPSTATUS='EXPERIMENTAL',
-                  FLUXCAL='NONE', FLEXURE=('VALIDATED' if prepared['sky'].get('held_out_6363_pass')
+                  FLUXCAL='NONE', FLEXURE=('VALIDATED' if wavelength_accepted(prepared['sky'])
                                           else 'UNMEASURED'), BUNIT='electron',
                   GRISM=setup['grism'], FILTER=setup['filter'], SLIT=setup['slit'])
     trace_qa=engine.get('trace_geometry',{})
@@ -106,7 +107,7 @@ def export_counts(prepared, directory):
     two_d = write_spec2d(directory/'native'/('spec2d_'+stem+'.fits'),
         diagnostics['science'], diagnostics['slits'], airtovac(prepared['waveair']*u.AA).value,
         diagnostics['tilts'], arrays[0], arrays=arrays, raw_origin=(prepared['ylo'], prepared['xlo']),
-        stage='native_counts_validated_sky' if prepared['sky'].get('held_out_6363_pass')
+        stage='native_counts_validated_sky' if wavelength_accepted(prepared['sky'])
               else 'native_counts_arc_only')
     image = directory/'native'/(stem+'_images.npz')
     np.savez_compressed(image, data=prepared['data'], sky=arrays[0], object_model=arrays[1],

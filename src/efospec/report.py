@@ -193,6 +193,18 @@ def write_report(run_directory, *, generation_error=None):
     for error in errors:
         rows.append(f'<tr><td>{escape(error.get("object", "Unknown"))}</td>'
                     '<td colspan="5">Reduction failed; see run notes below.</td></tr>')
+    # Preserve the same three diagnostic slots in standalone run reports.
+    from .epoch_report import EpochPage
+    page=EpochPage(run.parent)
+    delivered={r.get('raw') for r in manifest.get('results',[])+manifest.get('review_counts',[])}
+    shown=set()
+    for item in errors+skips:
+        raw=item.get('path')
+        if raw in delivered or raw in shown:continue
+        shown.add(raw)
+        title=item.get('object','Unknown')
+        sections.append('<section class="target"><h2>'+escape(title)+'</h2>'
+            +page.failure_cards(run,item,title)+'</section>')
     night = escape(Path(manifest.get('input_dir', '')).name or run.name)
     problem = ''
     if generation_error or missing:

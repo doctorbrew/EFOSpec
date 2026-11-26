@@ -6,7 +6,7 @@ from .inventory import sha256
 
 
 def validation_policy(selection):
-    policy=(selection or {}).get('validation_policy','three-line')
+    policy=(selection or {}).get('validation_policy','full-spectrum')
     if policy not in {'three-line','two-anchor','full-spectrum'}:
         raise ValueError('Unknown reviewed wavelength policy')
     return policy

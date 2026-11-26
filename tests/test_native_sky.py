@@ -161,3 +161,15 @@ def test_unknown_policy_cannot_accept_wavelength():
     with pytest.raises(ValueError,match='unknown'):
         measure_flexure(image,wave,validation_policy='unchecked')
     assert not wavelength_accepted({'validation_policy':'unchecked','held_out_6363_pass':True})
+
+
+@pytest.mark.parametrize('required',[True,False])
+def test_full_sky_single_line_disagreement_warns_for_science_and_standards(monkeypatch,required):
+    from efospec import native_sky,sky_comparison
+    image,wave=sky_image(False)
+    monkeypatch.setattr(sky_comparison,'measure_validated',lambda *args:(-6.,dict(
+        warnings=[],held_out_6363_pass=False,validation_passed=True,validation_policy='full-spectrum')))
+    shift,record=native_sky.exposure_flexure(image,wave,required=required,validation_policy='full-spectrum')
+    assert shift==-6. and record['status']=='validated_sky'
+    assert record['warnings'][0]['code']=='individual_sky_line_disagreement'
+    assert record['individual_line_check']['error']

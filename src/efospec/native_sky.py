@@ -26,6 +26,8 @@ def exposure_flexure(data, waveair, *, required, **options):
             raise
         return 0., dict(exc.diagnostics, status='unvalidated', shift_angstrom=0.,
             applied_shift_angstrom=None, validation_error=str(exc),
+            validation_policy=options.get('validation_policy','three-line'),
+            warnings=[dict(code='standard_sky_unvalidated',message='Standard retains arc wavelengths: '+str(exc))],
             policy='raw_arc_only; standard sky check attempted and failed')
     return shift, dict(record, status='validated_sky', applied_shift_angstrom=shift)
 
@@ -33,11 +35,12 @@ def exposure_flexure(data, waveair, *, required, **options):
 def wavelength_accepted(record):
     """Recheck the evidence for the explicitly recorded wavelength policy."""
     if record.get('validation_policy')=='full-spectrum':
-        from .sky_comparison import quality_passed,validation_warnings
+        from .sky_comparison import quality_passed,validation_warnings,covered_validation_warnings
         before=record.get('full_sky',{});after=record.get('corrected_full_sky',{})
-        if record.get('quality_policy')=='full-sky-v2':
+        if record.get('quality_policy') in {'full-sky-v2','full-sky-v3'}:
+            check=covered_validation_warnings if record['quality_policy']=='full-sky-v3' else validation_warnings
             return bool(record.get('validation_passed') is True
-                and validation_warnings(before,after) is not None
+                and check(before,after) is not None
                 and np.isclose(record.get('shift_angstrom',np.nan),before['ranges'][0]['approximate_shift_angstrom'],atol=1e-8,rtol=0))
         return bool(record.get('validation_passed') is True and record.get('quality_policy')=='full-sky-v1' and quality_passed(before) and quality_passed(after)
             and np.isclose(record.get('shift_angstrom',np.nan),before['ranges'][0]['approximate_shift_angstrom'],atol=1e-8,rtol=0)
@@ -64,7 +67,17 @@ def measure_flexure(data, waveair, *, validation_policy='three-line', **options)
     if validation_policy=='full-spectrum':
         from .sky_comparison import measure_validated
         good=options.get('good_pixels')
-        return measure_validated(data,waveair,np.ones_like(data,dtype=bool) if good is None else good)
+        shift,record=measure_validated(data,waveair,np.ones_like(data,dtype=bool) if good is None else good)
+        # The isolated-line test remains visible, but never vetoes a passing
+        # full-spectrum and regional check. Evaluate on the corrected grid.
+        try:
+            _,lines=_measure_three_lines(data,waveair+shift,**options)
+            record['individual_line_check']=lines
+        except SkyValidationError as exc:
+            record['individual_line_check']=dict(exc.diagnostics,error=str(exc))
+            record['warnings'].append(dict(code='individual_sky_line_disagreement',
+                message='Full-spectrum sky validation passed; individual-line diagnostic: '+str(exc)))
+        return shift,record
     if validation_policy not in {'three-line', 'two-anchor'}:
         raise ValueError('unknown sky validation policy')
     try:

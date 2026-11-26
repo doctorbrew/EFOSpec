@@ -7,6 +7,44 @@ from efospec.redshift_run import ned_candidate,heliocentric
 from efospec.redshift_report import redshift_cells
 
 
+def test_failed_science_gets_one_catalogue_search_and_no_false_nondetection(tmp_path):
+    from efospec.redshift_run import catalogue_only_sources
+    frames=[dict(path=str(tmp_path/name),sha256=name,role=role,metadata={'OBJECT':name})
+            for name,role in [('failed','science'),('recovered','science'),('standard','standard_candidate')]]
+    (tmp_path/'inputs.json').write_text(json.dumps({'frames':frames}))
+    failures=[dict(path=f['path'],error='Wavelength failed') for f in frames]
+    failures.append(dict(path=frames[0]['path'],error='Trace failed'))
+    selected=[(tmp_path,dict(raw=frames[1]['path']))]
+    result=catalogue_only_sources([(tmp_path,dict(errors=failures))],selected)
+    assert len(result)==1 and result[0]['object']=='failed'
+    assert result[0]['reasons']==['Wavelength failed','Trace failed']
+    cells=redshift_cells(dict(raw=frames[0]['path'],ned=dict(status='ok',candidate=None),
+                            spectral=dict(status='reduction_unavailable')))
+    assert 'No galaxy within 30 arcsec' in cells[0]
+    assert 'Not measured: reduction failed' in cells[1]
+    assert 'No Host Lines' not in cells[1]
+
+
+def test_review_counts_are_searchable_without_promoting_wavelengths(tmp_path):
+    from efospec.redshift_run import selected_science
+    from efospec.native_sky import wavelength_accepted
+    raw=str(tmp_path/'science.fits')
+    (tmp_path/'inputs.json').write_text(json.dumps({'frames':[dict(path=raw,role='science')]}))
+    counts=dict(raw=raw,raw_sha256='rawhash',product='counts.fits',images='images.npz',
+                product_sha256={'images.npz':'imagehash'},setup={'grism':'Gr13'},
+                sky_flexure=dict(status='unvalidated',held_out_6363_pass=False,lines=[]))
+    run=dict(results=[],review_counts=[counts])
+    selected,_=selected_science([(tmp_path,run)],[])
+    assert len(selected)==1 and selected[0][1]['evidence_kind']=='review_counts'
+    assert not wavelength_accepted(selected[0][1]['sky_flexure'])
+    rescue=dict(results=[dict(counts,role='science',product='rescued-flux.fits')])
+    selected,_=selected_science([(tmp_path,run),(tmp_path/'rescue',rescue)],[])
+    assert len(selected)==1 and selected[0][1]['product']=='rescued-flux.fits'
+    run['results']=[dict(counts,role='science',product='flux.fits')]
+    selected,_=selected_science([(tmp_path,run)],[])
+    assert len(selected)==1 and selected[0][1]['product']=='flux.fits'
+
+
 def test_nearest_galaxy_without_z_never_borrows_farther_redshift(tmp_path,monkeypatch):
     centre=SkyCoord(10*u.deg,20*u.deg,frame='fk5').icrs
     def fetch(catalogue,point,radius,directory,timeout):

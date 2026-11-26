@@ -128,7 +128,13 @@ def test_all_three_candidates_and_median_curves_are_visible(tmp_path, monkeypatc
             'x_limits': (150., 230.), 'provenance': None})
     plot_exposure(exposure, tmp_path)
     assert set(figures) == {'science', 'traces', 'profiles'}
-    assert len(figures['traces'].axes) == 2
+    before,after=figures['traces'].axes[:2]
+    assert len(before.images)==1 and len(before.lines)==3
+    assert 'Before sky subtraction' in before.get_title()
+    assert len(after.images)==int(sky_available)
+    if sky_available:
+        np.testing.assert_array_equal(after.images[0].get_array(),data-exposure.images['sky'])
+    else:assert not after.lines
     for kind in ('science','traces'):
         assert all(ax.images[0].get_cmap().name=='gray_r' for ax in figures[kind].axes if ax.images)
     panels=figures['profiles'].axes

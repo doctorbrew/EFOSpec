@@ -3,13 +3,13 @@ from pathlib import Path
 import numpy as np
 
 
-def compare(data, waveair, good, *, ranges=((5200.,9000.),(5200.,6800.),(6800.,7900.),(7900.,9000.))):
+def compare(data, waveair, good, *, ranges=((5200.,9000.),(5200.,6800.),(6800.,7900.),(7900.,9000.)), coverage_aware=False):
     from astropy import units as u
     from astropy.stats import sigma_clip
     from pypeit.core.wave import airtovac
     from pypeit.core.flexure import spec_flex_shift
     from pypeit.onespec import OneSpec
-    from pypeit import dataPaths
+    from pypeit import dataPaths, PypeItError
     from .inventory import sha256
     if data.shape!=waveair.shape or good.shape!=data.shape or data.ndim!=2:
         raise ValueError('Sky comparison arrays must share a two-dimensional grid')
@@ -24,6 +24,13 @@ def compare(data, waveair, good, *, ranges=((5200.,9000.),(5200.,6800.),(6800.,7
     sky=np.ma.mean(clipped,axis=0).filled(np.nan);support=np.ma.count(clipped,axis=0)
     valid=np.isfinite(sky)&(support>=10)
     vacuum=airtovac(wave*u.AA).value
+    # Gr11 does not reach 9000 A. Keep three disjoint, physically covered
+    # regions, with the 5577 and 6300 complexes in different regions.
+    offset=0.
+    if coverage_aware:
+        lo=max(5200.,float(vacuum[0]));hi=min(9000.,float(vacuum[-1]))
+        ranges=((lo,hi),(lo,6000.),(6000.,6800.),(6800.,hi))
+        if valid.any():offset=max(0.,1.-float(np.percentile(sky[valid],1)))
     template=dataPaths.sky_spec.get_file_path('paranal_sky.fits')
     records=[];arrays=dict(wave_vacuum=vacuum,sky_electron=sky,valid=valid)
     for index,(lo,hi) in enumerate(ranges):
@@ -32,8 +39,14 @@ def compare(data, waveair, good, *, ranges=((5200.,9000.),(5200.,6800.),(6800.,7
         if use.sum()<60:
             record.update(status='insufficient_coverage');records.append(record);continue
         try:
-            spectrum=OneSpec(vacuum[use],vacuum[use],sky[use],PYP_SPEC='ntt_efosc2',ext_mode='BOX',fluxed=False)
-            result=spec_flex_shift(spectrum,sky_file='paranal_sky.fits',mxshft=10,excess_shft='crash')
+            sampling=(valid&(vacuum>=ranges[0][0])&(vacuum<=ranges[0][1])) if coverage_aware else use
+            spectrum=OneSpec(vacuum[sampling],vacuum[sampling],sky[sampling]+offset,PYP_SPEC='ntt_efosc2',ext_mode='BOX',fluxed=False)
+            # Estimate resolution from the whole sky, then correlate the
+            # requested region. A lone 5577 line cannot establish a regional
+            # resolution independently. The pedestal is removed by PypeIt's
+            # continuum fit; it prevents clipping negative calibrated skies.
+            bounds=dict(minwave=lo,maxwave=hi) if coverage_aware else {}
+            result=spec_flex_shift(spectrum,sky_file='paranal_sky.fits',mxshft=10,excess_shft='crash',**bounds)
             if result is None:raise ValueError('No measurable sky correlation')
             shift=float(result['shift'])
             record.update(status='measured',shift_pixels=shift,quality=correlation_quality(result),
@@ -47,10 +60,12 @@ def compare(data, waveair, good, *, ranges=((5200.,9000.),(5200.,6800.),(6800.,7
                     fit_coefficients=result['polyfit'].fitc,
                     correlation_centre=result['corr_cen']).items():
                 arrays[f'{key}_{index}']=np.array(value,copy=True)
-        except (ValueError,RuntimeError) as exc:record.update(status='failed',reason=str(exc))
+        except (ValueError,RuntimeError,PypeItError) as exc:record.update(status='failed',reason=str(exc))
         records.append(record)
     return dict(method='pypeit.core.flexure.spec_flex_shift',template=str(template),template_sha256=sha256(template),
         wavelength_medium='vacuum',ranges=records,status='diagnostic_only',applied=False,
+        coverage_policy='native-covered-three-regions' if coverage_aware else 'fixed-regions',
+        correlation_pedestal_electron=offset,
         limitations=['Full-spectrum correlation is not a line-by-line acceptance test.',
             'Regional shifts test consistency; discrepancies can indicate blends, sky variability, contamination or wavelength distortion.',
             'No new wavelength correction or flux acceptance is applied by this diagnostic.']),arrays
@@ -164,9 +179,52 @@ def validation_warnings(before,after):
     return localized_acceptance(before,after)
 
 
+def covered_validation_warnings(before,after):
+    """V3: full PypeIt correction corroborated by two of three sky regions.
+
+    Use normalized template correlations for the regional residuals. PypeIt's
+    percentile-clipped estimator is unstable in a region dominated by one
+    line; retain its result as a warning, not a second veto of the same data.
+    The same regions must pass before and after correction. A second weak or
+    discrepant region, aliases, or a poor full-spectrum fit still reject.
+    """
+    excluded=set();warnings=[];retained=[]
+    for record,corrected in ((before,False),(after,True)):
+        rows=record.get('ranges',[])
+        if len(rows)!=4 or not quality_passed({'ranges':[rows[0]]*4}):return None
+        full=rows[0]['approximate_shift_angstrom']
+        if corrected and abs(full)>1.5:return None
+        shifts=[]
+        for i,row in enumerate(rows[1:],1):
+            q=row.get('quality',{});disp=row.get('dispersion_angstrom_per_pixel',np.nan)
+            lag=q.get('peak_lag_pixels',np.nan);shift=disp*lag
+            values=[disp,lag,q.get('peak_correlation',np.nan),q.get('separated_peak_margin',np.nan)]
+            good=(row.get('status')=='measured' and np.isfinite(values).all() and disp>0
+                  and row.get('coverage_fraction',0)>=.9 and values[2]>=.5 and values[3]>=.05
+                  and not q.get('edge_peak',True) and abs(shift-full)<=3
+                  and (not corrected or abs(shift)<=1.5))
+            if not good:excluded.add(i)
+            shifts.append(shift)
+        retained.append(shifts)
+    if len(excluded)>1:return None
+    for shifts in retained:
+        if np.ptp([s for i,s in enumerate(shifts,1) if i not in excluded])>3:return None
+    for i in range(1,4):
+        if i in excluded:
+            warnings.append(dict(code='localized_sky_region_disagreement',region_index=i,
+                range_vacuum_angstrom=before['ranges'][i]['range_vacuum_angstrom'],
+                message='One sky region is weak or inconsistent; full-spectrum and the same two other regions pass before and after correction.'))
+        elif any(abs(r['ranges'][i]['approximate_shift_angstrom']-
+                      r['ranges'][i]['quality']['peak_lag_pixels']*r['ranges'][i]['dispersion_angstrom_per_pixel'])>1.5
+                 for r in (before,after)):
+            warnings.append(dict(code='regional_sky_estimator_disagreement',region_index=i,
+                message='Regional PypeIt estimate disagrees with its normalized template correlation; the normalized regional residual passes.'))
+    return warnings
+
+
 def measure_validated(data,waveair,good):
     from .native_sky import SkyValidationError
-    before,before_arrays=compare(data,waveair,good)
+    before,before_arrays=compare(data,waveair,good,coverage_aware=True)
     rows=before.get('ranges',[])
     if len(rows)!=4 or not quality_passed({'ranges':[rows[0]]*4}):
         error=SkyValidationError('Full-sky correlation quality or regional consistency failed',[])
@@ -176,14 +234,14 @@ def measure_validated(data,waveair,good):
     shift=before['ranges'][0]['approximate_shift_angstrom']
     # Existing native products use a scalar air-Angstrom flexure correction.
     # Remeasure on exactly that map; never substitute a pixel-shift approximation silently.
-    after,after_arrays=compare(data,waveair+shift,good)
-    warnings=validation_warnings(before,after)
+    after,after_arrays=compare(data,waveair+shift,good,coverage_aware=True)
+    warnings=covered_validation_warnings(before,after)
     if warnings is None:
         error=SkyValidationError('Corrected full-sky residual check failed',[])
         error.diagnostics.update(full_sky=before,corrected_full_sky=after)
         error.sky_diagnostic_arrays={'before':before_arrays,'after':after_arrays}
         raise error
-    return float(shift),dict(validation_policy='full-spectrum',quality_policy='full-sky-v2',warnings=warnings,
+    return float(shift),dict(validation_policy='full-spectrum',quality_policy='full-sky-v3',warnings=warnings,
         validation_passed=True,shift_angstrom=float(shift),held_out_6363_pass=False,lines=[],
         full_sky=before,corrected_full_sky=after,
-        policy='Full-spectrum correction remeasured; at most one regional estimator warning with all normalized residuals checked; 6363 not independently certified')
+        policy='Full-spectrum correction remeasured over native coverage; normalized residuals checked in three disjoint sky regions, the same two must pass before and after; isolated discrepancies warn; 6363 not independently certified')
