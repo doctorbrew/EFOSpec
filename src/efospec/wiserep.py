@@ -1,7 +1,7 @@
 """Prepare separate public/private PESSTOWISE TGZs without uploading data.
 
 The TSV follows the preserved PESSTOWISE column layout, NOT the WISeREP v2
-bulk API schema. See docs/wiserep-delivery.md for sources and ingestion steps.
+bulk API schema. See docs/guides/wiserep-delivery.md for sources and ingestion steps.
 """
 
 import argparse
@@ -37,7 +37,7 @@ LEGACY_COLUMNS = (
 REVIEW_FIELDS = ('identity_reviewed', 'wavelength_reviewed', 'flux_reviewed',
                  'release_authorized')
 # The handbook identifies the current programme as ePESSTO+; WISeREP records
-# confirm this exact source/associated-group spelling. See docs/wiserep-delivery.md.
+# confirm this exact source/associated-group spelling. See docs/guides/wiserep-delivery.md.
 DEFAULT_SOURCE_GROUP = 'ePESSTO+'
 DEFAULT_PRIVATE_GROUPS = ('ePESSTO+',)
 HANDOFF_NOTE = (

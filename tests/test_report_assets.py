@@ -52,6 +52,7 @@ def test_viewer_link_survives_rebuilding_the_canonical_report(tmp_path):
     """T3's exact-file preview link must keep its original file identity."""
     first=write_report_bundle(tmp_path/'index.html','<html><body>First revision</body></html>')
     viewer=Path(first['viewer_path'])
+    assert re.fullmatch(r'NightlyLog-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.\d{6}Z\.html',viewer.name)
     original=viewer.read_bytes();identity=viewer.stat().st_ino
     second=write_report_bundle(tmp_path/'index.html','<html><body>Second revision</body></html>')
     assert Path(second['viewer_path'])!=viewer
@@ -61,8 +62,22 @@ def test_viewer_link_survives_rebuilding_the_canonical_report(tmp_path):
     assert current.read_bytes()==(tmp_path/'index.html').read_bytes()
     current_identity=current.stat().st_ino
     repeated=write_report_bundle(tmp_path/'index.html','<html><body>Second revision</body></html>')
-    assert repeated['viewer_path']==second['viewer_path']
+    assert repeated['viewer_path']!=second['viewer_path']
+    assert Path(repeated['viewer_path']).read_bytes()==current.read_bytes()
     assert current.stat().st_ino==current_identity
+
+
+def test_timestamp_collision_preserves_both_reports(tmp_path,monkeypatch):
+    from datetime import datetime,timezone
+    from types import SimpleNamespace
+    from efospec import report_assets
+    fixed=datetime(2026,11,27,16,45,30,tzinfo=timezone.utc)
+    monkeypatch.setattr(report_assets,'datetime',SimpleNamespace(now=lambda tz:fixed))
+    first=report_assets.write_timestamped_report(tmp_path/'index.html','first')
+    second=report_assets.write_timestamped_report(tmp_path/'index.html','second')
+    assert first.name=='NightlyLog-2026-11-27T16-45-30.000000Z.html'
+    assert second.name=='NightlyLog-2026-11-27T16-45-30.000001Z.html'
+    assert first.read_text()=='first' and second.read_text()=='second'
 
 
 def test_tampered_content_addressed_asset_stops_publication(tmp_path):

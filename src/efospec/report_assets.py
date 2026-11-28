@@ -6,6 +6,7 @@ need no filesystem base URL; load bulky downloads from siblings only on demand.
 import base64
 import hashlib
 import json
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from pathlib import Path
 from .paths import efospec_root
@@ -46,6 +47,24 @@ document.addEventListener('click', function(event) {
   document.body.appendChild(script);
 });
 '''
+
+
+def write_timestamped_report(destination, html):
+    """Save an immutable UTC-named copy, including identical regenerations."""
+    destination = Path(destination)
+    prefix = 'NightlyLog' if destination.stem == 'index' else destination.stem
+    stamp = datetime.now(timezone.utc)
+    while True:
+        path = destination.with_name(prefix+'-'+stamp.strftime('%Y-%m-%dT%H-%M-%S.%fZ')+'.html')
+        try:
+            stream = path.open('xb')
+        except FileExistsError:
+            # Two calls can share a clock tick; never overwrite an earlier log.
+            stamp += timedelta(microseconds=1)
+            continue
+        with stream:
+            stream.write(html.encode())
+        return path
 
 
 def write_report_bundle(destination, html):
@@ -105,16 +124,10 @@ def write_report_bundle(destination, html):
     compact=compact.replace('</footer>',note+'</footer>',1) if '</footer>' in compact else compact.replace('</body>',note+'</body>',1)
     # T3 binds out-of-workspace previews to a file's device/inode. Replacing
     # index.html invalidates cached URLs, even when the HTML itself is valid.
-    # Keep a content-named copy beside the assets for stable viewer links.
+    # Keep an immutable timestamped copy beside the assets for stable viewer links.
     viewer_bytes=compact.encode()
     viewer_digest=hashlib.sha256(viewer_bytes).hexdigest()
-    viewer=destination.with_name(destination.stem+'-view-'+viewer_digest[:12]+'.html')
-    if viewer.exists():
-        if viewer.read_bytes()!=viewer_bytes:
-            raise ValueError('saved report viewer copy changed: '+viewer.name)
-    else:
-        with viewer.open('xb') as stream:
-            stream.write(viewer_bytes)
+    viewer=write_timestamped_report(destination, compact)
     # Portable and manifest writes complete before replacing the entry point.
     temp=portable.with_suffix('.html.tmp');temp.write_text(html);temp.replace(portable)
     manifest=assets/(destination.stem+'-manifest.json')

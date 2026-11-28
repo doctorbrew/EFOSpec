@@ -121,7 +121,7 @@ class EpochPage:
         except (ValueError, TypeError):return ''
         return f' · {seconds:g} s'
 
-    def spectra(self, run_dir, run, *, id_prefix='spectrum'):
+    def spectra(self, run_dir, run, *, id_prefix='spectrum', entries=False, source_note=None):
         from .telluric_products import selected_pairs,overlay_record,status_text
         pairs=selected_pairs(run_dir)
         records = [self.read(p) for p in sorted((run_dir/'style-preview').glob('FitSpectrum_*.json'))]
@@ -161,6 +161,9 @@ class EpochPage:
                 ' · <span title="The extracted detector trace has not been independently matched to the named target; extraction itself succeeded.">Target identity unverified</span>')
             if result.get('target',{}).get('identity',{}).get('method') == 'operator_visual':
                 identity = ' · C'+str(result['target']['identity']['candidate'])+' identified visually by operator'
+            aperture_review=result.get('target',{}).get('aperture_review',{})
+            if aperture_review.get('status')=='operator_confirmed':
+                identity += ' · '+_text(aperture_review['candidate'])+' aperture confirmed by operator'
             if result.get('status')=='PROVISIONAL':
                 identity += ' · <strong class="qc-status-bad">Provisional: wavelength unvalidated</strong>'
                 identity += ' · '+_text(result.get('interpretation',''))
@@ -205,7 +208,12 @@ class EpochPage:
                     f'<h3>{_text(title)}</h3>'+self.failure_notice(run_dir, item)
                     +self.failure_cards(run_dir,item,title)
                     +'<p class="caption">'+_text(Path(item.get('path', '')).name)+'</p></article>')
-        return ''.join(html for _, html in sorted(zip(section_order, sections), key=lambda pair: pair[0])) or '<p>No spectra recorded in this revision.</p>'
+        if source_note:
+            note='<p class="caption">'+_text(source_note)+'</p>'
+            sections=[html.replace('</h3>','</h3>'+note,1) for html in sections]
+        ordered=sorted(zip(section_order, sections), key=lambda pair: pair[0])
+        if entries:return ordered
+        return ''.join(html for _, html in ordered) or '<p>No spectra recorded in this revision.</p>'
 
     def observations(self, revision, run, provisional=None, redshifts=None, manuals=(), retained=()):
         outcomes = {}
@@ -791,7 +799,8 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
             if candidate.get('wavelength_policy')!='provisional_arc_only' or candidate.get('night')!=night:
                 raise ValueError('invalid provisional rescue policy')
             from .rescue import rescue_candidates
-            failures=rescue_candidates(run, include_pending_red=candidate.get('include_pending_red',False))
+            failures=rescue_candidates(run, include_pending_red=candidate.get('include_pending_red',False),
+                                      include_standards=candidate.get('include_standards',False))
             for result in candidate['results']:
                 if result.get('status')!='PROVISIONAL' or result['raw'] not in failures or result.get('wavelength_validated') is not False:
                     raise ValueError('rescue result cannot replace an accepted product')
@@ -840,12 +849,14 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
         calibration_content+=page.download(native/'validation.json','Native validation record')
         calibration_content+=page.wavelength_checks(native)
     recovered={x['raw'] for _,m in manuals for x in m.get('results',[])}
-    display_run=dict(run,errors=[x for x in run.get('errors',[]) if x.get('path') not in recovered],
-                     review_counts=[x for x in run.get('review_counts',[]) if x['raw'] not in recovered])
-    spectra=page.spectra(revision/'reduction',display_run)
-    if recovered:
-        historical=dict(run,results=[],skipped=[],errors=[x for x in run.get('errors',[]) if x.get('path') in recovered],
-                        review_counts=[x for x in run.get('review_counts',[]) if x['raw'] in recovered])
+    flux_available=recovered|{x['raw'] for x in (rescue or {}).get('results',[])}
+    display_run=dict(run,errors=[x for x in run.get('errors',[]) if x.get('path') not in flux_available],
+                     review_counts=[x for x in run.get('review_counts',[]) if x['raw'] not in flux_available])
+    spectrum_entries=page.spectra(revision/'reduction',display_run,entries=True)
+    spectra=''
+    if flux_available:
+        historical=dict(run,results=[],skipped=[],errors=[x for x in run.get('errors',[]) if x.get('path') in flux_available],
+                        review_counts=[x for x in run.get('review_counts',[]) if x['raw'] in flux_available])
         spectra+='<details><summary>Superseded attempts and review counts</summary>'+page.spectra(revision/'reduction',historical)+'</details>'
     for j,(manual_path,manual_run) in enumerate(manuals):
         if manual_run.get('review_counts'):
@@ -857,14 +868,16 @@ def build_epoch_page(night, project_root='.', *, revision_dir=None):
             spectra+='<p>Wavelength acceptance: full-sky template correlation with peak-quality, coverage and three regional residual checks. The 6363 Å line is not independently certified. The correction and quality evidence are retained in the sky-check download.</p>'
         spectra+=page.spectra(manual_path,manual_run,id_prefix=f'manual-{j}-spectrum')
     if rescue:
-        superseded=all(x['raw'] in recovered for x in rescue['results'])
-        if superseded:spectra+='<details><summary>Earlier provisional flux products</summary>'
-        spectra+='<h3>Provisional rescue spectra</h3><p class="qc-status-bad">Same-night flux calibration; science wavelengths remain unvalidated. No flexure correction applied. These do not replace accepted products.</p>'
-        spectra+=page.spectra(rescue_path,rescue,id_prefix='rescue-spectrum')
-        if superseded:spectra+='</details>'
+        # Use the ordinary source cards. Scientific status stays beside each
+        # product; storage in a rescue directory does not define a page section.
+        rescue_entries=page.spectra(rescue_path,rescue,id_prefix='rescue-spectrum',entries=True)
+        if all(x['raw'] in recovered for x in rescue['results']):
+            spectra+='<details><summary>Earlier flux products</summary>'+''.join(html for _,html in rescue_entries)+'</details>'
+        else:spectrum_entries+=rescue_entries
     for j,(saved_path,saved_run) in enumerate(retained):
-        spectra+='<p class="caption">Unchanged spectra and status from '+_text(str(saved_path.relative_to(root)))+'.</p>'
-        spectra+=page.spectra(saved_path,saved_run,id_prefix=f'retained-{j}-spectrum')
+        spectrum_entries+=page.spectra(saved_path,saved_run,id_prefix=f'retained-{j}-spectrum',entries=True,
+            source_note='Unchanged spectra and status from '+str(saved_path.relative_to(root))+'.')
+    spectra=''.join(html for _,html in sorted(spectrum_entries,key=lambda item:item[0]))+spectra
     issues=page.problems(run,revision/'reduction')
     if manuals:
         unresolved=(any(x.get('path') not in recovered for x in run.get('errors',[]))

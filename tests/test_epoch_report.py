@@ -82,6 +82,24 @@ def test_review_report_keeps_selected_page_and_pointer_unchanged(epoch_page):
         build_epoch_page('2026-10-28',project,revision_dir=project/'runs/2026-10-29/efospec/QC/other')
 
 
+def test_red_response_ready_status_and_confirmed_aperture(epoch_page):
+    from efospec.review_handoff import counts_delivery_status, failures
+    from efospec.epoch_report import EpochPage
+    project,root,product=epoch_page
+    counts=dict(raw='red.fits',object='Feige110',setup={},product='counts.fits',route='red',
+        selected_response={'path':'response.fits'},sky_flexure={'status':'unvalidated'})
+    manifest=dict(errors=[],review_counts=[counts])
+    expected='Extraction succeeded; response ready; wavelength check pending'
+    assert counts_delivery_status(counts,manifest)==expected
+    assert failures(manifest)[0]['reason'].startswith(expected)
+    run=root/'nightly/revision-1/reduction'
+    saved=json.loads((run/'run.json').read_text())
+    saved['results'][0]['target']={'aperture_review':{'status':'operator_confirmed','candidate':'C1'}}
+    html=EpochPage(root).spectra(run,saved)
+    assert 'C1 aperture confirmed by operator' in html
+    assert 'identified visually by operator' not in html
+
+
 class Assets(HTMLParser):
     def __init__(self, html):
         super().__init__();self.ids=set();self.links=[];self.handoffs=[];self.images=[];self.downloads={};self.feed(html)
@@ -161,7 +179,7 @@ def test_rescue_report_keeps_failed_wavelength_status_and_parent_identity(epoch_
     rescue=root/'rescue/trial'
     spectrum=rescue/'provisional.fits';spectrum.parent.mkdir(parents=True);spectrum.write_bytes(b'provisional')
     run=dict(night='2026-10-28',parent_sha256='stale' if mode=='stale' else sha256(parent),
-        wavelength_policy='provisional_arc_only',results=[dict(raw=raw,object='Failed wave',grism='Gr11',
+        wavelength_policy='provisional_arc_only',results=[dict(raw=raw,object='AT2026afvu',grism='Gr11',
             product=str(spectrum),product_sha256={str(spectrum):sha256(spectrum)},status='PROVISIONAL',
             wavelength_validated=False,interpretation='Selected trace; identity unverified.')])
     save(rescue/'run.json',run)
@@ -175,8 +193,13 @@ def test_rescue_report_keeps_failed_wavelength_status_and_parent_identity(epoch_
         html=(root/'index.html').read_text()
         if mode=='current':
             assert 'id="rescue-spectrum-0"' in html
-            assert 'science wavelengths remain unvalidated' in html
+            assert 'Provisional: wavelength unvalidated' in html
+            assert 'Provisional rescue spectra' not in html
             assert 'id="spectrum-0"' in html
+            assert html.index('id="rescue-spectrum-0"') < html.index('id="spectrum-0"')
+            source_card=html.split('id="rescue-spectrum-0"',1)[1].split('</article>',1)[0]
+            assert 'class="qc-status-bad"' in source_card
+            assert 'Superseded attempts and review counts' in html
         else:
             assert 'id="rescue-spectrum-0"' not in html
             assert 'Retained provisional rescue belongs' not in html

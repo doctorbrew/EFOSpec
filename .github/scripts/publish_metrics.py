@@ -21,7 +21,7 @@ def main():
     if api('GET', 'commits/'+branch)['sha'] != source:
         print('Skipping metrics from an older source revision.')
         return
-    payloads = {name: json.loads((Path('badge-data')/name).read_text())
+    payloads = {name: json.loads((Path('runs/development/badge-data')/name).read_text())
                 for name in ['tests.json', 'coverage.json']}
     payloads['source.json'] = {'commit': source,
         'run_url': f"https://github.com/{repo}/actions/runs/{os.environ['GITHUB_RUN_ID']}"}

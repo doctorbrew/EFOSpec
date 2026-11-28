@@ -25,7 +25,7 @@ def main():
     helper = Path(__file__).with_name("list_raw_frames.py")
     if not helper.is_file():
         parser.error(f"Missing list helper: {helper}")
-    parent = (args.runs or root / "runs").resolve() / args.night / "pessto"
+    parent = (args.runs or root / "runs").resolve() / args.night / "pyraf"
     parent.mkdir(parents=True, exist_ok=True)
     number = 1
     while True:

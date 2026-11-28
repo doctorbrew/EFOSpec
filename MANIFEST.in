@@ -8,5 +8,6 @@ prune data
 prune runs
 prune outputs
 prune manuals_pessto
+prune docs/references/pessto
 exclude AGENTS.md docs/DEVELOPMENT_LOG.md docs/brand/prompts.txt
 global-exclude __pycache__ *.py[cod] .DS_Store .env .env.*

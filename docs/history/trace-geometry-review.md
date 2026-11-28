@@ -1,0 +1,34 @@
+# EFOSpec trace geometry review — 2026-10-28
+
+Historical evidence: conclusions and commands describe the recorded run. For current operations, use the [reduction cookbook](../guides/reduction-cookbook.md).
+
+Implemented 11 November 2026; diagnostic revision `runs/2026-10-28/QC/trace-geometry-20261111/`.
+
+- Historical C-labels belong to their saved parent reduction. The report labels different-parent QC explicitly. The hash-bound trace review is disabled for now at the user’s request; it does not transfer C numbers between reductions.
+- On the current bias/flat-corrected pixels, using the old trial FWHM (4 pixels), SN2026ayt C1/C2/C3 pass local contrast in 0/6, 6/6 and 1/6 spectral sections. SN2026aebl C1/C2/C3 pass 0/6, 0/6 and 6/6. The unsupported old candidates were found on the earlier unflattened images. This comparison implicates detector/background structure; it does not identify a particular defective pixel or establish transient identity.
+- Saved historical curves are already consistent with degree-four polynomials. Low order alone cannot distinguish a source from background structure. Historical curves remain unchanged in the evidence plots.
+- New finding explicitly uses degree 3. A local Gaussian-core versus linear-background contrast test requires S/N ≥3 in at least three of six spectral sections, with both spatial flanks supported. Recorded variance supplies the noise, inflated by excess residual scatter. Automatic selection and neighbour guards use passing candidates. Explicit manual selections remain explicit; emission-line-only or inadequately supported candidates require review.
+- Optimal extraction may refine the seed. A final path departing from a degree-four fit by more than 0.5 pixel is rejected, rather than smoothing coordinates after measuring flux along another path. This is a tolerance gate, not an assertion of an exactly polynomial final path.
+- Updated 13 November: automatic bounded extraction uses the configured aperture; explicit manual radii remain unchanged. Wing growth (three Gaussian sigma followed by three noise-consistent pixels on each side) is diagnostic only. Its measured radius or failure reason is recorded separately and never changes the adopted aperture. The final background must still pass bounded two-sided support, residual and trace-overlap checks. Neither aperture policy guarantees total flux or host separation.
+- Initial raw detections retain automatic neighbour guards only when their positive-peak validation passes. Unsupported broad proposals remain recorded with their validation and guard decision; an unmeasurable width does not become an exclusion radius. Validated neighbours outside the later restricted search keep their guards. Incomplete evidence does not establish that a source is absent.
+
+13 November replay: `runs/2026-10-28/nightly/20261112T235430Z-5cf71a/QC/aperture-policy-20261113-v1/`
+isolates the aperture change and recovers SN2026aebl; sibling `aperture-policy-20261113-v2/`
+also restricts initial guards to validated peaks and recovers AT2026agwm. Both v2 science
+products pass independent wavelength checks and finite two-sided background checks,
+with 14/13 minimum retained samples per side and zero aperture-overlap rows.
+The adopted radius is 6.25 pixels; diagnostic wing radii are 22.5/34.5 pixels, not total-flux certification.
+All 918 protected files and the nightly pointer are unchanged. The final focused suite
+passes 94 tests; replay manifests, source snapshots, red/green regressions, verification
+and a standalone report are retained in those revisions. GUI recovery integration is separate.
+
+- Background widths are ranked by proximity before preference for 30 pixels, retaining the existing bounded two-sided 15–50 pixel policy. Fractional background occupancy is drawn with column opacity instead of a sloping filled polygon: averaging a curved mask must not look like a trapezoidal aperture.
+- Geometry profiles run from the minimum of the interior background curve minus 2 robust sigma to the source peak plus 2 sigma, excluding the outer three slit-edge columns from scaling. Samples are retained. Candidate curves share a colour, use distinct line styles, and are 2 points thicker.
+- Acquisition plots retain the full image and a separate zoom on the right. The zoom carries a horizontal slit-direction key, following the CCD x-axis in the [EFOSC2 manual, section 3.1.3 / Figure 17](https://www.eso.org/sci/facilities/lasilla/instruments/efosc/doc/manual/EFOSC2manual_v4.2.pdf). There is no inset or spectral-image comparison. The key is in display coordinates: it does not assign a slit centre row or establish that a source was on the slit. Section 3.5.4 says slit y is measured separately and stored in the instrument database; it is not a fixed coordinate supplied by the manual.
+- Visible title and masthead: **Nightly LOG - NTT/EFOSC2 (ePESSTO+)**, retaining the observing date.
+
+Validation: 77 extraction/background/geometry/report/display tests passed before the acquisition-layout correction. Separate real SN2026aebl and SN2026ayt extraction-kernel trials passed using calibrated pixels and propagated noise; the SN2026aebl trial measured a 34.5-pixel half-width for a roughly 14-pixel FWHM profile. This broad aperture is not a point-source/host decomposition. The check, source evidence, input hashes and plots are retained; no accepted spectrum or nightly reduction pointer was replaced. The revised report is for 28 October only; future report builds inherit the title and plotting changes.
+
+Display refinement: `display-v3/` holds the larger-font geometry and acquisition plots (PDF, 300-dpi JPG, PNG). The complete interior background curve sets the lower limit, with two-sigma padding. Tick labels are 31.2 pt, axis labels 28.6 pt, titles 26 pt and geometry legends 22 pt. These figures are not included in the nightly HTML; the prior trace-review section is disabled. Focused display/background/report checks: 27 passed.
+
+Acquisition layout correction: `QC/acquisition-direction-20261111/` retains the restored full-acquisition/zoom pairs and the documentation provenance. The existing acquisition figure slots in the 28 and 29 October nightly logs use the CCD-x direction key on the right-hand zoom only. Catalogue markers and saved astrometry are reused; raw pixels, spectral products, and reduction pointers are unchanged. The direction key does not draw a footprint at an assumed detector row. There is no inset or spectral-image comparison. The new trace/background review figures remain excluded from the nightly pages. Focused acquisition/display/catalogue/recovery/report checks: 38 passed.

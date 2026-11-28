@@ -119,8 +119,7 @@ def test_off_center_raw_can_be_recovered_with_hash_bound_manual_recipe(tmp_path,
         assert editor.last_result['valid'].any()
         # The embedded review launches the same Python engine, forwards its
         # reference root and produces the previewed counts without touching inputs.
-        destination=tmp_path/'desktop-output';destination.mkdir()
-        monkeypatch.setattr(QtWidgets.QFileDialog,'getExistingDirectory',lambda *a,**kw:str(destination))
+        destination=run/'manual-revisions'
         editor.extract()
         assert editor.is_running()
         shell.poll_job()
@@ -149,10 +148,16 @@ def test_off_center_raw_can_be_recovered_with_hash_bound_manual_recipe(tmp_path,
         assert editor.worker is None
         assert json.loads(saved.read_text())==first[0]
         editor.load_recipe()
-        # A removed/unwritable destination must leave the desktop session
-        # usable and must not launch a worker with an absent recipe.
-        monkeypatch.setattr(QtWidgets.QFileDialog,'getExistingDirectory',lambda *a,**kw:str(tmp_path/'removed'))
-        editor.extract()
+        # An unwritable revision folder must leave the desktop session usable
+        # and must not launch a worker with an absent recipe.
+        original_open=Path.open
+        def refuse_recipe(path,mode='r',*args,**kwargs):
+            if path.parent==destination and path.suffix=='.json' and mode=='x':
+                raise PermissionError('Revision folder is read-only')
+            return original_open(path,mode,*args,**kwargs)
+        with monkeypatch.context() as patch:
+            patch.setattr(Path,'open',refuse_recipe)
+            editor.extract()
         assert editor.worker is None
         assert 'Cannot save extraction recipe' in editor.message.text()
         shell.reviews.setCurrentIndex(0)

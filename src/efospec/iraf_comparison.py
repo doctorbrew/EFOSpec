@@ -167,8 +167,11 @@ def compare_run(run_dir, input_dir, output):
     frames = [f for f in inv['frames'] if f['role']=='science' and 'duplicate_of' not in f]
     candidates, scan_errors = discover(input_dir)
     if input_dir.parent.name == 'data':
-        iraf_dir = input_dir.parent.parent/'runs'/night/'pessto'
-        if iraf_dir.is_dir():
+        dated = input_dir.parent.parent/'runs'/night
+        # Read historical locations too; new preparations write only to pyraf.
+        for iraf_dir in dict.fromkeys((dated/name).resolve() for name in ('pyraf','pessto')):
+            if not iraf_dir.is_dir():
+                continue
             extra, errors = discover(iraf_dir)
             by_hash = {row['sha256']: row for row in candidates}
             for row in extra:

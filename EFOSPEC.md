@@ -1,13 +1,13 @@
 # EFOSpec operating notes
 
 - **Install:** [compact README](README.md).
-- **Science:** [engine boundaries](docs/pipeline-stages.md).
-- **Design:** [pipeline design](docs/pipeline-stages.md).
-- **Desktop GUI:** [PySide6 controls and usage](docs/desktop.md).
-- **Browser editor:** [experimental prototype and recipe replay](docs/gui.md); not the desktop app.
+- **Science:** [engine boundaries](docs/science/pipeline-stages.md).
+- **Design:** [pipeline design](docs/science/pipeline-stages.md).
+- **Desktop GUI:** [PySide6 controls and usage](docs/guides/desktop.md).
+- **Browser editor:** [experimental prototype and recipe replay](docs/development/gui.md); not the desktop app.
 - **Webpage:** read-only nightly log, separate from extraction controls.
 - **Scope:** experimental EFOSC2 archive/raw-only reduction; PypeIt 3.0.0.
-- **Native calibration:** [raw inputs and remaining work](docs/native-calibration.md).
+- **Native calibration:** [raw inputs and remaining work](docs/science/native-calibration.md).
 
 ## Download raw data
 
@@ -160,7 +160,7 @@ PYTHONPATH=src python -m unittest discover -s tests -v
 - No full-calibration parity, native spec2d, resolution map, or Phase 3 certification.
 - Red fringing, second-order contamination, and absolute flux need further validation.
 - Legacy `trunk/` and existing NOT/PyRAF environments stay separate.
-- Raw data and generated `runs/`, `outputs/`, and `data/` stay outside Git.
+- Raw data and generated `runs/` and `data/` stay outside Git.
 - Migration code and documentation are published in the `sPaMFouR/efospec` fork.
 
 ## Typing metadata
@@ -168,4 +168,4 @@ PYTHONPATH=src python -m unittest discover -s tests -v
 Use `efospec typing-metadata show|init|edit|report runs/2026-10-28/efospec` for
 revision-bound host/adopted-redshift annotations and saved-data HTML refresh.
 The desktop **Host & redshift** tab uses the same validation and revision store.
-See [host and redshift workflow](docs/typing-metadata.md).
+See [host and redshift workflow](docs/guides/typing-metadata.md).

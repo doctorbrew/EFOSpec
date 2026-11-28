@@ -51,6 +51,9 @@ def counts_delivery_status(counts, manifest):
     if any(item.get('path') == counts['raw'] and item.get('code') == 'wavelength_validation_failed'
            for item in manifest.get('errors', [])):
         return 'Counts extracted; flux withheld — wavelength validation failed'
+    if (counts.get('route')=='red' and counts.get('selected_response')
+            and counts.get('sky_flexure',{}).get('status')=='unvalidated'):
+        return 'Extraction succeeded; response ready; wavelength check pending'
     return counts.get('delivery_status', 'Review counts; wavelength unvalidated')
 
 
@@ -61,7 +64,8 @@ def failures(manifest):
         if Path(counts['raw']).name not in recorded:
             items.append(dict(path=counts['raw'], object=counts['object'], setup=counts['setup'],
                 code='calibration_pending', stage='counts_extracted', counts_review=counts['product'],
-                reason='Counts extracted; flux calibration pending. '+' '.join(counts.get('pending_checks', []))))
+                reason=counts_delivery_status({'delivery_status':'Counts extracted; flux calibration pending',**counts},manifest)
+                    +'. '+' '.join(counts.get('pending_checks', []))))
     return items
 
 

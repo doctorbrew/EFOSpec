@@ -38,7 +38,7 @@ conda activate efospec
 
 Uses Python 3.11 and PypeIt 3.0.0. Scientific plots also require LaTeX, `dvipng`
 and `type1cm`/`cm-super`. Retain the checkout for its calibration references.
-[Installation details](EFOSPEC.md) · [Existing-user migration](docs/adoption.md).
+[Installation details](EFOSPEC.md) · [Existing-user migration](docs/guides/adoption.md).
 
 Run one observing night at a time; replace the example date throughout:
 
@@ -57,7 +57,7 @@ Run the report after a partial reduction (exit 1); resolve input/operational err
 
 Open `runs/2024-11-14/efospec/index.html`; share `index-portable.html` from the same
 folder as a standalone report. GUI edits create new revisions; publishing them
-to the nightly report requires the [reviewed-geometry workflow](docs/epoch-workflow.md#gui-revisions-and-nightly-publication).
+to the nightly report requires the [reviewed-geometry workflow](docs/guides/epoch-workflow.md#gui-revisions-and-nightly-publication).
 
 ## Restart a corrupt PypeIt reduction
 
@@ -77,13 +77,13 @@ The recovery copy is saved under
 `runs/DATE/archive/cleanup-TIMESTAMP-ID/efospec/`; no products are deleted and
 no disk space is reclaimed. Other observing dates are unchanged.
 Equivalent command: `efospec cleanup-night DATE` (add `--apply` to move files).
-See [lock handling and recovery instructions](docs/epoch-workflow.md#clean-restart-after-a-corrupt-reduction).
+See [lock handling and recovery instructions](docs/guides/epoch-workflow.md#clean-restart-after-a-corrupt-reduction).
 
 ## Files and outputs
 
 [Open published nightly logs, IRAF comparisons and Spectypus fitting logs](OUTPUTS_PIPELINE.md).
 
-[Package reviewed spectra for WISeREP](docs/wiserep-delivery.md) using
+[Package reviewed spectra for WISeREP](docs/guides/wiserep-delivery.md) using
 `python scripts/package_wiserep.py`: separate public/private `.tgz` files with FITS,
 ASCII, metadata and optional related files. Packaging does not upload data.
 
@@ -91,11 +91,15 @@ ASCII, metadata and optional related files. Packaging does not upload data.
 | --- | --- |
 | `data/DATE/` | Original inputs |
 | `runs/DATE/efospec/` | PypeIt reductions, calibrations, QA, logs and HTML |
-| `runs/DATE/pessto/` | IRAF working copies, products, lists and logs |
+| `runs/DATE/pyraf/` | IRAF working copies, products, lists and logs |
+| `runs/development/` | Temporary build/test staging, created only when needed |
+| `runs/publication/` | Temporary publishing copies, created only when needed |
+| `runs/archive/` | Retained maintenance evidence and receipts |
 
 Original inputs and previous revisions are preserved. Local observing data and
 outputs are ignored by Git. Code lives in `src/efospec/`; `trunk/` retains the
-legacy engine and reference calibrations.
+legacy engine and reference calibrations. **All generated outputs use `runs/`;
+there is no separate `outputs/` folder.** See the [repository layout](docs/repository-layout.md).
 
 ## Create the public and private upload tarballs
 
@@ -149,23 +153,23 @@ The timestamp is the **UTC packaging time**, and `Rapid` is the reviewed quality
 Only populated access classes are produced; existing destinations are never
 overwritten. Both classes must be present in the manifest to produce two tars.
 
-The tarballs match the supplied `wiserep_tns_upload/` examples: a flat archive,
+The tarballs match the supplied `data/reference-deliveries/` examples: a flat archive,
 one `pessto_…_upload.txt` with the original header/defaults line, four-band
 primary FITS and tab-separated two-column `.asci` spectra. Optional plots and
 calibrated 2D products occupy the same related-file columns. Local masks, JSON,
 error sidecars and checksums stay outside the upload tars. Native PypeIt `spec2d`
 files are not relabelled as calibrated `_2df.fits`.
-[Metadata fields and compatibility details](docs/wiserep-delivery.md).
+[Metadata fields and compatibility details](docs/guides/wiserep-delivery.md).
 
 ## Status and documentation
 
 **Experimental:** inspect source identity, extraction, wavelength and flux QA
 before using spectra scientifically. Recent-night reductions can be partial;
 real SN/host separation and absolute-flux accuracy remain unvalidated. Products
-are not ESO Phase 3 certified. [Telluric correction](docs/telluric-correction.md)
+are not ESO Phase 3 certified. [Telluric correction](docs/science/telluric-correction.md)
 is an explicit optional revision, not an automatic correction to every spectrum.
 
-[Workflow and IRAF comparisons](docs/epoch-workflow.md) ·
-[Desktop guide](docs/desktop.md) · [Calibration limits](docs/native-raw-run.md) ·
+[Workflow and IRAF comparisons](docs/guides/epoch-workflow.md) ·
+[Desktop guide](docs/guides/desktop.md) · [Calibration limits](docs/science/native-raw-run.md) ·
 [Documentation index](docs/PROJECT_INDEX.md) ·
-[Contributing](docs/contributing.md) · [Tests and CI](docs/ci.md).
+[Contributing](docs/development/contributing.md) · [Tests and CI](docs/development/ci.md).

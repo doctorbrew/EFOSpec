@@ -27,7 +27,8 @@ def worker(monkeypatch, *, partial=False, crash=False, plot_failure=False):
             run=Path(args[args.index('--output')+1]);run.mkdir()
             raw=str(Path(args[1])/'science.fits')
             errors=[dict(path=raw,object='SN<test>',code='source_selection_required')] if partial else []
-            result=[] if partial else [dict(raw=raw,object='SN<test>')]
+            result=[] if partial else [dict(raw=raw,object='SN<test>',
+                product=str(run/'products/mock-spectrum.fits'))]
             (run/'run.json').write_text(json.dumps(dict(execution_status='partial' if partial else 'complete',results=result,errors=errors,skipped=[])))
             return int(partial)
         if args[0]=='report':
@@ -50,6 +51,8 @@ def test_partial_reduction_still_presents_one_dated_report_and_qc(epoch,monkeypa
     assert state['stages']['report']['status']=='complete'
     assert [c[0] for c in calls]==['reduce-rapid','report','recovery-qc']
     output=Path(state['output_dir']);page=(output/'index.html').read_text()
+    snapshots=list(output.glob('NightlyLog-*.html'))
+    assert snapshots and any(p.read_text()==page for p in snapshots)
     assert 'Observing night 2026-10-28' in page and 'SN&lt;test&gt;' in page
     assert 'source_selection_required' in page and 'QC/science/index.html' in page
     assert 'reduction/index.html' in page and 'observing-log.csv' in page
@@ -164,7 +167,9 @@ def test_target_scope_is_persisted_passed_to_worker_and_reported(epoch, monkeypa
     assert state['selected_exposures'] == 1
     assert calls[0][-2:] == ['--target','SN<test>']
     html = (root/'runs/2026-10-28/efospec/index.html').read_text()
-    assert 'Selected targets: SN&lt;test&gt;' in html and 'Outside selected targets' in html
+    assert 'Processed in this revision: SN&lt;test&gt;' in html
+    assert 'Unchanged earlier spectra remain in this log' in html
+    assert 'Outside selected targets' not in html
     with pytest.raises(ValueError,match='target selection changed'):
         nightly.run_epoch('2026-10-28',flux_calibration='archive',stage='report',project_root=root,targets=['vma2'])
 

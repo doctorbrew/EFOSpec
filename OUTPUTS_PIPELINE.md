@@ -42,9 +42,9 @@ part of this published report set.
 - Replace only the chosen report copies and their referenced assets, verify
   local links/downloads, then commit and push `gh-pages`. Keep `.nojekyll`.
   Update the snapshot date and any new URLs in this index in both repositories.
-- EFOSpec source entries are `runs/2024-11-14/`,
-  `runs/2026-10-28/efospec/`, `runs/2026-10-29/` and
-  `runs/2026-11-10/efospec/`. The two historical paths retain their existing layout.
+- EFOSpec source entries are `runs/2024-11-14/efospec/`,
+  `runs/2026-10-28/efospec/`, `runs/2026-10-29/efospec/` and
+  `runs/2026-11-10/efospec/`. Old date-root paths remain compatibility shortcuts.
 - The nightly classification source is
   `EFOSpec/data/classifications/2026-10-28/index.html`. The selected SLSN report
   remains owned by the SLSN project under

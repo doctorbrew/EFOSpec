@@ -95,10 +95,11 @@ def test_report_rejects_changed_parent(tmp_path):
     assert 'earlier reduction' in comparison_section(EpochPage(tmp_path),revision)
 
 
-def test_comparison_discovers_pessto_folder_and_deduplicates_legacy_copy(tmp_path,monkeypatch):
+@pytest.mark.parametrize('engine', ['pyraf', 'pessto'])
+def test_comparison_discovers_iraf_folder_and_deduplicates_legacy_copy(tmp_path,monkeypatch,engine):
     from efospec import inventory as module
     raw=tmp_path/'data/2024-11-14';raw.mkdir(parents=True)
-    iraf=tmp_path/'runs/2024-11-14/pessto/iraf-full-01';iraf.mkdir(parents=True)
+    iraf=tmp_path/'runs/2024-11-14'/engine/'iraf-full-01';iraf.mkdir(parents=True)
     product=write_product(iraf/'iraf.fits');(raw/'old-copy.fits').write_bytes(product.read_bytes())
     f=frame(header(),str(raw/'raw.fits'));f.update(role='science',sha256='rawhash')
     monkeypatch.setattr(module,'inventory',lambda roots:dict(frames=[f],errors=[],identity_conflicts={}))

@@ -68,3 +68,33 @@ def test_pending_red_cannot_promote_standards_or_other_routes():
                  setup=dict(grism='Gr16',filter='OG530'),
                  sky_flexure=dict(status='unvalidated'),selected_response={'path':'response.fits'})
         assert rescue_candidates(dict(errors=[],review_counts=[row]),include_pending_red=True)=={}
+
+
+def test_standard_export_requires_both_opt_ins_and_available_response():
+    from efospec.rescue import rescue_candidates
+    row=dict(raw='standard.fits',object='Feige110',role='standard_candidate',route='red',
+             setup=dict(grism='Gr16',filter='OG530'),
+             sky_flexure=dict(status='unvalidated'),selected_response={'path':'response.fits'})
+    run=dict(errors=[],review_counts=[row])
+    assert rescue_candidates(run,include_standards=True)=={}
+    assert 'standard.fits' in rescue_candidates(run,include_pending_red=True,include_standards=True)
+    del row['selected_response']
+    assert rescue_candidates(run,include_pending_red=True,include_standards=True)=={}
+
+
+def test_confirm_saved_aperture_preserves_identity_and_original_record():
+    from efospec.rescue import confirmed_selection
+    record=dict(selection=dict(identity_confirmed=False,candidates=[dict(name='trace1')]))
+    selected=confirmed_selection(record,'trace1',confirm_saved_source='trace1')
+    assert selected['aperture_review']['candidate']=='C1'
+    assert selected['identity_confirmed'] is False
+    assert 'aperture_review' not in record['selection']
+
+
+@pytest.mark.parametrize('names,actual,requested', [(['trace1'],'trace1','trace2'),
+    (['trace2'],'trace1','trace1'), (['trace1','trace2'],'trace1','trace1')])
+def test_confirm_saved_aperture_rejects_mismatched_or_ambiguous_source(names,actual,requested):
+    from efospec.rescue import confirmed_selection
+    record=dict(selection=dict(candidates=[dict(name=n) for n in names]))
+    with pytest.raises(ValueError,match='single saved extracted source'):
+        confirmed_selection(record,actual,confirm_saved_source=requested)

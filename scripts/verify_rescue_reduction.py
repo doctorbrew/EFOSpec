@@ -28,7 +28,8 @@ def verify(directory):
     old=json.loads(parent.read_text())
     assert old['night']==run['night'] and old['flux_calibration']=='same-night'
     from efospec.rescue import rescue_candidates
-    failures=rescue_candidates(old, include_pending_red=run.get('include_pending_red',False))
+    failures=rescue_candidates(old, include_pending_red=run.get('include_pending_red',False),
+                              include_standards=run.get('include_standards',False))
     assert len({r['raw'] for r in run['results']})==len(run['results'])
     rows=[];groups={};raws={}
     for result in run['results']:
@@ -62,6 +63,11 @@ def verify(directory):
         assert sha256(Path(result['native_spec2d']))==result['native_spec2d_sha256']
         original=SpecObjs.from_fitsfile(counts['native_spec1d'])[0]
         exported=SpecObjs.from_fitsfile(result['native_spec1d'])[0]
+        if run.get('confirmed_saved_source'):
+            from efospec.rescue import confirmed_selection
+            reviewed=confirmed_selection(counts,original.NAME,
+                confirm_saved_source=run['confirmed_saved_source'])
+            assert result['target']['aperture_review']==reviewed['aperture_review']
         for kind in ('OPT','BOX'):
             for field in ('WAVE','COUNTS','COUNTS_IVAR','MASK'):
                 assert np.array_equal(original[kind+'_'+field],exported[kind+'_'+field],equal_nan=True)

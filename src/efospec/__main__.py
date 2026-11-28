@@ -56,6 +56,8 @@ def main(argv=None):
     rescue.add_argument('--target',action='append')
     rescue.add_argument('--boxcar-target',action='append',default=[],help='Use finite-aperture boxcar flux as primary; includes extended emission')
     rescue.add_argument('--include-pending-red',action='store_true',help='Allow explicitly targeted Gr16 review counts with an available response')
+    rescue.add_argument('--include-standards',action='store_true',help='Also allow an explicitly targeted Gr16 standard with --include-pending-red')
+    rescue.add_argument('--confirm-saved-source',help='Confirm the exact native source name of a single already extracted aperture')
     rescue.add_argument('--skip-report',action='store_true')
     rescue.add_argument('--replace-review-counts',action='store_true',help='Explicitly use newly re-extracted counts in place of the parent review counts')
     raw.add_argument('path',help='Night directory with raw calibrations')
@@ -310,7 +312,8 @@ def main(argv=None):
             from .rescue import rescue_daily, build_rescue_report
             result=rescue_daily(args.path,args.output,night=args.night,counts_runs=args.counts_run,
                 targets=args.target,boxcar_targets=args.boxcar_target,replace_review_counts=args.replace_review_counts,
-                include_pending_red=args.include_pending_red)
+                include_pending_red=args.include_pending_red,include_standards=args.include_standards,
+                confirm_saved_source=args.confirm_saved_source)
             report=None if args.skip_report else build_rescue_report(args.output)
             print(json.dumps(dict(output=result['output_dir'],provisional_spectra=len(result['results']),
                 errors=result['errors'],wavelength_validated=False,report=report)))

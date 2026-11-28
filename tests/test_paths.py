@@ -18,8 +18,9 @@ def test_new_outputs_use_efospec_even_when_old_folder_exists(tmp_path):
 def test_explicit_saved_runs_keep_their_layout(tmp_path, folder):
     root = tmp_path/'runs/2026-10-28'/folder
     assert saved_efospec_root(root/'nightly/revision/reduction') == root
-    with pytest.raises(ValueError, match='IRAF'):
-        saved_efospec_root(tmp_path/'runs/2026-10-28/pessto/iraf-full-01')
+    for engine in ('pyraf','pessto'):
+        with pytest.raises(ValueError, match='IRAF'):
+            saved_efospec_root(tmp_path/'runs/2026-10-28'/engine/'iraf-full-01')
 
 
 def test_compatibility_link_resolves_to_canonical_root(tmp_path):

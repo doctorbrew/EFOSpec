@@ -29,7 +29,7 @@ def saved_efospec_root(path):
     for name in ('efospec', 'efosc'):
         if path.is_relative_to(dated / name):
             return dated / name
-    if path.is_relative_to(dated / 'pessto'):
+    if any(path.is_relative_to(dated / name) for name in ('pyraf', 'pessto')):
         raise ValueError('An IRAF output directory is not an EFOSpec run')
     return dated
 

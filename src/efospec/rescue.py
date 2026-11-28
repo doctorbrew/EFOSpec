@@ -36,13 +36,14 @@ def validate_counts(record, frame):
         raise ValueError('review-count calibration manifest changed')
 
 
-def rescue_candidates(run, *, include_pending_red=False):
+def rescue_candidates(run, *, include_pending_red=False, include_standards=False):
     """Recorded failures, optionally including explicitly unvalidated Gr16 counts."""
     candidates = {e['path']: e for e in run['errors']
                   if e.get('code') == 'wavelength_validation_failed'}
     if include_pending_red:
         for row in run.get('review_counts', []):
-            if (row.get('role') == 'science' and row.get('route') == 'red'
+            allowed_roles = ('science', 'standard_candidate') if include_standards else ('science',)
+            if (row.get('role') in allowed_roles and row.get('route') == 'red'
                     and row.get('setup', {}).get('grism') == 'Gr16'
                     and row.get('setup', {}).get('filter') == 'OG530'
                     and row.get('sky_flexure', {}).get('status') == 'unvalidated'
@@ -54,7 +55,21 @@ def rescue_candidates(run, *, include_pending_red=False):
     return candidates
 
 
-def rescue_daily(parent, output, *, night, counts_runs=(), targets=None, boxcar_targets=(), replace_review_counts=False, include_pending_red=False):
+def confirmed_selection(record, source_name, *, confirm_saved_source=None):
+    """Confirm an existing aperture; changing the extracted source requires extraction."""
+    selection = deepcopy(record['selection'])
+    if confirm_saved_source is not None:
+        candidates = selection.get('candidates', [])
+        if (len(candidates) != 1 or candidates[0]['name'] != source_name
+                or confirm_saved_source != source_name):
+            raise ValueError('requested aperture does not match the single saved extracted source')
+        selection['aperture_review'] = dict(status='operator_confirmed',
+            candidate='C1', source_name=source_name,
+            policy='Existing extracted aperture retained; no geometry or count changes.')
+    return selection
+
+
+def rescue_daily(parent, output, *, night, counts_runs=(), targets=None, boxcar_targets=(), replace_review_counts=False, include_pending_red=False, include_standards=False, confirm_saved_source=None):
     """Rescue only recorded wavelength failures, without modifying their parent."""
     from astropy import units as u
     from pypeit.core.wave import vactoair
@@ -69,12 +84,16 @@ def rescue_daily(parent, output, *, night, counts_runs=(), targets=None, boxcar_
         raise ValueError('rescue requires a completed same-night parent for the explicitly selected night')
     if include_pending_red and not targets:
         raise ValueError('pending red rescue requires explicit targets')
-    failures=rescue_candidates(old, include_pending_red=include_pending_red)
+    if include_standards and not (include_pending_red and targets):
+        raise ValueError('standard export requires explicit targets and pending red opt-in')
+    failures=rescue_candidates(old, include_pending_red=include_pending_red, include_standards=include_standards)
     selected={p:e for p,e in failures.items() if not targets or e['object'] in targets}
     if not selected or (targets and set(targets)-{e['object'] for e in selected.values()}):
         raise ValueError('select recorded science wavelength failures from the parent')
     if set(boxcar_targets)-{e['object'] for e in selected.values()}:
         raise ValueError('boxcar target is not among selected failures')
+    if confirm_saved_source is not None and len(selected) != 1:
+        raise ValueError('confirm a saved aperture for exactly one exposure at a time')
     sources={r['raw']:(r,str(parent/'run.json'),sha256(parent/'run.json')) for r in old.get('review_counts',[])}
     supplied=set()
     for directory in counts_runs:
@@ -92,6 +111,7 @@ def rescue_daily(parent, output, *, night, counts_runs=(), targets=None, boxcar_
     run=dict(night=night,method='native_raw_calibration_provisional_rescue',
         wavelength_policy='provisional_arc_only',flux_calibration='same-night',
         include_pending_red=bool(include_pending_red),
+        include_standards=bool(include_standards),confirmed_saved_source=confirm_saved_source,
         status='PROVISIONAL',execution_status='running',input_dir=old['input_dir'],output_dir=str(output),
         parent_run=str(parent),parent_sha256=sha256(parent/'run.json'),
         replaced_parent_review_counts=bool(replace_review_counts),
@@ -107,7 +127,10 @@ def rescue_daily(parent, output, *, night, counts_runs=(), targets=None, boxcar_
             if path not in sources:raise ValueError('no successful background-validated counts; re-extract with documented clean geometry first')
             record,source,source_hash=sources[path]
             frame=inspect_file(Path(path))
-            if frame['role']!='science' or not supported(frame) or frame['night']!=night.replace('-',''):
+            standard_allowed=(include_standards and include_pending_red and
+                frame['role']=='standard_candidate' and frame['setup']['grism']=='Gr16'
+                and frame['setup']['filter']=='OG530')
+            if (frame['role']!='science' and not standard_allowed) or not supported(frame) or frame['night']!=night.replace('-',''):
                 raise ValueError('unsupported science exposure for provisional rescue')
             validate_counts(record,frame)
             standard=select_response(frame,old['standards'])
@@ -124,12 +147,13 @@ def rescue_daily(parent, output, *, night, counts_runs=(), targets=None, boxcar_
             objects=SpecObjs.from_fitsfile(record['native_spec1d'])
             if len(objects)!=1:raise ValueError('review file must contain one explicitly selected source')
             s=objects[0]
+            selection=confirmed_selection(record, s.NAME, confirm_saved_source=confirm_saved_source)
             engine=dict(objects={'primary':objects},found=objects,
                 arrays=[arrays['sky'],arrays['object_model'],arrays['ivar'],SimpleNamespace(mask=arrays['mask'])],
                 selection={k:arrays[k] for k in ('sky_input_mask','found_traces','found_names','sky_mask_stage',
                             'sky_accepted_mask','sky_valid_rows','sky_side_counts','sky_spatial_degree')},
                 sky_policy='bounded_two_sided_pypeit',background_fit=record['background'],
-                source_selection=record['selection'])
+                source_selection=selection)
             response=deepcopy(standard['fit']['response'])
             response.update(selection='nearest successful same-night exact-setup response; provisional science wavelengths',
                 night=night,setup=standard['frame']['setup'],independent_flux_validation=False)
@@ -139,7 +163,6 @@ def rescue_daily(parent, output, *, night, counts_runs=(), targets=None, boxcar_
                 raw_inputs={**bundle['record']['raw_inputs'],**standard_bundle['record']['raw_inputs']})
             sky=dict(record['sky_flexure'],status='unvalidated',policy='provisional raw arc wavelengths; no flexure correction applied',
                      original_failure=failure,shift_angstrom=0.,applied_shift_angstrom=None)
-            selection=deepcopy(record['selection'])
             selection['association']='operator_selected' if selection.get('identity_confirmed') else 'UNVERIFIED_target_association'
             arc=dict(bundle['record']['wavelength'],arc=bundle['record']['associations']['arc']['files'][0],
                 reference_lines=vactoair(np.asarray(bundle['record']['wavelength']['reference_lines_vacuum'])*u.AA).value.tolist())
@@ -155,6 +178,10 @@ def rescue_daily(parent, output, *, night, counts_runs=(), targets=None, boxcar_
                 native_spec2d=record['native_spec2d'],native_spec2d_sha256=record['product_sha256'][record['native_spec2d']],
                 interpretation=('Finite boxcar aperture includes source and extended emission; no host deblending.'
                                 if primary=='boxcar' else 'Selected trace; astrophysical identity and host contamination remain unvalidated.'))
+            if frame['role']=='standard_candidate':
+                result['interpretation']='Standard-star response applied; wavelength check pending.'
+                if frame['path']==response['standard_raw']:
+                    result['interpretation']+=' Uses its own fitted response; this is not an independent flux check.'
             result['product_sha256']={str(p):sha256(p) for p in
                 (Path(result['product']),Path(result['product']).with_suffix('.asci'),Path(result['native_spec1d']))}
             save_json(output/'qa'/(basename+'.json'),result);run['results'].append(result)

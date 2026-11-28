@@ -38,7 +38,7 @@ def test_failure_preserves_input_and_retains_arrays(monkeypatch,tmp_path):
     import efospec.sky_comparison as module
     r=record();r['ranges'][3]['approximate_shift_angstrom']=1.
     retained={'observed_0':np.arange(80.)}
-    monkeypatch.setattr(module,'compare',lambda *args:(r,retained))
+    monkeypatch.setattr(module,'compare',lambda *args,coverage_aware=False:(r,retained))
     data=np.ones((80,12));wave=data*6000.;good=data.astype(bool)
     original=data.copy()
     with pytest.raises(SkyValidationError) as raised:measure_validated(data,wave,good)
@@ -61,7 +61,7 @@ def test_corrected_failure_keeps_both_stages(monkeypatch):
     before=record();after=deepcopy(before)
     for x in after['ranges']:x['approximate_shift_angstrom']=2.
     calls=iter([(before,{'tag':np.array([1])}),(after,{'tag':np.array([2])})])
-    monkeypatch.setattr(module,'compare',lambda *a:next(calls))
+    monkeypatch.setattr(module,'compare',lambda *a,coverage_aware=False:next(calls))
     with pytest.raises(SkyValidationError) as raised:measure_validated(np.ones((80,12)),np.ones((80,12)),np.ones((80,12),bool))
     assert set(raised.value.sky_diagnostic_arrays)=={'before','after'}
 

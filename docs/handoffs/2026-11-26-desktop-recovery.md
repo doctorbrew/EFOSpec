@@ -6,7 +6,7 @@
 - Current branch: `master`; remote: `origin` (`doctorbrew/EFOSpec`). This handoff accompanies the GUI commit. Existing unrelated reduction/report changes and `pyraf/` remain uncommitted; preserve them.
 - Desktop remains native PySide6; the nightly webpage remains read-only. Scientific checks belong to the shared engine. Never overwrite raw data or accepted products or silently relax quality gates.
 - Delivered: exact failed-exposure URL selection, queued startup handoffs, live input validation, visible extraction requirements/errors, clickable trace selection and background dragging, clear-band action, explicit saved-trace boxcar versus PypeIt-refit counts, report-style fonts/limits and PDF plus 300-dpi JPG export.
-- Key files: `src/efospec/{desktop.py,desktop_canvas.py,background_gui.py,background_qc.py}`, `docs/desktop.md`, `tests/{test_desktop.py,test_review_handoff.py,test_background_gui.py,test_background_plot_style.py}`.
+- Key files: `src/efospec/{desktop.py,desktop_canvas.py,background_gui.py,background_qc.py}`, `docs/guides/desktop.md`, `tests/{test_desktop.py,test_review_handoff.py,test_background_gui.py,test_background_plot_style.py}`.
 
 ## Scientific evidence and unresolved issues
 
@@ -39,4 +39,4 @@
 ## Suggested skills
 
 - `diagnosing-bugs` for trace/wavelength failures; `plot-style` for all regenerated diagnostics; `review` when explicitly reviewing the implementation.
-- Follow repository `AGENTS.md`, `docs/epoch-workflow.md`, `docs/desktop.md`, and `docs/roadmap/pypeit-migration/gui.md`.
+- Follow repository `AGENTS.md`, `docs/guides/epoch-workflow.md`, `docs/guides/desktop.md`, and `docs/roadmap/pypeit-migration/gui.md`.

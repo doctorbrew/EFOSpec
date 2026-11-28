@@ -2,6 +2,7 @@
 # Keep bundled reference calibrations under trunk/src/ntt tracked.
 /data/
 /runs/
+# Retired root output paths stay ignored to catch accidental legacy writes safely.
 /outputs/
 /wiserep_tns_upload/
 
@@ -17,6 +18,8 @@ __pycache__/
 .pytest_cache/
 .coverage*
 htmlcov/
+# PyRAF creates this local command cache when legacy tools start.
+/pyraf/clcache.sqlite3*
 
 # Local CI artifacts; CI recreates these when required.
 /badge-data/
@@ -47,3 +50,4 @@ Test_data_GR20
 /docs/brand/prompts.txt
 /docs/roadmap/
 /manuals_pessto/
+/docs/references/pessto/
